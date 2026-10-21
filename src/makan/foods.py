@@ -232,8 +232,8 @@ def scale(food: Food, grams: float) -> dict[str, float | None]:
 
 def describe_portion(servings: float | None, serving_label: str | None, grams: float | None) -> str:
     if serving_label and servings is not None:
-        qty = f"{servings:g}"
-        return f"{qty} × {serving_label}" + (f" ({grams:g} g)" if grams else "")
+        label = re.sub(r"^1\s+", "", serving_label)
+        return f"{servings:g} × {label}" + (f" ({grams:g} g)" if grams else "")
     if grams is not None:
         return f"{grams:g} g"
     return ""
