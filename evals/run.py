@@ -100,8 +100,12 @@ def _in(value, bounds) -> bool:
     return value is not None and bounds[0] <= value <= bounds[1]
 
 
-def _item_ok(item: Item, e: Entry, ours: dict[str, int], log_date: str) -> bool:
+def _item_ok(
+    item: Item, e: Entry, ours: dict[str, int], log_date: str, first_ids: set[int] | None = None
+) -> bool:
     if not re.search(item.name, e.name, re.IGNORECASE):
+        return False
+    if item.from_first_turn and first_ids is not None and e.id not in first_ids:
         return False
     if item.meal and e.meal != item.meal:
         return False
@@ -134,8 +138,30 @@ def _food_ok(check: FoodCheck, food: Food) -> list[str]:
     return problems
 
 
-def grade(case: Case, user_id: int, ours: dict[str, int], reply: str) -> tuple[dict, list[str]]:
+def _match(items: list, entries: list, ok) -> dict[int, int]:
+    """Maximum matching of expected items to entries (Kuhn's algorithm). Returns item -> entry index."""
+    owner: dict[int, int] = {}
+
+    def assign(i: int, seen: set[int]) -> bool:
+        for j, e in enumerate(entries):
+            if j in seen or not ok(items[i], e):
+                continue
+            seen.add(j)
+            if j not in owner or assign(owner[j], seen):
+                owner[j] = i
+                return True
+        return False
+
+    for i in range(len(items)):
+        assign(i, set())
+    return {i: j for j, i in owner.items()}
+
+
+def grade(
+    case: Case, user_id: int, ours: dict[str, int], reply: str, first: dict | None = None
+) -> tuple[dict, list[str]]:
     failures: list[str] = []
+    first_ids = set(first["ids"]) if first else None
     with session_scope() as db:
         dates = [date.fromisoformat(d) for d in case.check_dates]
         entries = list(
@@ -145,25 +171,27 @@ def grade(case: Case, user_id: int, ours: dict[str, int], reply: str) -> tuple[d
                 .order_by(Entry.id)
             )
         )
-        unmatched = list(entries)
         required = [i for i in case.expect or [] if not i.optional]
-        hit = 0
-        for item in required:
-            match = next((e for e in unmatched if _item_ok(item, e, ours, case.log_date)), None)
-            if match is None:
+        # Bipartite matching, so an entry that fits two expectations can't starve the second.
+        pairs = _match(
+            required, entries, lambda i, e: _item_ok(i, e, ours, case.log_date, first_ids)
+        )
+        hit = len(pairs)
+        for idx, item in enumerate(required):
+            if idx not in pairs:
                 near = [
                     f"{e.date} {e.meal} {e.name} {e.kcal}"
-                    for e in unmatched
+                    for e in entries
                     if re.search(item.name, e.name, re.IGNORECASE)
                 ]
                 failures.append(
                     f"missing {item.meal} /{item.name}/ {item.kcal or ''} (near: {near or 'none'})"
                 )
-            else:
-                hit += 1
-                unmatched.remove(match)
+        unmatched = [e for j, e in enumerate(entries) if j not in pairs.values()]
         for item in [i for i in case.expect or [] if i.optional]:
-            match = next((e for e in unmatched if _item_ok(item, e, ours, case.log_date)), None)
+            match = next(
+                (e for e in unmatched if _item_ok(item, e, ours, case.log_date, first_ids)), None
+            )
             if match is not None:
                 unmatched.remove(match)
         if case.expect is not None and case.strict_count:
@@ -201,6 +229,16 @@ def grade(case: Case, user_id: int, ours: dict[str, int], reply: str) -> tuple[d
         total = sum(e.kcal or 0 for e in day_entries)
         if case.total_kcal and not _in(total, case.total_kcal):
             failures.append(f"day total {total:.0f} kcal not in {case.total_kcal}")
+        for pattern in case.forbid:
+            failures += [
+                f"should be gone: {e.date} {e.meal} {e.name}"
+                for e in entries
+                if re.search(pattern, e.name, re.IGNORECASE)
+            ]
+        if case.total_drop and first:
+            drop = first["total"] - total
+            if not _in(drop, case.total_drop):
+                failures.append(f"day total fell {drop:.0f} kcal, expected {case.total_drop}")
         if case.reply_protein:
             protein = sum(e.protein_g or 0 for e in day_entries)
             numbers = [float(n) for n in re.findall(r"\d+(?:\.\d+)?", reply)]
@@ -276,11 +314,15 @@ async def run_case(
         log_date = date.fromisoformat(case.log_date)
         start = time.monotonic()
         reply = ""
-        for msg in case.msgs:
+        timings: list[dict] = []
+        first: dict | None = None
+        for index, msg in enumerate(case.msgs):
             photo_id = None
             if msg.photo:
                 with session_scope() as db:
                     photo_id = save_photo(db, user_id, (PHOTOS / msg.photo).read_bytes()).id
+            timing: dict = {"turn": index}
+            turn_start = time.monotonic()
             async for event in run_turn(
                 user_id=user_id,
                 log_date=log_date,
@@ -290,12 +332,27 @@ async def run_case(
                 client=client,
                 now=now,
             ):
+                elapsed = round(time.monotonic() - turn_start, 2)
+                if event["type"] == "changed":
+                    timing.setdefault("changed_s", elapsed)
+                if event["type"] == "text":
+                    timing.setdefault("first_text_s", elapsed)
+                if event["type"] == "done":
+                    timing["done_s"] = elapsed
                 if event["type"] == "error":
                     raise RuntimeError(event["message"])
                 if event["type"] == "done":
                     reply = event["turn"]["reply_text"]
                     if event["turn"]["status"] != "ok":
                         raise RuntimeError(f"turn status {event['turn']['status']}")
+            timings.append(timing)
+            if index == 0 and len(case.msgs) > 1:
+                with session_scope() as db:
+                    day_entries = db.scalars(select(Entry).where(Entry.user_id == user_id)).all()
+                    first = {
+                        "ids": [e.id for e in day_entries],
+                        "total": sum(e.kcal or 0 for e in day_entries if e.date == log_date),
+                    }
         latency = time.monotonic() - start
 
         usage = pricing.empty_usage()
@@ -317,7 +374,7 @@ async def run_case(
             for b in m["content"]
             if b.get("type") == "tool_use"
         )
-        g, failures = grade(case, user_id, ours, reply)
+        g, failures = grade(case, user_id, ours, reply, first)
         model = models.pop() if len(models) == 1 else ",".join(sorted(m for m in models if m))
         if model != config.model:
             failures.append(f"served by {model}, requested {config.model}")
@@ -343,6 +400,8 @@ async def run_case(
             "api_calls": usage["calls"],
             "tool_calls": tool_calls,
             "latency_s": round(latency, 2),
+            "turns": timings,
+            "first_turn": first,
             "cost_usd": round(pricing.cost(config.model, usage), 6),
         }
         (out / "traces" / f"{case.id}_rep{rep}.json").write_text(
@@ -369,7 +428,9 @@ def regrade(out: Path) -> None:
                 db.scalars(select(Food.id).where(Food.source == "ours").order_by(Food.id))
             )
         ours = {spec["key"]: ours_ids[i] for i, spec in enumerate(case.ours)}
-        row["grade"], row["failures"] = grade(case, user_id, ours, row["reply"])
+        row["grade"], row["failures"] = grade(
+            case, user_id, ours, row["reply"], row.get("first_turn")
+        )
         engine.dispose()
     path.write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows))
     print(f"regraded {len(rows)} rows in {path}", file=sys.stderr)

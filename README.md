@@ -27,7 +27,7 @@ You need Docker with Compose, a domain behind Caddy (or another TLS proxy), a Po
    - `https://makan.example.com/auth/callback` (the MCP connector's OAuth)
 
    Restrict it to a user group that holds just the two of you. Copy the client ID and secret.
-2. Run `cp .env.example .env` and fill it in. `SESSION_SECRET` comes from `openssl rand -hex 32`.
+2. Run `cp .env.example .env` and fill it in. You can leave `SESSION_SECRET` empty: makan generates one on first start and keeps it in the data volume.
 3. Start it with `docker compose up -d --build`. The first start loads the food database, which takes a few seconds.
 4. Add a Caddy site:
 
@@ -49,7 +49,7 @@ In claude.ai, go to Settings → Connectors → Add custom connector and enter `
 
 The assistant uses `claude-haiku-5-5` at `low` effort by default (`AGENT_MODEL`, `AGENT_EFFORT`). Prompt caching is on. The system prompt and tools are cached across both users, and each conversation's history is cached from one turn to the next. Settings shows this month's assistant spend.
 
-`evals/` checks the assistant against 33 cases: text dumps in Singlish, household-food defaults, edits to past days, nutrition labels, and real meal photos. Each case is graded on the database it leaves behind. In the latest run, Haiku at low effort passed 98% of them for about $0.0008 per message, which comes to well under a dollar a month for two people. [evals/README.md](evals/README.md) has the full results and how to rerun them.
+`evals/` checks the assistant against 43 cases: text dumps in Singlish, household-food defaults, follow-up edits, edits to past days, nutrition labels, and real meal photos. Each case is graded on the database it leaves behind. In the latest run, Haiku at low effort passed 97% of them for about $0.0006 per message, which comes to well under a dollar a month for two people. A typical message updates the log in about 3 seconds, and a follow-up edit in about 1.5. [evals/README.md](evals/README.md) has the full results and how to rerun them.
 
 ## Food data
 

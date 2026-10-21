@@ -43,6 +43,10 @@ def startup() -> None:
 
 def create_app() -> FastAPI:
     settings = get_settings()
+    if settings.dev_login and settings.public_url.startswith("https://"):
+        raise RuntimeError(
+            "DEV_LOGIN lets anyone sign in as anyone; it can't be used on an https site"
+        )
     host = urlparse(settings.public_url).netloc
     mcp_app = mcp.http_app(path="/mcp", allowed_hosts=[host, "localhost:*", "127.0.0.1:*"])
 
@@ -55,7 +59,7 @@ def create_app() -> FastAPI:
     app = FastAPI(title="makan", lifespan=lifespan, docs_url=None, redoc_url=None)
     app.add_middleware(
         SessionMiddleware,
-        secret_key=settings.session_secret,
+        secret_key=settings.resolved_session_secret(),
         session_cookie="makan_session",
         max_age=180 * 24 * 3600,
         same_site="lax",
