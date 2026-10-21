@@ -54,6 +54,8 @@ class Item:
     ours: str | None = None
     not_ours: str | None = None
     optional: bool = False
+    # Must be an entry that already existed after the first message (edited in place, not re-added).
+    from_first_turn: bool = False
 
 
 @dataclass
@@ -88,6 +90,9 @@ class Case:
     ref_kcal: float | None = None  # benchmark estimate for photo cases
     foods: list[FoodCheck] = field(default_factory=list)
     reply_protein: bool = False  # the reply must state the day's protein total
+    # How much the log date's kcal total must fall between the first message and the end.
+    total_drop: tuple[float, float] | None = None
+    forbid: list[str] = field(default_factory=list)  # no entry on the checked dates may match these
     strict_count: bool = (
         True  # False: extra entries are fine (photo meals split into any number of parts)
     )
@@ -306,6 +311,117 @@ CASES: list[Case] = [
         ],
         expect=[Item(r"chicken rice", "lunch"), Item(r"kopi c", "breakfast")],
         reply_protein=True,
+    ),
+    # --- add, then edit in a follow-up message -------------------------------------
+    Case(
+        "then_fix_one_portion",
+        ["text", "edit", "multi_turn", "add_then_edit"],
+        [
+            Msg("breakfast kopi c and 2 slices kaya toast. lunch chicken rice"),
+            Msg("the kaya toast was only 1 slice"),
+        ],
+        expect=[
+            Item(r"kopi c", "breakfast", kcal=(100, 160), from_first_turn=True),
+            Item(r"kaya", "breakfast", kcal=(150, 420), from_first_turn=True),
+            Item(r"chicken rice", "lunch", kcal=(400, 650), from_first_turn=True),
+        ],
+    ),
+    Case(
+        "then_swap_food",
+        ["text", "edit", "multi_turn", "add_then_edit"],
+        [
+            Msg("lunch chicken rice and a teh peng"),
+            Msg("oh it was roasted chicken rice, not steamed"),
+        ],
+        expect=[
+            Item(r"roast", "lunch", kcal=(550, 720), from_first_turn=True),
+            Item(r"iced teh|teh peng", kcal=(120, 260), from_first_turn=True),
+        ],
+    ),
+    Case(
+        "then_set_meal",
+        ["text", "edit", "multi_turn", "add_then_edit"],
+        [Msg("kopi c and kaya toast"), Msg("those were breakfast")],
+        expect=[
+            Item(r"kopi c", "breakfast", kcal=(100, 160), from_first_turn=True),
+            Item(r"kaya", "breakfast", kcal=(300, 800), from_first_turn=True),
+        ],
+    ),
+    Case(
+        "then_remove_one",
+        ["text", "edit", "multi_turn", "add_then_edit"],
+        [Msg("dinner laksa and a lime juice"), Msg("scratch the lime juice")],
+        expect=[Item(r"laksa", "dinner", kcal=(350, 480), from_first_turn=True)],
+    ),
+    Case(
+        "then_move_to_yesterday",
+        ["text", "edit", "multi_turn", "add_then_edit", "dates"],
+        [Msg("lunch bak chor mee dry"), Msg("sorry, that was yesterday's lunch")],
+        check_dates=[TODAY, YESTERDAY],
+        expect=[
+            Item(r"bak chor mee", "lunch", date=YESTERDAY, kcal=(400, 700), from_first_turn=True)
+        ],
+    ),
+    Case(
+        "then_variant",
+        ["text", "edit", "multi_turn", "add_then_edit"],
+        [Msg("teh c for breakfast"), Msg("make it siew dai")],
+        expect=[Item(r"teh c (siu|siew) dai", "breakfast", kcal=(30, 110), from_first_turn=True)],
+    ),
+    Case(
+        "then_add_another_not_edit",
+        ["text", "multi_turn", "add_then_edit"],
+        [Msg("breakfast kopi c"), Msg("and another kopi c at 3pm")],
+        expect=[
+            Item(r"kopi c", "breakfast", kcal=(100, 160), from_first_turn=True),
+            Item(r"kopi c", "snacks", kcal=(100, 160)),
+        ],
+    ),
+    Case(
+        "photo_then_drop_item",
+        ["photo", "edit", "multi_turn", "add_then_edit"],
+        [Msg("lunch", photo="PXL_20260811_042257624.jpg"), Msg("I didn't eat the you tiao")],
+        now="2026-08-11T12:22",
+        log_date="2026-08-11",
+        check_dates=["2026-08-11"],
+        expect=[
+            Item(r"bak kut teh|pork rib|rib soup", "lunch", from_first_turn=True),
+            Item(r"rice", "lunch", from_first_turn=True),
+            Item(r"peanut", "lunch", from_first_turn=True),
+        ],
+        forbid=[r"you ?tiao|dough|fritter"],
+        strict_count=False,
+        total_kcal=(450, 1250),
+        total_drop=(200, 1100),
+    ),
+    Case(
+        "photo_then_half_rice",
+        ["photo", "edit", "multi_turn", "add_then_edit"],
+        [Msg("lunch", photo="PXL_20260922_051842044.jpg"), Msg("I only ate half the rice")],
+        now="2026-09-22T13:18",
+        log_date="2026-09-22",
+        check_dates=["2026-09-22"],
+        expect=[Item(r"nasi lemak|coconut rice|rice", "lunch", from_first_turn=True)]
+        + [Item(r".", "lunch", optional=True)] * 6,
+        total_drop=(60, 450),
+        strict_count=False,
+    ),
+    Case(
+        "label_then_fix_serving",
+        ["photo", "label", "edit", "multi_turn", "add_then_edit"],
+        [
+            Msg("save this, it's our oat milk", photo="PXL_20261020_103601464.jpg"),
+            Msg("we drink it in 200 ml glasses"),
+        ],
+        now="2026-10-20T18:36",
+        log_date="2026-10-20",
+        check_dates=["2026-10-20"],
+        expect=[],
+        foods=[
+            FoodCheck(
+                r"oat", kcal=(60, 64), serving_grams=[(195, 205)], aliases_include=["oat milk"]
+            )
+        ],
     ),
     # --- nutrition labels ---------------------------------------------------------
     Case(

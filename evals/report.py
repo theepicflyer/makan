@@ -30,6 +30,34 @@ def _ci(p: float, n: int) -> float:
     return 1.96 * math.sqrt(p * (1 - p) / n) if n else 0.0
 
 
+def _pct(values: list[float], q: float) -> str:
+    if not values:
+        return "—"
+    values = sorted(values)
+    return f"{values[min(len(values) - 1, int(q * len(values)))]:.1f}"
+
+
+def _timing_row(name: str, rows: list[dict]) -> str:
+    first_c, first_d, edit_c, edit_d, photo_d = [], [], [], [], []
+    for r in rows:
+        for t in r.get("turns", []):
+            if t["turn"] == 0:
+                if "photo" in r["tags"]:
+                    photo_d.append(t["done_s"])
+                else:
+                    first_d.append(t["done_s"])
+                    if "changed_s" in t:
+                        first_c.append(t["changed_s"])
+            elif "add_then_edit" in r["tags"]:
+                edit_d.append(t["done_s"])
+                if "changed_s" in t:
+                    edit_c.append(t["changed_s"])
+    return (
+        f"| {name} | {_pct(first_c, 0.5)} | {_pct(first_d, 0.5)} / {_pct(first_d, 0.9)} | "
+        f"{_pct(edit_c, 0.5)} | {_pct(edit_d, 0.5)} / {_pct(edit_d, 0.9)} | {_pct(photo_d, 0.5)} |"
+    )
+
+
 def summarise() -> str:
     runs = sorted(
         p
@@ -45,8 +73,20 @@ def summarise() -> str:
             "Cost and latency are per case, all turns included."
         ),
         "",
-        "| run | cases×reps | pass | text pass | photo pass | photo kcal err (median) | $/case | $/1000 cases | latency p50 | cache read share | errors |",
-        "|---|---|---|---|---|---|---|---|---|---|---|",
+        "| run | cases×reps | pass | text pass | photo pass | edit-after-add pass | photo kcal err (median) | $/case | cache read share | errors |",
+        "|---|---|---|---|---|---|---|---|---|---|",
+    ]
+    timing_lines = [
+        "",
+        "## Wall time per message",
+        "",
+        (
+            "Seconds from sending a message to: the log changing on screen (`changed`), and the reply finishing "
+            "(`done`). First messages usually search then log; follow-up edits usually skip the search."
+        ),
+        "",
+        "| run | first message: changed p50 | first message: done p50 / p90 | follow-up edit: changed p50 | follow-up edit: done p50 / p90 | photo message: done p50 |",
+        "|---|---|---|---|---|---|",
     ]
     per_case: dict[str, dict[str, list[float]]] = defaultdict(dict)
     for run in runs:
@@ -59,7 +99,6 @@ def summarise() -> str:
         photo = [r["grade"]["pass"] for r in rows if "photo" in r["tags"]]
         kerr = [r["grade"]["kcal_err"] for r in rows if "kcal_err" in r["grade"]]
         cost = statistics.mean(r["cost_usd"] for r in rows)
-        lat = statistics.median(r["latency_s"] for r in rows)
         u = defaultdict(int)
         for r in rows:
             for k, v in r["usage"].items():
@@ -68,14 +107,18 @@ def summarise() -> str:
         share = u["cache_read_input_tokens"] / prompt if prompt else 0
         cases = len({r["prompt_id"] for r in rows})
         reps = max(r["rep"] for r in rows) + 1
+        edits = [r["grade"]["pass"] for r in rows if "add_then_edit" in r["tags"]]
         lines.append(
             f"| {run.name} | {cases}×{reps} | {passed:.0%} ± {_ci(passed, n):.0%} | "
             f"{statistics.mean(text):.0%} | {f'{statistics.mean(photo):.0%}' if photo else '—'} | "
-            f"{f'{statistics.median(kerr):.0%}' if kerr else '—'} | ${cost:.4f} | ${cost * 1000:.2f} | {lat:.1f}s | {share:.0%} | {len(errors)} |"
+            f"{f'{statistics.mean(edits):.0%}' if edits else '—'} | "
+            f"{f'{statistics.median(kerr):.0%}' if kerr else '—'} | ${cost:.4f} | {share:.0%} | {len(errors)} |"
         )
+        timing_lines.append(_timing_row(run.name, rows))
         for r in rows:
             per_case[r["prompt_id"]].setdefault(run.name, []).append(r["grade"]["pass"])
 
+    lines += timing_lines
     names = [r.name for r in runs]
     lines += [
         "",
