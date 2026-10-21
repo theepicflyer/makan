@@ -32,7 +32,7 @@ from makan.agent.runner import AgentConfig, run_turn
 from makan.auth import upsert_user
 from makan.config import get_settings
 from makan.db import make_engine, session_scope, use_database
-from makan.models import Entry, Food, Thread, Turn
+from makan.models import Entry, Food, Thread, Turn, User
 from makan.photos import save_photo
 
 ROOT = Path(__file__).parent
@@ -353,6 +353,28 @@ async def run_case(
         engine.dispose()
 
 
+def regrade(out: Path) -> None:
+    """Re-grade every finished row from its saved database, after a grader fix."""
+    from evals.cases import BY_ID
+
+    path = out / "results.jsonl"
+    rows = [json.loads(line) for line in path.read_text().splitlines()]
+    for row in rows:
+        case = BY_ID[row["prompt_id"]]
+        engine = make_engine(f"sqlite:///{out / 'dbs' / f'{case.id}_rep{row["rep"]}.db'}")
+        use_database(engine)
+        with session_scope() as db:
+            user_id = db.scalar(select(User.id).where(User.oidc_sub == "eval:user"))
+            ours_ids = list(
+                db.scalars(select(Food.id).where(Food.source == "ours").order_by(Food.id))
+            )
+        ours = {spec["key"]: ours_ids[i] for i, spec in enumerate(case.ours)}
+        row["grade"], row["failures"] = grade(case, user_id, ours, row["reply"])
+        engine.dispose()
+    path.write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows))
+    print(f"regraded {len(rows)} rows in {path}", file=sys.stderr)
+
+
 async def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--model", default="claude-haiku-5-5")
@@ -364,6 +386,7 @@ async def main() -> None:
     p.add_argument("--cache-ttl", default="5m")
     p.add_argument("--concurrency", type=int, default=6)
     p.add_argument("--name", default=None)
+    p.add_argument("--regrade", action="store_true", help="re-grade saved results, no API calls")
     args = p.parse_args()
 
     config = AgentConfig(
@@ -374,6 +397,9 @@ async def main() -> None:
         or f"{args.model.removeprefix('claude-')}-{args.effort}{'-nocache' if args.no_cache else ''}"
     )
     out = RESULTS / name
+    if args.regrade:
+        regrade(out)
+        return
     (out / "traces").mkdir(parents=True, exist_ok=True)
     (out / "dbs").mkdir(exist_ok=True)
     (out / "config.json").write_text(json.dumps(asdict(config), indent=1))

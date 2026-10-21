@@ -105,7 +105,9 @@ def create_app() -> FastAPI:
 
 def _file_route(path: Path):
     headers = (
-        {"Cache-Control": "no-cache"} if path.name in ("sw.js", "manifest.webmanifest") else None
+        {"Cache-Control": "no-cache"}
+        if path.name in ("service-worker.js", "manifest.webmanifest")
+        else None
     )
 
     async def serve():

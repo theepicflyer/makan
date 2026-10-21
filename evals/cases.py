@@ -443,7 +443,10 @@ CASES: list[Case] = [
         now="2026-09-15T12:46",
         log_date="2026-09-15",
         check_dates=["2026-09-15"],
-        expect=[Item(r"onigiri|rice|sushi|musubi", "lunch"), Item(r".", "lunch", optional=True)],
+        expect=[
+            Item(r"onigiri|nigiri|rice|sushi|musubi|hand ?roll|temaki|cone", "lunch"),
+            Item(r".", "lunch", optional=True),
+        ],
         total_kcal=(380, 750),
         ref_kcal=540,
     ),
