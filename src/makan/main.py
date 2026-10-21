@@ -20,7 +20,15 @@ from makan.migrate import upgrade
 log = logging.getLogger("makan")
 
 # Client-side routes of the web app; everything else unmatched goes to the MCP/OAuth app.
-SPA_ROUTES = ("/", "/login", "/foods", "/settings", "/history", "/day/{rest:path}", "/foods/{rest:path}")
+SPA_ROUTES = (
+    "/",
+    "/login",
+    "/foods",
+    "/settings",
+    "/history",
+    "/day/{rest:path}",
+    "/foods/{rest:path}",
+)
 
 
 def startup() -> None:
@@ -74,7 +82,9 @@ def create_app() -> FastAPI:
         app.mount("/_app", StaticFiles(directory=static / "_app"), name="assets")
     for path in static.glob("*") if static.is_dir() else []:
         if path.is_file() and path.name != "index.html":
-            app.add_api_route(f"/{path.name}", _file_route(path), methods=["GET"], include_in_schema=False)
+            app.add_api_route(
+                f"/{path.name}", _file_route(path), methods=["GET"], include_in_schema=False
+            )
     for dirpath in ("icons",):
         if (static / dirpath).is_dir():
             app.mount(f"/{dirpath}", StaticFiles(directory=static / dirpath), name=dirpath)
@@ -82,7 +92,9 @@ def create_app() -> FastAPI:
     async def spa(request: Request):
         if index.exists():
             return FileResponse(index, headers={"Cache-Control": "no-cache"})
-        return JSONResponse({"detail": "web app not built; run npm run build in web/"}, status_code=503)
+        return JSONResponse(
+            {"detail": "web app not built; run npm run build in web/"}, status_code=503
+        )
 
     for route in SPA_ROUTES:
         app.add_api_route(route, spa, methods=["GET"], include_in_schema=False)
@@ -92,7 +104,9 @@ def create_app() -> FastAPI:
 
 
 def _file_route(path: Path):
-    headers = {"Cache-Control": "no-cache"} if path.name in ("sw.js", "manifest.webmanifest") else None
+    headers = (
+        {"Cache-Control": "no-cache"} if path.name in ("sw.js", "manifest.webmanifest") else None
+    )
 
     async def serve():
         return FileResponse(path, headers=headers)

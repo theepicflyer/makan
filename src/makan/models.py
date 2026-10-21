@@ -1,4 +1,4 @@
-from datetime import date, datetime, UTC
+from datetime import UTC, date, datetime
 from typing import Any
 
 from sqlalchemy import (
@@ -74,7 +74,9 @@ class Food(NutrientColumns, Base):
     meta: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
@@ -108,7 +110,9 @@ class Entry(NutrientColumns, Base):
     photo_id: Mapped[int | None] = mapped_column(ForeignKey("photos.id"))
     origin: Mapped[str] = mapped_column(String, default="manual")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
 
 
 class Pin(Base):

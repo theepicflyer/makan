@@ -1,0 +1,14 @@
+services:
+  makan:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "8000:8000"
+    # Everything that must survive a rebuild lives here: the SQLite database, meal photos,
+    # and FastMCP's OAuth client store (claude.ai's connector registration).
+    volumes:
+      - makan-data:/data
+
+volumes:
+  makan-data:

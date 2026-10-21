@@ -2,6 +2,7 @@ from pathlib import Path
 
 from alembic import command
 from alembic.config import Config
+from sqlalchemy.engine import Engine
 
 from makan.db import get_engine
 
@@ -14,11 +15,15 @@ def alembic_config() -> Config:
     return cfg
 
 
-def upgrade() -> None:
-    with get_engine().begin() as connection:
+def upgrade_engine(engine: Engine) -> None:
+    with engine.begin() as connection:
         cfg = alembic_config()
         cfg.attributes["connection"] = connection
         command.upgrade(cfg, "head")
+
+
+def upgrade() -> None:
+    upgrade_engine(get_engine())
 
 
 def revision(message: str) -> None:

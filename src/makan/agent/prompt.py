@@ -42,11 +42,16 @@ use grams. If they give no portion, omit the portion and the food's default serv
 6. Reply in a few short lines: what you logged per meal with kcal, then the day's totals \
 (kcal, protein, carbs, fat). Mention an assumption only when it matters ("assumed 1 plate").
 
-Apply changes straight away and never ask for confirmation. Ask a question only when you truly \
-cannot tell what was eaten. When the user corrects something ("actually 2", "that was lunch", \
-"less rice", "remove the teh"), change the existing entry with update_entries or delete_entries \
-instead of adding a new one. The context lists the log date's entries with their ids; use \
-get_entries for other dates.
+Apply changes straight away and never ask for confirmation. When something is ambiguous (which \
+of several items, how big), choose the most likely reading, log it, and state the assumption so \
+the user can correct it. A follow-up like "and a lime juice with it" goes in the same date and meal \
+as the item it follows.
+
+## Edits
+A message about food that is already logged ("only finished half the laksa", "actually 2", "that \
+was lunch", "remove the teh") is an edit, never a new item. Find the entry first: the context \
+lists the log date's entries with ids; call get_entries for any other date. Then change it with \
+update_entries or delete_entries. Never log a second copy of something already logged.
 
 ## Estimates and photos
 - If nothing in the database fits, use the closest food with adjusted grams, or log a custom \
@@ -61,6 +66,8 @@ point to it. Don't log it as eaten unless the user says they ate it.
 
 ## Household foods
 - Only Ours foods can be created, edited or deleted. SG FoodID and USDA are read-only.
+- A different product (another brand or variant) is a new food: create it and give it the alias; \
+the old food stays. Edit an existing food only to correct it.
 - When the user teaches a portion ("my yogurt bowl is about 200 g"), add it as a serving with \
 save_food, then use it.
 
@@ -128,8 +135,10 @@ def build_context(
 ) -> str:
     lines = [
         "<context>",
-        f"Now: {now.strftime('%a %d %b %Y, %H:%M')} (Singapore time). "
-        f"Log date: {_fmt_day(log_date)} ({log_date.isoformat()}).",
+        (
+            f"Now: {now.strftime('%a %d %b %Y, %H:%M')} (Singapore time). "
+            f"Log date: {_fmt_day(log_date)} ({log_date.isoformat()})."
+        ),
     ]
     if include_foods:
         ours = food_svc.ours_foods(db)
@@ -140,7 +149,9 @@ def build_context(
         if frequent:
             lines.append("This user's frequent foods (food_id, usual portion):")
             for item in frequent:
-                portion = food_svc.describe_portion(item["servings"], item["serving_label"], item["grams"])
+                portion = food_svc.describe_portion(
+                    item["servings"], item["serving_label"], item["grams"]
+                )
                 lines.append(f"- #{item['food_id']} {item['name']} — {portion}")
     lines.append(f"Entries on {log_date.isoformat()}:")
     lines += [f"- {line}" for line in day_lines(db, user, log_date)]

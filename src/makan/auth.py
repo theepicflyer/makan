@@ -62,7 +62,9 @@ async def login(request: Request):
     client = _client()
     if client is None:
         return RedirectResponse("/login")
-    return await client.authorize_redirect(request, f"{get_settings().public_url}/auth/web/callback")
+    return await client.authorize_redirect(
+        request, f"{get_settings().public_url}/auth/web/callback"
+    )
 
 
 @router.get("/auth/web/callback")
@@ -79,7 +81,9 @@ async def callback(request: Request, db: Session = Depends(get_db)):
     allowed = get_settings().allowed_email_set
     if allowed and (email is None or email not in allowed):
         raise HTTPException(403, "This account isn't allowed to use makan.")
-    user = upsert_user(db, sub=info["sub"], email=email, name=info.get("name") or info.get("preferred_username"))
+    user = upsert_user(
+        db, sub=info["sub"], email=email, name=info.get("name") or info.get("preferred_username")
+    )
     request.session["uid"] = user.id
     return RedirectResponse("/")
 

@@ -28,7 +28,14 @@ PRICES = {
 
 
 def empty_usage() -> dict[str, int]:
-    return {"input": 0, "output": 0, "cache_read": 0, "cache_write_5m": 0, "cache_write_1h": 0, "calls": 0}
+    return {
+        "input": 0,
+        "output": 0,
+        "cache_read": 0,
+        "cache_write_5m": 0,
+        "cache_write_1h": 0,
+        "calls": 0,
+    }
 
 
 def add_usage(total: dict[str, int], usage) -> None:

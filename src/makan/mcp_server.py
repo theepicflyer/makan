@@ -70,13 +70,17 @@ def _user(db) -> User:
     if token is None:
         if not settings.oidc_config_url and settings.mcp_dev_user:
             name = settings.mcp_dev_user
-            return upsert_user(db, sub=f"dev:{name.lower()}", email=f"{name.lower()}@dev.local", name=name)
+            return upsert_user(
+                db, sub=f"dev:{name.lower()}", email=f"{name.lower()}@dev.local", name=name
+            )
         raise ToolError("Not authenticated")
     claims = token.claims or {}
     sub = claims.get("sub") or (claims.get("upstream_claims") or {}).get("sub")
     user = db.scalar(select(User).where(User.oidc_sub == sub)) if sub else None
     if user is None:
-        raise ToolError("No makan account for this login. Sign in to makan in a browser once, then retry.")
+        raise ToolError(
+            "No makan account for this login. Sign in to makan in a browser once, then retry."
+        )
     return user
 
 
@@ -133,7 +137,10 @@ def get_daily_totals(
     start, end = _range(start_date, end_date)
     with session_scope() as db:
         user = _user(db)
-        return {"targets_per_day": log_svc.targets(user), "days": log_svc.daily_totals(db, user, start, end)}
+        return {
+            "targets_per_day": log_svc.targets(user),
+            "days": log_svc.daily_totals(db, user, start, end),
+        }
 
 
 @mcp.tool(annotations={"readOnlyHint": True})
@@ -148,7 +155,9 @@ def get_food_log(
         entries = log_svc.entries_between(db, user, start, end)
         sources = {
             f.id: f.source
-            for f in db.scalars(select(Food).where(Food.id.in_({e.food_id for e in entries if e.food_id})))
+            for f in db.scalars(
+                select(Food).where(Food.id.in_({e.food_id for e in entries if e.food_id}))
+            )
         }
         days: dict[str, dict[str, list]] = {}
         for e in entries:

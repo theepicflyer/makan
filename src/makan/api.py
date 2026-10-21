@@ -128,7 +128,9 @@ def get_day(day: str, user: User = Depends(current_user), db: Session = Depends(
 
 
 @router.get("/history")
-def history(start: str, end: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def history(
+    start: str, end: str, user: User = Depends(current_user), db: Session = Depends(get_db)
+):
     s, e = _day(start), _day(end)
     if (e - s).days > 400:
         raise HTTPException(400, "range too long")
@@ -173,9 +175,18 @@ class CopyIn(BaseModel):
 def create_entry(body: EntryIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
     try:
         entry = log_svc.add_entry(
-            db, user, day=_day(body.date), meal=body.meal, food_id=body.food_id, servings=body.servings,
-            serving=body.serving, grams=body.grams, name=body.name, nutrients=body.nutrients,
-            note=body.note, origin=body.origin,
+            db,
+            user,
+            day=_day(body.date),
+            meal=body.meal,
+            food_id=body.food_id,
+            servings=body.servings,
+            serving=body.serving,
+            grams=body.grams,
+            name=body.name,
+            nutrients=body.nutrients,
+            note=body.note,
+            origin=body.origin,
         )
     except ValueError as exc:
         raise _bad_request(exc) from exc
@@ -183,12 +194,26 @@ def create_entry(body: EntryIn, user: User = Depends(current_user), db: Session 
 
 
 @router.patch("/entries/{entry_id}")
-def patch_entry(entry_id: int, body: EntryPatch, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def patch_entry(
+    entry_id: int,
+    body: EntryPatch,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+):
     try:
         entry = log_svc.update_entry(
-            db, user, entry_id, day=_day(body.date) if body.date else None, meal=body.meal,
-            food_id=body.food_id, servings=body.servings, serving=body.serving, grams=body.grams,
-            name=body.name, nutrients=body.nutrients, note=body.note,
+            db,
+            user,
+            entry_id,
+            day=_day(body.date) if body.date else None,
+            meal=body.meal,
+            food_id=body.food_id,
+            servings=body.servings,
+            serving=body.serving,
+            grams=body.grams,
+            name=body.name,
+            nutrients=body.nutrients,
+            note=body.note,
         )
     except ValueError as exc:
         raise _bad_request(exc) from exc
@@ -240,7 +265,9 @@ def _per_100g(body: FoodIn) -> dict[str, float | None] | None:
 
 
 @router.get("/foods/search")
-def search_foods(q: str, limit: int = 20, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def search_foods(
+    q: str, limit: int = 20, user: User = Depends(current_user), db: Session = Depends(get_db)
+):
     hits = food_svc.search(db, q, limit=min(max(limit, 1), 50))
     return {"results": [food_out(h.food) for h in hits]}
 
@@ -262,8 +289,14 @@ def get_food(food_id: int, user: User = Depends(current_user), db: Session = Dep
 def create_food(body: FoodIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
     try:
         food, _ = food_svc.save_ours(
-            db, user_id=user.id, name=body.name, brand=body.brand, description=body.description,
-            nutrients=_per_100g(body), servings=body.servings or [], aliases=body.aliases or [],
+            db,
+            user_id=user.id,
+            name=body.name,
+            brand=body.brand,
+            description=body.description,
+            nutrients=_per_100g(body),
+            servings=body.servings or [],
+            aliases=body.aliases or [],
         )
     except ValueError as exc:
         raise _bad_request(exc) from exc
@@ -271,11 +304,20 @@ def create_food(body: FoodIn, user: User = Depends(current_user), db: Session = 
 
 
 @router.patch("/foods/{food_id}")
-def patch_food(food_id: int, body: FoodIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def patch_food(
+    food_id: int, body: FoodIn, user: User = Depends(current_user), db: Session = Depends(get_db)
+):
     try:
         food, _ = food_svc.save_ours(
-            db, user_id=user.id, food_id=food_id, name=body.name, brand=body.brand,
-            description=body.description, nutrients=_per_100g(body), servings=body.servings, aliases=body.aliases,
+            db,
+            user_id=user.id,
+            food_id=food_id,
+            name=body.name,
+            brand=body.brand,
+            description=body.description,
+            nutrients=_per_100g(body),
+            servings=body.servings,
+            aliases=body.aliases,
         )
     except ValueError as exc:
         raise _bad_request(exc) from exc
@@ -313,8 +355,15 @@ class LogSavedIn(BaseModel):
 
 
 @router.get("/quick")
-def quick(meal: str | None = None, day: str | None = None, user: User = Depends(current_user), db: Session = Depends(get_db)):
-    return log_svc.quick_items(db, user, meal=meal, day=_day(day) if day else get_settings().today())
+def quick(
+    meal: str | None = None,
+    day: str | None = None,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    return log_svc.quick_items(
+        db, user, meal=meal, day=_day(day) if day else get_settings().today()
+    )
 
 
 @router.post("/pins")
@@ -325,7 +374,14 @@ def add_pin(body: PinIn, user: User = Depends(current_user), db: Session = Depen
     except ValueError as exc:
         raise _bad_request(exc) from exc
     position = (db.scalar(select(func.max(Pin.position)).where(Pin.user_id == user.id)) or 0) + 1
-    pin = Pin(user_id=user.id, food_id=food.id, serving_label=body.serving_label, servings=body.servings, grams=body.grams, position=position)
+    pin = Pin(
+        user_id=user.id,
+        food_id=food.id,
+        serving_label=body.serving_label,
+        servings=body.servings,
+        grams=body.grams,
+        position=position,
+    )
     db.add(pin)
     db.flush()
     return {"id": pin.id}
@@ -341,19 +397,23 @@ def remove_pin(pin_id: int, user: User = Depends(current_user), db: Session = De
 
 
 @router.post("/saved-meals")
-def add_saved_meal(body: SavedMealIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def add_saved_meal(
+    body: SavedMealIn, user: User = Depends(current_user), db: Session = Depends(get_db)
+):
     items = body.items or []
     for entry_id in body.entry_ids or []:
         entry = db.get(Entry, entry_id)
         if entry is None or entry.user_id != user.id or entry.food_id is None:
             continue
-        items.append({
-            "food_id": entry.food_id,
-            "serving_label": entry.serving_label,
-            "servings": entry.servings,
-            "grams": None if entry.serving_label else entry.grams,
-            "name": entry.name,
-        })
+        items.append(
+            {
+                "food_id": entry.food_id,
+                "serving_label": entry.serving_label,
+                "servings": entry.servings,
+                "grams": None if entry.serving_label else entry.grams,
+                "name": entry.name,
+            }
+        )
     if not body.name.strip() or not items:
         raise HTTPException(400, "A saved meal needs a name and at least one database food")
     meal = SavedMeal(user_id=user.id, name=body.name.strip(), items=items)
@@ -363,7 +423,9 @@ def add_saved_meal(body: SavedMealIn, user: User = Depends(current_user), db: Se
 
 
 @router.delete("/saved-meals/{meal_id}")
-def remove_saved_meal(meal_id: int, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def remove_saved_meal(
+    meal_id: int, user: User = Depends(current_user), db: Session = Depends(get_db)
+):
     meal = db.get(SavedMeal, meal_id)
     if meal is None or meal.user_id != user.id:
         raise HTTPException(404)
@@ -372,7 +434,12 @@ def remove_saved_meal(meal_id: int, user: User = Depends(current_user), db: Sess
 
 
 @router.post("/saved-meals/{meal_id}/log")
-def log_saved(meal_id: int, body: LogSavedIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
+def log_saved(
+    meal_id: int,
+    body: LogSavedIn,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+):
     try:
         entries = log_svc.log_saved_meal(db, user, meal_id, _day(body.date), body.meal)
     except ValueError as exc:
@@ -411,10 +478,20 @@ async def agent_turn(
     user_id = user.id
 
     async def events():
-        async for event in run_turn(user_id=user_id, log_date=day, text=text, photo_id=photo_id, config=AgentConfig.from_settings()):
+        async for event in run_turn(
+            user_id=user_id,
+            log_date=day,
+            text=text,
+            photo_id=photo_id,
+            config=AgentConfig.from_settings(),
+        ):
             yield _sse(event)
 
-    return StreamingResponse(events(), media_type="text/event-stream", headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+    return StreamingResponse(
+        events(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
 
 
 @router.get("/agent/threads/{day}")

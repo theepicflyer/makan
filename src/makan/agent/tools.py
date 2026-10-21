@@ -111,10 +111,16 @@ _portion_props = {
         "type": "string",
         "description": "A serving label of the food, e.g. 'bowl', 'slice', 'cup'. Omit for the default serving.",
     },
-    "grams": {"type": "number", "description": "Total weight eaten; use instead of servings when the user gives a weight."},
+    "grams": {
+        "type": "number",
+        "description": "Total weight eaten; use instead of servings when the user gives a weight.",
+    },
 }
 _custom_props = {
-    "name": {"type": "string", "description": "Required when there is no food_id; overrides the display name otherwise."},
+    "name": {
+        "type": "string",
+        "description": "Required when there is no food_id; overrides the display name otherwise.",
+    },
     "kcal": {"type": "number", "description": "Total kcal for a custom estimate (no food_id)."},
     "protein_g": {"type": "number"},
     "carb_g": {"type": "number"},
@@ -136,7 +142,11 @@ TOOLS: list[dict[str, Any]] = sorted(
             "input_schema": {
                 "type": "object",
                 "properties": {
-                    "queries": {"type": "array", "items": {"type": "string"}, "description": "One short food name per item."},
+                    "queries": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "One short food name per item.",
+                    },
                     "limit": {"type": "integer", "description": "Matches per query, default 5."},
                 },
                 "required": ["queries"],
@@ -239,7 +249,10 @@ TOOLS: list[dict[str, Any]] = sorted(
                         "type": "object",
                         "properties": {
                             "basis": {"type": "string", "enum": ["per_100g", "per_serving"]},
-                            "serving_grams": {"type": "number", "description": "Required when basis is per_serving."},
+                            "serving_grams": {
+                                "type": "number",
+                                "description": "Required when basis is per_serving.",
+                            },
                             **{n: {"type": "number"} for n in NUTRIENTS},
                         },
                         "required": ["kcal"],
@@ -342,9 +355,20 @@ def log_entries(ctx: ToolContext, args: LogEntries) -> str:
         try:
             day = _day(item.date, ctx)
             entry = log_svc.add_entry(
-                ctx.db, ctx.user, day=day, meal=item.meal, food_id=item.food_id, servings=item.servings,
-                serving=item.serving, grams=item.grams, name=item.name, nutrients=_nutrients(item),
-                note=item.note, photo_id=ctx.photo_id, origin="agent", changes=ctx.changes,
+                ctx.db,
+                ctx.user,
+                day=day,
+                meal=item.meal,
+                food_id=item.food_id,
+                servings=item.servings,
+                serving=item.serving,
+                grams=item.grams,
+                name=item.name,
+                nutrients=_nutrients(item),
+                note=item.note,
+                photo_id=ctx.photo_id,
+                origin="agent",
+                changes=ctx.changes,
             )
             created.append(entry)
             days.add(day)
@@ -364,9 +388,19 @@ def update_entries(ctx: ToolContext, args: UpdateEntries) -> str:
             if entry is not None and entry.user_id == ctx.user.id:
                 days.add(entry.date)
             entry = log_svc.update_entry(
-                ctx.db, ctx.user, u.entry_id, day=_day(u.date, ctx) if u.date else None, meal=u.meal,
-                food_id=u.food_id, servings=u.servings, serving=u.serving, grams=u.grams, name=u.name,
-                nutrients=_nutrients(u), note=u.note, changes=ctx.changes,
+                ctx.db,
+                ctx.user,
+                u.entry_id,
+                day=_day(u.date, ctx) if u.date else None,
+                meal=u.meal,
+                food_id=u.food_id,
+                servings=u.servings,
+                serving=u.serving,
+                grams=u.grams,
+                name=u.name,
+                nutrients=_nutrients(u),
+                note=u.note,
+                changes=ctx.changes,
             )
             updated.append(entry)
             days.add(entry.date)
@@ -409,7 +443,9 @@ def save_food(ctx: ToolContext, args: SaveFood) -> str:
     if args.food_id is not None:
         current = food_svc.get_food(ctx.db, args.food_id)
         if args.servings is not None or args.remove_servings:
-            by_label = {food_svc.normalize_label(s["label"]): dict(s) for s in current.servings or []}
+            by_label = {
+                food_svc.normalize_label(s["label"]): dict(s) for s in current.servings or []
+            }
             for label in args.remove_servings or []:
                 by_label.pop(food_svc.normalize_label(label), None)
             for s in args.servings or []:
@@ -418,7 +454,11 @@ def save_food(ctx: ToolContext, args: SaveFood) -> str:
                         existing["default"] = False
                 key = food_svc.normalize_label(s.label)
                 keep_default = by_label.get(key, {}).get("default", False)
-                by_label[key] = {"label": s.label, "grams": s.grams, "default": s.default or keep_default}
+                by_label[key] = {
+                    "label": s.label,
+                    "grams": s.grams,
+                    "default": s.default or keep_default,
+                }
             servings = list(by_label.values())
         if args.aliases is not None or args.remove_aliases:
             drop = {a.strip().lower() for a in args.remove_aliases or []}
@@ -426,13 +466,27 @@ def save_food(ctx: ToolContext, args: SaveFood) -> str:
     else:
         servings = [s.model_dump() for s in args.servings] if args.servings else []
         if args.nutrients and args.nutrients.basis == "per_serving" and not servings:
-            servings = [{"label": "serving", "grams": args.nutrients.serving_grams, "default": True}]
+            servings = [
+                {"label": "serving", "grams": args.nutrients.serving_grams, "default": True}
+            ]
         aliases = list(args.aliases or [])
     food, before = food_svc.save_ours(
-        ctx.db, user_id=ctx.user.id, food_id=args.food_id, name=args.name, brand=args.brand,
-        nutrients=nutrients, servings=servings, aliases=aliases,
+        ctx.db,
+        user_id=ctx.user.id,
+        food_id=args.food_id,
+        name=args.name,
+        brand=args.brand,
+        nutrients=nutrients,
+        servings=servings,
+        aliases=aliases,
     )
-    ctx.changes.record("foods", "create" if before is None else "update", food.id, before, food_svc.food_snapshot(food))
+    ctx.changes.record(
+        "foods",
+        "create" if before is None else "update",
+        food.id,
+        before,
+        food_svc.food_snapshot(food),
+    )
     return ("Created " if before is None else "Updated ") + food_line(food)
 
 
@@ -464,7 +518,9 @@ def run_tool(ctx: ToolContext, name: str, raw_input: Any) -> tuple[str, bool]:
     try:
         args = schema.model_validate(raw_input)
     except ValidationError as exc:
-        problems = "; ".join(f"{'.'.join(str(p) for p in e['loc'])}: {e['msg']}" for e in exc.errors())
+        problems = "; ".join(
+            f"{'.'.join(str(p) for p in e['loc'])}: {e['msg']}" for e in exc.errors()
+        )
         return f"Invalid input: {problems}", True
     try:
         with ctx.db.begin_nested():

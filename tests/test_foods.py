@@ -16,9 +16,13 @@ def test_search_prefix_and_multiword(db):
 
 def test_household_alias_wins(db, alice):
     food, _ = food_svc.save_ours(
-        db, user_id=alice.id, name="Chobani Greek Light", brand="Chobani",
+        db,
+        user_id=alice.id,
+        name="Chobani Greek Light",
+        brand="Chobani",
         nutrients={"kcal": 55, "protein_g": 9.4, "carb_g": 4.1, "fat_g": 0},
-        servings=[{"label": "tub", "grams": 150}, {"label": "bowl", "grams": 170}], aliases=["Yogurt", "greek yogurt"],
+        servings=[{"label": "tub", "grams": 150}, {"label": "bowl", "grams": 170}],
+        aliases=["Yogurt", "greek yogurt"],
     )
     assert food.aliases == ["yogurt", "greek yogurt"]
     assert food.servings[0]["default"] is True
@@ -27,8 +31,12 @@ def test_household_alias_wins(db, alice):
 
 
 def test_alias_moves_between_household_foods(db, alice):
-    a, _ = food_svc.save_ours(db, user_id=alice.id, name="Yogurt A", nutrients={"kcal": 60}, aliases=["yogurt"])
-    b, _ = food_svc.save_ours(db, user_id=alice.id, name="Yogurt B", nutrients={"kcal": 70}, aliases=["yogurt"])
+    a, _ = food_svc.save_ours(
+        db, user_id=alice.id, name="Yogurt A", nutrients={"kcal": 60}, aliases=["yogurt"]
+    )
+    b, _ = food_svc.save_ours(
+        db, user_id=alice.id, name="Yogurt B", nutrients={"kcal": 70}, aliases=["yogurt"]
+    )
     assert a.aliases == [] and b.aliases == ["yogurt"]
 
 

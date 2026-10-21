@@ -27,17 +27,38 @@ class ChangeLog:
     turn_id: int
     entries_touched: list[int] = field(default_factory=list)
 
-    def record(self, table: str, action: str, row_id: int, before: dict | None, after: dict | None) -> None:
+    def record(
+        self, table: str, action: str, row_id: int, before: dict | None, after: dict | None
+    ) -> None:
         self.db.add(
-            Change(turn_id=self.turn_id, table=table, action=action, row_id=row_id, before=before, after=after)
+            Change(
+                turn_id=self.turn_id,
+                table=table,
+                action=action,
+                row_id=row_id,
+                before=before,
+                after=after,
+            )
         )
         if table == "entries":
             self.entries_touched.append(row_id)
 
 
 _ENTRY_FIELDS = (
-    "user_id", "date", "meal", "position", "food_id", "name", "serving_label", "servings", "grams",
-    "is_estimate", "note", "photo_id", "origin", *NUTRIENTS,
+    "user_id",
+    "date",
+    "meal",
+    "position",
+    "food_id",
+    "name",
+    "serving_label",
+    "servings",
+    "grams",
+    "is_estimate",
+    "note",
+    "photo_id",
+    "origin",
+    *NUTRIENTS,
 )
 
 
@@ -56,7 +77,9 @@ def _apply_snapshot(entry: Entry, snap: dict[str, Any]) -> None:
 
 
 def undo_changes(db: Session, turn_id: int) -> int:
-    changes = list(db.scalars(select(Change).where(Change.turn_id == turn_id).order_by(Change.id.desc())))
+    changes = list(
+        db.scalars(select(Change).where(Change.turn_id == turn_id).order_by(Change.id.desc()))
+    )
     for ch in changes:
         if ch.table == "entries":
             entry = db.get(Entry, ch.row_id)
@@ -89,7 +112,9 @@ def _check_meal(meal: str) -> str:
 
 def _next_position(db: Session, user_id: int, day: date, meal: str) -> int:
     current = db.scalar(
-        select(func.max(Entry.position)).where(Entry.user_id == user_id, Entry.date == day, Entry.meal == meal)
+        select(func.max(Entry.position)).where(
+            Entry.user_id == user_id, Entry.date == day, Entry.meal == meal
+        )
     )
     return 0 if current is None else current + 1
 
@@ -141,7 +166,11 @@ def add_entry(
         portion = food_svc.resolve_portion(food, servings, serving, grams)
         entry.food_id = food.id
         entry.name = name or _food_name(food)
-        entry.servings, entry.serving_label, entry.grams = portion.servings, portion.serving_label, portion.grams
+        entry.servings, entry.serving_label, entry.grams = (
+            portion.servings,
+            portion.serving_label,
+            portion.grams,
+        )
         for n, v in food_svc.scale(food, portion.grams).items():
             setattr(entry, n, v)
         entry.is_estimate = False
@@ -195,7 +224,9 @@ def update_entry(
             entry.name = name.strip()
         if portion_changed:
             entry.servings, entry.serving_label, entry.grams = servings, serving, grams
-        merged = {n: getattr(entry, n) for n in NUTRIENTS} | {k: v for k, v in nutrients.items() if k in NUTRIENTS}
+        merged = {n: getattr(entry, n) for n in NUTRIENTS} | {
+            k: v for k, v in nutrients.items() if k in NUTRIENTS
+        }
         _set_custom_nutrients(entry, merged)
         entry.food_id = None if food_id is None else food_id
         entry.is_estimate = True
@@ -203,13 +234,23 @@ def update_entry(
         food = food_svc.get_food(db, target_food_id, include_deleted=True)
         if food_id is None and not portion_changed:
             portion = food_svc.Portion(entry.grams or 100.0, entry.servings, entry.serving_label)
-        elif grams is None and servings is not None and serving is None and food_id is None and entry.serving_label:
+        elif (
+            grams is None
+            and servings is not None
+            and serving is None
+            and food_id is None
+            and entry.serving_label
+        ):
             # "make that 2": keep the serving, change the count
             portion = food_svc.resolve_portion(food, servings, entry.serving_label, None)
         else:
             portion = food_svc.resolve_portion(food, servings, serving, grams)
         entry.food_id = food.id
-        entry.servings, entry.serving_label, entry.grams = portion.servings, portion.serving_label, portion.grams
+        entry.servings, entry.serving_label, entry.grams = (
+            portion.servings,
+            portion.serving_label,
+            portion.grams,
+        )
         for n, v in food_svc.scale(food, portion.grams).items():
             setattr(entry, n, v)
         entry.name = name.strip() if name else _food_name(food)
@@ -240,7 +281,9 @@ def update_entry(
     return entry
 
 
-def delete_entry(db: Session, user: User, entry_id: int, changes: ChangeLog | None = None) -> dict[str, Any]:
+def delete_entry(
+    db: Session, user: User, entry_id: int, changes: ChangeLog | None = None
+) -> dict[str, Any]:
     entry = _get_entry(db, user, entry_id)
     snap = entry_snapshot(entry)
     db.delete(entry)
@@ -299,7 +342,9 @@ def _portion_key(e: Entry) -> tuple:
     return (e.serving_label, e.servings, None if e.serving_label else e.grams)
 
 
-def quick_items(db: Session, user: User, meal: str | None = None, day: date | None = None) -> dict[str, Any]:
+def quick_items(
+    db: Session, user: User, meal: str | None = None, day: date | None = None
+) -> dict[str, Any]:
     since = (day or date.today()) - timedelta(days=90)
     recent_entries = list(
         db.scalars(
@@ -311,7 +356,8 @@ def quick_items(db: Session, user: User, meal: str | None = None, day: date | No
     )
     food_ids = {e.food_id for e in recent_entries}
     live_foods = {
-        f.id: f for f in db.scalars(select(Food).where(Food.id.in_(food_ids), Food.deleted_at.is_(None)))
+        f.id: f
+        for f in db.scalars(select(Food).where(Food.id.in_(food_ids), Food.deleted_at.is_(None)))
     }
 
     def item(e: Entry) -> dict[str, Any]:
@@ -369,7 +415,9 @@ def quick_items(db: Session, user: User, meal: str | None = None, day: date | No
 
     meals = [
         {"id": m.id, "name": m.name, "items": m.items}
-        for m in db.scalars(select(SavedMeal).where(SavedMeal.user_id == user.id).order_by(SavedMeal.name))
+        for m in db.scalars(
+            select(SavedMeal).where(SavedMeal.user_id == user.id).order_by(SavedMeal.name)
+        )
     ]
 
     yesterday = None
@@ -377,7 +425,11 @@ def quick_items(db: Session, user: User, meal: str | None = None, day: date | No
         prev = list(
             db.scalars(
                 select(Entry)
-                .where(Entry.user_id == user.id, Entry.date == day - timedelta(days=1), Entry.meal == meal)
+                .where(
+                    Entry.user_id == user.id,
+                    Entry.date == day - timedelta(days=1),
+                    Entry.meal == meal,
+                )
                 .order_by(Entry.position)
             )
         )
@@ -388,15 +440,32 @@ def quick_items(db: Session, user: User, meal: str | None = None, day: date | No
                 "kcal": totals(prev)["kcal"],
             }
 
-    return {"pins": pins, "saved_meals": meals, "frequent": frequent, "recent": recents, "yesterday": yesterday}
+    return {
+        "pins": pins,
+        "saved_meals": meals,
+        "frequent": frequent,
+        "recent": recents,
+        "yesterday": yesterday,
+    }
 
 
-def copy_entries(db: Session, user: User, entry_ids: list[int], day: date, meal: str) -> list[Entry]:
+def copy_entries(
+    db: Session, user: User, entry_ids: list[int], day: date, meal: str
+) -> list[Entry]:
     out = []
     for entry_id in entry_ids:
         src = _get_entry(db, user, entry_id)
         clone = Entry(user_id=user.id, date=day, meal=_check_meal(meal), origin="quick")
-        for k in ("food_id", "name", "serving_label", "servings", "grams", "is_estimate", "note", *NUTRIENTS):
+        for k in (
+            "food_id",
+            "name",
+            "serving_label",
+            "servings",
+            "grams",
+            "is_estimate",
+            "note",
+            *NUTRIENTS,
+        ):
             setattr(clone, k, getattr(src, k))
         clone.position = _next_position(db, user.id, day, clone.meal)
         db.add(clone)
@@ -411,15 +480,27 @@ def log_saved_meal(db: Session, user: User, meal_id: int, day: date, meal: str) 
         raise LogError(f"No saved meal with id {meal_id}")
     return [
         add_entry(
-            db, user, day=day, meal=meal, food_id=it["food_id"], servings=it.get("servings"),
-            serving=it.get("serving_label"), grams=it.get("grams"), origin="quick",
+            db,
+            user,
+            day=day,
+            meal=meal,
+            food_id=it["food_id"],
+            servings=it.get("servings"),
+            serving=it.get("serving_label"),
+            grams=it.get("grams"),
+            origin="quick",
         )
         for it in saved.items
     ]
 
 
 def touch_user_targets(user: User, values: dict[str, float | None]) -> None:
-    mapping = {"kcal": "kcal_target", "protein_g": "protein_target_g", "carb_g": "carb_target_g", "fat_g": "fat_target_g"}
+    mapping = {
+        "kcal": "kcal_target",
+        "protein_g": "protein_target_g",
+        "carb_g": "carb_target_g",
+        "fat_g": "fat_target_g",
+    }
     for key, attr in mapping.items():
         if key in values:
             value = values[key]

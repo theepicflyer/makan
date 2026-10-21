@@ -53,7 +53,9 @@ def _cache_control(config: AgentConfig) -> dict[str, str]:
     return cc
 
 
-def _hydrate(messages: list[dict[str, Any]], db: Session, cache: dict[int, str]) -> list[dict[str, Any]]:
+def _hydrate(
+    messages: list[dict[str, Any]], db: Session, cache: dict[int, str]
+) -> list[dict[str, Any]]:
     """Swap stored photo references for base64 image data."""
     out = []
     for msg in messages:
@@ -68,7 +70,14 @@ def _hydrate(messages: list[dict[str, Any]], db: Session, cache: dict[int, str])
                         cache[photo_id] = photo_b64(photo) if photo else ""
                     if cache[photo_id]:
                         blocks.append(
-                            {"type": "image", "source": {"type": "base64", "media_type": "image/jpeg", "data": cache[photo_id]}}
+                            {
+                                "type": "image",
+                                "source": {
+                                    "type": "base64",
+                                    "media_type": "image/jpeg",
+                                    "data": cache[photo_id],
+                                },
+                            }
                         )
                     else:
                         blocks.append({"type": "text", "text": "(photo no longer available)"})
@@ -93,7 +102,15 @@ def turn_changes(db: Session, turn_id: int) -> list[dict[str, Any]]:
     out = []
     for ch in db.scalars(select(Change).where(Change.turn_id == turn_id).order_by(Change.id)):
         snap = ch.after or ch.before or {}
-        out.append({"table": ch.table, "action": ch.action, "row_id": ch.row_id, "name": snap.get("name"), "kcal": snap.get("kcal")})
+        out.append(
+            {
+                "table": ch.table,
+                "action": ch.action,
+                "row_id": ch.row_id,
+                "name": snap.get("name"),
+                "kcal": snap.get("kcal"),
+            }
+        )
     return out
 
 
@@ -132,13 +149,18 @@ async def run_turn(
         thread = _get_thread(db, user, log_date, config.model)
         prior = list(
             db.scalars(
-                select(Turn).where(Turn.thread_id == thread.id, Turn.status == "ok").order_by(Turn.id)
+                select(Turn)
+                .where(Turn.thread_id == thread.id, Turn.status == "ok")
+                .order_by(Turn.id)
             )
         )
         ours = food_svc.ours_foods(db)
         fingerprint = food_svc.ours_fingerprint(ours)
         context = build_context(
-            db, user, now=now, log_date=log_date,
+            db,
+            user,
+            now=now,
+            log_date=log_date,
             include_foods=thread.foods_fingerprint != fingerprint,
             include_frequent=not prior,
         )
@@ -146,8 +168,16 @@ async def run_turn(
         content: list[dict[str, Any]] = []
         if photo_id is not None:
             content.append({"type": "image", "source": {"type": "photo_ref", "photo_id": photo_id}})
-        content.append({"type": "text", "text": f"{context}\n\n{text.strip() or '(photo only, no message)'}"})
-        turn = Turn(thread_id=thread.id, user_text=text, photo_id=photo_id, messages=[{"role": "user", "content": content}], status="running")
+        content.append(
+            {"type": "text", "text": f"{context}\n\n{text.strip() or '(photo only, no message)'}"}
+        )
+        turn = Turn(
+            thread_id=thread.id,
+            user_text=text,
+            photo_id=photo_id,
+            messages=[{"role": "user", "content": content}],
+            status="running",
+        )
         db.add(turn)
         db.commit()
         yield {"type": "turn", "turn_id": turn.id}
@@ -181,7 +211,9 @@ async def run_turn(
 
         for _ in range(config.max_iterations):
             messages = _hydrate(history + turn_messages, db, photo_cache)
-            async with client.beta.messages.stream(**params, messages=messages, betas=betas) as stream:
+            async with client.beta.messages.stream(
+                **params, messages=messages, betas=betas
+            ) as stream:
                 async for event in stream:
                     if event.type == "text":
                         yield {"type": "text", "delta": event.text}
@@ -199,7 +231,9 @@ async def run_turn(
             tool_uses = [b for b in final.content if b.type == "tool_use"]
             if final.stop_reason == "max_tokens" and tool_uses:
                 turn_messages.pop()
-                reply_parts = ["That was too long for me to finish. Try splitting it into smaller messages."]
+                reply_parts = [
+                    "That was too long for me to finish. Try splitting it into smaller messages."
+                ]
                 status = "error"
                 break
             if not tool_uses:
@@ -215,13 +249,22 @@ async def run_turn(
                 result, is_error = run_tool(ctx, block.name, block.input)
                 if block.name in WRITE_TOOLS and not is_error:
                     wrote.add(block.name)
-                results.append({"type": "tool_result", "tool_use_id": block.id, "content": result, **({"is_error": True} if is_error else {})})
+                results.append(
+                    {
+                        "type": "tool_result",
+                        "tool_use_id": block.id,
+                        "content": result,
+                        **({"is_error": True} if is_error else {}),
+                    }
+                )
             turn_messages.append({"role": "user", "content": results})
             db.commit()
             if wrote:
                 yield {"type": "changed", "dates": sorted(d.isoformat() for d in ctx.days_touched)}
         else:
-            reply_parts = reply_parts or ["I stopped before finishing. Check the log and tell me what's missing."]
+            reply_parts = reply_parts or [
+                "I stopped before finishing. Check the log and tell me what's missing."
+            ]
             status = "error"
 
         turn.messages = turn_messages
@@ -233,17 +276,27 @@ async def run_turn(
         if status == "ok":
             thread.foods_fingerprint = fingerprint
         db.commit()
-        yield {"type": "done", "turn": serialize_turn(db, turn), "dates": sorted(d.isoformat() for d in ctx.days_touched)}
+        yield {
+            "type": "done",
+            "turn": serialize_turn(db, turn),
+            "dates": sorted(d.isoformat() for d in ctx.days_touched),
+        }
     except anthropic.APIError as exc:
         db.rollback()
         log.exception("agent API error")
         _mark_failed(db, locals().get("turn"))
-        yield {"type": "error", "message": f"The assistant is unavailable right now ({exc.__class__.__name__})."}
+        yield {
+            "type": "error",
+            "message": f"The assistant is unavailable right now ({exc.__class__.__name__}).",
+        }
     except Exception:
         db.rollback()
         log.exception("agent turn failed")
         _mark_failed(db, locals().get("turn"))
-        yield {"type": "error", "message": "Something went wrong. Nothing after the last confirmed change was saved."}
+        yield {
+            "type": "error",
+            "message": "Something went wrong. Nothing after the last confirmed change was saved.",
+        }
     finally:
         db.close()
 
@@ -257,7 +310,7 @@ def _mark_failed(db: Session, turn: Turn | None) -> None:
             fresh.status = "error"
             fresh.reply_text = fresh.reply_text or "Something went wrong."
             db.commit()
-    except Exception:
+    except Exception:  # noqa: BLE001 - best effort while already handling a failure
         db.rollback()
 
 

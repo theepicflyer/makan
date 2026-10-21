@@ -82,7 +82,9 @@ class SearchHit:
     score: float
 
 
-def search(db: Session, q: str, limit: int = 10, sources: tuple[str, ...] | None = None) -> list[SearchHit]:
+def search(
+    db: Session, q: str, limit: int = 10, sources: tuple[str, ...] | None = None
+) -> list[SearchHit]:
     q = q.strip()
     if not q:
         return []
@@ -110,12 +112,13 @@ def search(db: Session, q: str, limit: int = 10, sources: tuple[str, ...] | None
     rows = sorted(best.items(), key=lambda r: r[1])[:300]
     ids = [r[0] for r in rows]
     foods = {
-        f.id: f
-        for f in db.scalars(select(Food).where(Food.id.in_(ids), Food.deleted_at.is_(None)))
+        f.id: f for f in db.scalars(select(Food).where(Food.id.in_(ids), Food.deleted_at.is_(None)))
     }
     popularity = dict(
         db.execute(
-            select(Entry.food_id, func.count()).where(Entry.food_id.in_(ids)).group_by(Entry.food_id)
+            select(Entry.food_id, func.count())
+            .where(Entry.food_id.in_(ids))
+            .group_by(Entry.food_id)
         ).all()
     )
     q_forms = set(_query_variants(q))
@@ -189,7 +192,10 @@ class Portion:
 
 
 def resolve_portion(
-    food: Food, servings: float | None = None, serving: str | None = None, grams: float | None = None
+    food: Food,
+    servings: float | None = None,
+    serving: str | None = None,
+    grams: float | None = None,
 ) -> Portion:
     if grams is not None:
         if grams <= 0:
@@ -218,7 +224,10 @@ def resolve_portion(
 
 def scale(food: Food, grams: float) -> dict[str, float | None]:
     factor = grams / 100.0
-    return {n: (None if getattr(food, n) is None else round(getattr(food, n) * factor, 2)) for n in NUTRIENTS}
+    return {
+        n: (None if getattr(food, n) is None else round(getattr(food, n) * factor, 2))
+        for n in NUTRIENTS
+    }
 
 
 def describe_portion(servings: float | None, serving_label: str | None, grams: float | None) -> str:
@@ -246,7 +255,9 @@ def ours_fingerprint(foods: list[Food]) -> str:
         (f.id, f.name, f.brand, f.aliases, f.servings, [getattr(f, n) for n in NUTRIENTS])
         for f in foods
     ]
-    return hashlib.sha256(json.dumps(payload, sort_keys=True, default=str).encode()).hexdigest()[:16]
+    return hashlib.sha256(json.dumps(payload, sort_keys=True, default=str).encode()).hexdigest()[
+        :16
+    ]
 
 
 def get_food(db: Session, food_id: int, *, include_deleted: bool = False) -> Food:
@@ -315,7 +326,9 @@ def save_ours(
     if food_id is not None:
         food = get_food(db, food_id)
         if food.source != "ours":
-            raise FoodError(f"'{food.name}' is reference data ({SOURCE_LABEL[food.source]}) and can't be edited")
+            raise FoodError(
+                f"'{food.name}' is reference data ({SOURCE_LABEL[food.source]}) and can't be edited"
+            )
         before = food_snapshot(food)
     else:
         if not name or not name.strip():
@@ -375,7 +388,9 @@ def restore_food(db: Session, food_id: int, snapshot: dict[str, Any] | None) -> 
     else:
         for key in ("name", "brand", "description", "servings", "aliases", *NUTRIENTS):
             setattr(food, key, snapshot.get(key))
-        food.deleted_at = datetime.fromisoformat(snapshot["deleted_at"]) if snapshot.get("deleted_at") else None
+        food.deleted_at = (
+            datetime.fromisoformat(snapshot["deleted_at"]) if snapshot.get("deleted_at") else None
+        )
     db.flush()
     index_food(db, food)
 
@@ -390,7 +405,9 @@ def _apply_reference_aliases(db: Session, reference_dir: Path) -> None:
     curated = {k: v for k, v in json.loads(path.read_text()).items() if not k.startswith("_")}
     for key, aliases in curated.items():
         source, name = key.split(":", 1)
-        food = db.scalar(select(Food).where(Food.source == source, Food.name == name, Food.deleted_at.is_(None)))
+        food = db.scalar(
+            select(Food).where(Food.source == source, Food.name == name, Food.deleted_at.is_(None))
+        )
         if food is None:
             log.warning("aliases.json: no %s food named %r", source, name)
             continue
@@ -398,7 +415,9 @@ def _apply_reference_aliases(db: Session, reference_dir: Path) -> None:
     db.flush()
 
 
-_USDA_NOISE = re.compile(r"\s*\(Includes foods for USDA's Food Distribution Program\)", re.I)
+_USDA_NOISE = re.compile(
+    r"\s*\(Includes foods for USDA's Food Distribution Program\)", re.IGNORECASE
+)
 
 
 def _reference_files(reference_dir: Path) -> list[Path]:
@@ -479,7 +498,9 @@ def load_reference(db: Session, reference_dir: Path, *, force: bool = False) -> 
             "WHERE source != 'ours' AND deleted_at IS NULL AND aliases = '[]'"
         )
     )
-    aliased = select(Food).where(Food.source != "ours", Food.deleted_at.is_(None), Food.aliases != [])
+    aliased = select(Food).where(
+        Food.source != "ours", Food.deleted_at.is_(None), Food.aliases != []
+    )
     for food in [*db.scalars(aliased), *db.scalars(select(Food).where(Food.id.in_(ours_ids)))]:
         index_food(db, food)
 
