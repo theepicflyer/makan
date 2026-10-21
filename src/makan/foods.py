@@ -3,6 +3,7 @@
 import gzip
 import hashlib
 import json
+import logging
 import math
 import re
 from dataclasses import dataclass
@@ -14,6 +15,8 @@ from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
 from makan.models import NUTRIENTS, Entry, Food, Meta
+
+log = logging.getLogger(__name__)
 
 SOURCE_BOOST = {"ours": 12.0, "sgfoodid": 2.0, "usda": 0.0}
 SOURCE_LABEL = {"ours": "Ours", "sgfoodid": "SG FoodID", "usda": "USDA"}
@@ -49,6 +52,30 @@ def _fts_query(q: str, mode: str) -> str | None:
     return joiner.join(f'"{t.replace(chr(34), "")}"*' for t in tokens)
 
 
+# Spelling variants seen in hawker orders, tried as alternative queries.
+_VARIANTS = [
+    (re.compile(r"\bbee hoon\b"), "beehoon"),
+    (re.compile(r"\bsiew\b"), "siu"),
+    (re.compile(r"\bkachang\b"), "kacang"),
+    (re.compile(r"\bk(?:ue|oa)y teow\b"), "kway teow"),
+    (re.compile(r"\bwonton\b"), "wanton"),
+    (re.compile(r"\bkosong\b"), "kosong"),
+]
+
+
+def _query_variants(q: str) -> list[str]:
+    base = " ".join(t.lower() for t in _TOKEN.findall(q))
+    variants = [base]
+    alt = base
+    for pattern, repl in _VARIANTS:
+        alt = pattern.sub(repl, alt)
+    if " peng" in f" {alt}" and "peng" in alt.split():
+        alt = "iced " + " ".join(t for t in alt.split() if t != "peng")
+    if alt != base:
+        variants.append(alt)
+    return variants
+
+
 @dataclass
 class SearchHit:
     food: Food
@@ -59,22 +86,28 @@ def search(db: Session, q: str, limit: int = 10, sources: tuple[str, ...] | None
     q = q.strip()
     if not q:
         return []
-    rows: list[tuple[int, float]] = []
-    for mode in ("and", "or"):
-        match = _fts_query(q, mode)
-        if match is None:
-            return []
-        rows = db.execute(
-            text(
-                "SELECT rowid, bm25(food_fts, 10.0, 6.0) AS rank FROM food_fts "
-                "WHERE food_fts MATCH :m ORDER BY rank LIMIT 300"
-            ),
-            {"m": match},
-        ).all()
-        if rows:
-            break
-    if not rows:
+    best: dict[int, float] = {}
+    for variant in _query_variants(q):
+        for mode in ("and", "or"):
+            match = _fts_query(variant, mode)
+            if match is None:
+                break
+            found = db.execute(
+                text(
+                    "SELECT rowid, bm25(food_fts, 10.0, 6.0) AS rank FROM food_fts "
+                    "WHERE food_fts MATCH :m ORDER BY rank LIMIT 300"
+                ),
+                {"m": match},
+            ).all()
+            # An all-words match outranks any partial match.
+            penalty = 0.0 if mode == "and" else 15.0
+            for rowid, rank in found:
+                best[rowid] = min(best.get(rowid, 1e9), rank + penalty)
+            if found:
+                break
+    if not best:
         return []
+    rows = sorted(best.items(), key=lambda r: r[1])[:300]
     ids = [r[0] for r in rows]
     foods = {
         f.id: f
@@ -85,7 +118,7 @@ def search(db: Session, q: str, limit: int = 10, sources: tuple[str, ...] | None
             select(Entry.food_id, func.count()).where(Entry.food_id.in_(ids)).group_by(Entry.food_id)
         ).all()
     )
-    q_norm = " ".join(t.lower() for t in _TOKEN.findall(q))
+    q_forms = set(_query_variants(q))
     hits = []
     for food_id, rank in rows:
         food = foods.get(food_id)
@@ -94,15 +127,25 @@ def search(db: Session, q: str, limit: int = 10, sources: tuple[str, ...] | None
         score = -rank + SOURCE_BOOST.get(food.source, 0.0)
         score += 2.0 * math.log2(1 + popularity.get(food_id, 0))
         name_norm = " ".join(t.lower() for t in _TOKEN.findall(food.name))
-        if name_norm == q_norm:
+        if name_norm in q_forms:
             score += 8.0
-        if any(q_norm == a.lower().strip() for a in food.aliases or []):
+        if any(a.lower().strip() in q_forms for a in food.aliases or []):
             score += 20.0
         # Short names are usually the generic item ("Egg, whole, raw" over "Egg, whole, cooked, ...").
         score -= 0.04 * len(food.name)
         hits.append(SearchHit(food, score))
     hits.sort(key=lambda h: h.score, reverse=True)
-    return hits[:limit]
+    # USDA repeats many foods across its Foundation, SR Legacy and FNDDS sets; keep the best-ranked one.
+    out, seen_names = [], set()
+    for h in hits:
+        key = (h.food.source, h.food.name.lower())
+        if h.food.source == "usda" and key in seen_names:
+            continue
+        seen_names.add(key)
+        out.append(h)
+        if len(out) >= limit:
+            break
+    return out
 
 
 # --- portions ----------------------------------------------------------------
@@ -340,13 +383,33 @@ def restore_food(db: Session, food_id: int, snapshot: dict[str, Any] | None) -> 
 # --- reference data ----------------------------------------------------------
 
 
+def _apply_reference_aliases(db: Session, reference_dir: Path) -> None:
+    path = reference_dir / "aliases.json"
+    if not path.exists():
+        return
+    curated = {k: v for k, v in json.loads(path.read_text()).items() if not k.startswith("_")}
+    for key, aliases in curated.items():
+        source, name = key.split(":", 1)
+        food = db.scalar(select(Food).where(Food.source == source, Food.name == name, Food.deleted_at.is_(None)))
+        if food is None:
+            log.warning("aliases.json: no %s food named %r", source, name)
+            continue
+        food.aliases = _clean_aliases(aliases)
+    db.flush()
+
+
+_USDA_NOISE = re.compile(r"\s*\(Includes foods for USDA's Food Distribution Program\)", re.I)
+
+
 def _reference_files(reference_dir: Path) -> list[Path]:
     return sorted(reference_dir.glob("*.jsonl.gz"))
 
 
 def reference_fingerprint(reference_dir: Path) -> str:
     h = hashlib.sha256()
-    for p in _reference_files(reference_dir):
+    for p in [*_reference_files(reference_dir), reference_dir / "aliases.json"]:
+        if not p.exists():
+            continue
         h.update(p.name.encode())
         h.update(p.read_bytes())
     return h.hexdigest()[:16]
@@ -379,7 +442,7 @@ def load_reference(db: Session, reference_dir: Path, *, force: bool = False) -> 
                 values = {
                     "source": rec["source"],
                     "source_ref": str(rec["source_ref"]),
-                    "name": rec["name"],
+                    "name": _USDA_NOISE.sub("", rec["name"]).strip(),
                     "brand": rec.get("brand"),
                     "description": rec.get("description"),
                     "category": rec.get("category"),
@@ -398,6 +461,8 @@ def load_reference(db: Session, reference_dir: Path, *, force: bool = False) -> 
                     existing[key] = result.inserted_primary_key[0]
                 count += 1
 
+    _apply_reference_aliases(db, reference_dir)
+
     gone = [fid for key, fid in existing.items() if key not in seen]
     if gone:
         db.execute(
@@ -411,10 +476,11 @@ def load_reference(db: Session, reference_dir: Path, *, force: bool = False) -> 
         text(
             "INSERT INTO food_fts(rowid, name, extra) "
             "SELECT id, name, COALESCE(brand, '') FROM foods "
-            "WHERE source != 'ours' AND deleted_at IS NULL"
+            "WHERE source != 'ours' AND deleted_at IS NULL AND aliases = '[]'"
         )
     )
-    for food in db.scalars(select(Food).where(Food.id.in_(ours_ids))):
+    aliased = select(Food).where(Food.source != "ours", Food.deleted_at.is_(None), Food.aliases != [])
+    for food in [*db.scalars(aliased), *db.scalars(select(Food).where(Food.id.in_(ours_ids)))]:
         index_food(db, food)
 
     if current is None:
