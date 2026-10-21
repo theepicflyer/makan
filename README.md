@@ -2,6 +2,13 @@
 
 A self-hosted calorie and macro tracker for a two-person household in Singapore. You log food by meal, either by searching and tapping, or by telling the assistant what you ate ("breakfast kopi c and kaya toast, lunch chicken rice…") or sending it a photo. It runs as one Docker container behind your reverse proxy, signs in through Pocket ID, and installs on a phone as a PWA.
 
+<p>
+  <img src="docs/screenshots/today.png" width="200" alt="Today: calories and macros against targets, then entries by meal">
+  <img src="docs/screenshots/assistant.png" width="200" alt="The assistant logging dinner from a text message, with an undo">
+  <img src="docs/screenshots/add.png" width="200" alt="Adding to a meal: same as yesterday, pinned foods, saved meals and frequent foods">
+  <img src="docs/screenshots/history.png" width="200" alt="History: daily calories against target and average macros">
+</p>
+
 ## What it does
 
 Each entry belongs to a date and a meal (breakfast, lunch, dinner or snacks), since most days get logged in one go at night. Calories, protein, carbs and fat are tracked against daily targets, and fibre, sugar, sodium and saturated fat are stored as well.
@@ -84,3 +91,4 @@ Layout:
 - `web/`: the SvelteKit PWA, built to `web/build` and served by the backend.
 - `data/reference/`: the food snapshot. `scripts/` holds the scripts that build it.
 - `evals/`: the agent eval cases, runner and report.
+- `docs/screenshots/`: the screenshots above, taken from a demo account with made-up meals.
