@@ -68,3 +68,19 @@ def test_mcp_endpoint_lists_tools(client):
         },
     )
     assert r.status_code == 200, r.text
+
+
+def test_usage_and_about(logged_in):
+    usage = logged_in.get("/api/usage")
+    assert usage.status_code == 200, usage.text
+    assert usage.json()["month_usd"] >= 0
+    assert logged_in.get("/api/about").status_code == 200
+
+
+def test_quick_and_pins(logged_in):
+    kopi = logged_in.get("/api/foods/search", params={"q": "kopi c"}).json()["results"][0]
+    pin = logged_in.post("/api/pins", json={"food_id": kopi["id"]})
+    assert pin.status_code == 200, pin.text
+    quick = logged_in.get("/api/quick", params={"meal": "breakfast", "day": "2026-10-21"}).json()
+    assert quick["pins"][0]["food_id"] == kopi["id"]
+    assert logged_in.delete(f"/api/pins/{pin.json()['id']}").status_code == 200
