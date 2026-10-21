@@ -1,7 +1,7 @@
 # secrets and local data
 .env
 /data/runtime/
-/evals/photos/
+/evals/photos
 /evals/results/
 
 # python
@@ -19,3 +19,4 @@ node_modules/
 # misc
 .DS_Store
 .playwright-mcp/
+/data/cache/

@@ -1,0 +1,192 @@
+from datetime import date, datetime
+
+import pytest
+from anthropic.types.beta import BetaMessage, BetaTextBlock, BetaToolUseBlock, BetaUsage
+from sqlalchemy import select
+
+from makan.agent.runner import AgentConfig, run_turn, undo_turn
+from makan.auth import upsert_user
+from makan.db import session_scope
+from makan.models import Entry, Turn
+from tests.conftest import food_id
+
+DAY = date(2026, 3, 3)
+NOW = datetime(2026, 3, 3, 21, 0)
+
+
+def _msg(content, stop):
+    return BetaMessage(
+        id="msg_x",
+        type="message",
+        role="assistant",
+        model="claude-haiku-5-5",
+        content=content,
+        stop_reason=stop,
+        stop_sequence=None,
+        usage=BetaUsage(
+            input_tokens=10,
+            output_tokens=5,
+            cache_read_input_tokens=100,
+            cache_creation_input_tokens=50,
+        ),
+    )
+
+
+class _Stream:
+    def __init__(self, message):
+        self.message = message
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *exc):
+        return False
+
+    def __aiter__(self):
+        return self
+
+    async def __anext__(self):
+        raise StopAsyncIteration
+
+    async def get_final_message(self):
+        return self.message
+
+
+class FakeClient:
+    """Replays scripted responses and records each request."""
+
+    def __init__(self, responses):
+        self.responses = list(responses)
+        self.requests = []
+        self.beta = self
+        self.messages = self
+
+    def stream(self, **params):
+        self.requests.append(params)
+        return _Stream(self.responses.pop(0))
+
+
+async def _run(client, user_id, text):
+    events = [
+        e
+        async for e in run_turn(
+            user_id=user_id,
+            log_date=DAY,
+            text=text,
+            config=AgentConfig("claude-haiku-5-5", "low"),
+            client=client,
+            now=NOW,
+        )
+    ]
+    assert events[-1]["type"] == "done", events[-1]
+    return events
+
+
+@pytest.fixture
+def user_id(client):
+    with session_scope() as db:
+        return upsert_user(db, sub="dev:agenttest", email=None, name="Agent Test").id
+
+
+async def test_turn_logs_and_replays_history(db, user_id):
+    kopi = food_id(db, "Kopi C")
+    client = FakeClient(
+        [
+            _msg(
+                [
+                    BetaToolUseBlock(
+                        id="tu_1",
+                        type="tool_use",
+                        name="log_entries",
+                        input={"entries": [{"meal": "breakfast", "food_id": kopi}]},
+                    )
+                ],
+                "tool_use",
+            ),
+            _msg([BetaTextBlock(type="text", text="Logged kopi C.")], "end_turn"),
+            _msg([BetaTextBlock(type="text", text="You had 130 kcal.")], "end_turn"),
+        ]
+    )
+    events = await _run(client, user_id, "kopi c for breakfast")
+    assert events[-1]["turn"]["reply_text"] == "Logged kopi C."
+    assert any(e["type"] == "changed" for e in events)
+
+    first = client.requests[0]
+    assert first["system"][0]["cache_control"] == {"type": "ephemeral"}
+    assert first["cache_control"] == {"type": "ephemeral"}
+    assert [t["name"] for t in first["tools"]] == sorted(t["name"] for t in first["tools"])
+    assert "<context>" in first["messages"][0]["content"][-1]["text"]
+
+    await _run(client, user_id, "how many calories?")
+    # The second turn replays the first turn byte-for-byte as a prefix.
+    previous = client.requests[1]["messages"]
+    assert client.requests[2]["messages"][: len(previous)] == previous
+    with session_scope() as s:
+        entries = s.scalars(select(Entry).where(Entry.user_id == user_id)).all()
+        assert [e.name for e in entries] == ["Kopi C"]
+        turn = s.scalars(select(Turn).order_by(Turn.id)).first()
+        assert turn.usage["cache_read"] == 200 and turn.cost_usd > 0
+
+
+async def test_undo_removes_agent_entries(db, user_id):
+    toast = food_id(db, "Kaya toast")
+    client = FakeClient(
+        [
+            _msg(
+                [
+                    BetaToolUseBlock(
+                        id="tu_2",
+                        type="tool_use",
+                        name="log_entries",
+                        input={
+                            "entries": [
+                                {
+                                    "meal": "snacks",
+                                    "food_id": toast,
+                                    "servings": 2,
+                                    "serving": "slice",
+                                }
+                            ]
+                        },
+                    )
+                ],
+                "tool_use",
+            ),
+            _msg([BetaTextBlock(type="text", text="Done.")], "end_turn"),
+        ]
+    )
+    events = await _run(client, user_id, "2 slices kaya toast")
+    turn_id = events[-1]["turn"]["id"]
+    with session_scope() as s:
+        assert s.scalars(
+            select(Entry).where(Entry.user_id == user_id, Entry.meal == "snacks")
+        ).all()
+        from makan.models import User
+
+        undo_turn(s, s.get(User, user_id), turn_id)
+    with session_scope() as s:
+        assert not s.scalars(
+            select(Entry).where(Entry.user_id == user_id, Entry.meal == "snacks")
+        ).all()
+
+
+async def test_tool_errors_go_back_to_the_model(db, user_id):
+    client = FakeClient(
+        [
+            _msg(
+                [
+                    BetaToolUseBlock(
+                        id="tu_3",
+                        type="tool_use",
+                        name="log_entries",
+                        input={"entries": [{"meal": "brunch"}]},
+                    )
+                ],
+                "tool_use",
+            ),
+            _msg([BetaTextBlock(type="text", text="Sorry.")], "end_turn"),
+        ]
+    )
+    await _run(client, user_id, "something")
+    result = client.requests[1]["messages"][-1]["content"][0]
+    assert result["is_error"] is True and "meal" in result["content"]

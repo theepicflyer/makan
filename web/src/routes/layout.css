@@ -1,0 +1,180 @@
+@import 'tailwindcss';
+
+/* Colour tokens. Data colours (protein/carbs/fat) are the validated categorical slots 1-3;
+   everything else in the UI stays neutral so the data is the only loud thing. */
+:root {
+	color-scheme: light;
+	--page: #f4f4f1;
+	--surface: #fcfcfb;
+	--surface-2: #ffffff;
+	--segment: #ffffff;
+	--ink: #0b0b0b;
+	--ink-2: #52514e;
+	--muted: #7a7873;
+	--grid: #e1e0d9;
+	--axis: #c3c2b7;
+	--bar: #8f8d87;
+	--border: rgba(11, 11, 11, 0.1);
+	--wash: rgba(11, 11, 11, 0.05);
+	--protein: #2a78d6;
+	--carb: #eb6834;
+	--fat: #1baf7a;
+	--good: #0ca30c;
+	--good-text: #006300;
+	--warning: #fab219;
+	--serious: #ec835a;
+	--critical: #d03b3b;
+	--critical-text: #b42323;
+	--scrim: rgba(11, 11, 11, 0.35);
+}
+
+@media (prefers-color-scheme: dark) {
+	:root {
+		color-scheme: dark;
+		--page: #0d0d0d;
+		--surface: #1a1a19;
+		--surface-2: #232321;
+		--segment: #3d3d3a;
+		--ink: #f0efec;
+		--ink-2: #c3c2b7;
+		--muted: #94928c;
+		--grid: #2c2c2a;
+		--axis: #383835;
+		--bar: #7c7a74;
+		--border: rgba(255, 255, 255, 0.1);
+		--wash: rgba(255, 255, 255, 0.06);
+		--protein: #3987e5;
+		--carb: #d95926;
+		--fat: #199e70;
+		--good-text: #0ca30c;
+		--critical-text: #e66767;
+		--scrim: rgba(0, 0, 0, 0.55);
+	}
+}
+
+@theme inline {
+	--color-page: var(--page);
+	--color-surface: var(--surface);
+	--color-surface-2: var(--surface-2);
+	--color-segment: var(--segment);
+	--color-ink: var(--ink);
+	--color-ink-2: var(--ink-2);
+	--color-muted: var(--muted);
+	--color-grid: var(--grid);
+	--color-axis: var(--axis);
+	--color-line: var(--border);
+	--color-wash: var(--wash);
+	--color-protein: var(--protein);
+	--color-carb: var(--carb);
+	--color-fat: var(--fat);
+	--color-good: var(--good);
+	--color-good-text: var(--good-text);
+	--color-warning: var(--warning);
+	--color-serious: var(--serious);
+	--color-critical: var(--critical);
+	--color-critical-text: var(--critical-text);
+	--font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+html,
+body {
+	background: var(--page);
+	color: var(--ink);
+	font-family: var(--font-sans);
+	-webkit-tap-highlight-color: transparent;
+	-webkit-text-size-adjust: 100%;
+}
+
+body {
+	min-height: 100dvh;
+	overscroll-behavior-y: none;
+}
+
+button,
+a,
+input,
+select,
+textarea {
+	touch-action: manipulation;
+}
+
+input,
+select,
+textarea {
+	font-size: 16px; /* stops iOS zooming on focus */
+}
+
+@layer components {
+	.tabular {
+		font-variant-numeric: tabular-nums;
+	}
+
+	.card {
+		background: var(--surface);
+		border: 1px solid var(--border);
+		border-radius: 16px;
+	}
+
+	.field {
+		width: 100%;
+		min-height: 44px;
+		padding: 0 12px;
+		border-radius: 10px;
+		border: 1px solid var(--border);
+		background: var(--surface-2);
+		color: var(--ink);
+	}
+
+	.field:focus {
+		outline: 2px solid var(--ink);
+		outline-offset: -1px;
+	}
+
+	.btn {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		gap: 6px;
+		min-height: 44px;
+		padding: 0 16px;
+		border-radius: 999px;
+		font-weight: 600;
+		font-size: 15px;
+		white-space: nowrap;
+	}
+
+	.btn-primary {
+		background: var(--ink);
+		color: var(--surface);
+	}
+
+	.btn-primary:disabled {
+		opacity: 0.4;
+	}
+
+	.btn-ghost {
+		background: var(--wash);
+		color: var(--ink);
+	}
+
+	.btn-danger {
+		background: transparent;
+		color: var(--critical-text);
+		border: 1px solid var(--border);
+	}
+
+	.label {
+		display: block;
+		font-size: 13px;
+		font-weight: 600;
+		color: var(--ink-2);
+		margin-bottom: 6px;
+	}
+}
+
+@layer base {
+	:focus-visible {
+		outline: 2px solid var(--ink);
+		outline-offset: 2px;
+	}
+}
