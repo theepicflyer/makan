@@ -1,0 +1,21 @@
+# secrets and local data
+.env
+/data/runtime/
+/evals/photos/
+/evals/results/
+
+# python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.ruff_cache/
+
+# web
+node_modules/
+/web/.svelte-kit/
+/web/build/
+
+# misc
+.DS_Store
+.playwright-mcp/
