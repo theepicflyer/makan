@@ -27,7 +27,7 @@ You need Docker with Compose, a domain behind Caddy (or another TLS proxy), a Po
    - `https://makan.example.com/auth/callback` (the MCP connector's OAuth)
 
    Restrict it to a user group that holds just the two of you. Copy the client ID and secret.
-2. Run `cp .env.example .env` and fill it in. `SESSION_SECRET` comes from `openssl rand -hex 32`.
+2. Run `cp .env.example .env` and fill it in. You can leave `SESSION_SECRET` empty: makan generates one on first start and keeps it in the data volume.
 3. Start it with `docker compose up -d --build`. The first start loads the food database, which takes a few seconds.
 4. Add a Caddy site:
 

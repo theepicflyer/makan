@@ -84,3 +84,16 @@ def test_quick_and_pins(logged_in):
     quick = logged_in.get("/api/quick", params={"meal": "breakfast", "day": "2026-10-21"}).json()
     assert quick["pins"][0]["food_id"] == kopi["id"]
     assert logged_in.delete(f"/api/pins/{pin.json()['id']}").status_code == 200
+
+
+def test_session_secret_is_generated_and_kept(tmp_path):
+    from makan.config import Settings
+
+    settings = Settings(data_dir=tmp_path, session_secret="")
+    first = settings.resolved_session_secret()
+    assert len(first) == 64
+    assert Settings(data_dir=tmp_path, session_secret="").resolved_session_secret() == first
+    assert (
+        Settings(data_dir=tmp_path, session_secret="explicit").resolved_session_secret()
+        == "explicit"
+    )

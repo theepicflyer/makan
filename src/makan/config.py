@@ -1,3 +1,4 @@
+import secrets
 from datetime import date, datetime, timedelta
 from functools import lru_cache
 from pathlib import Path
@@ -17,7 +18,8 @@ class Settings(BaseSettings):
 
     # Public URL the app is served on, e.g. https://makan.example.com
     public_url: str = "http://localhost:8000"
-    session_secret: str = "dev-only-insecure-secret"
+    # Signs the login cookie. Empty = generate one and keep it in the data directory.
+    session_secret: str = ""
 
     # Pocket ID (or any OIDC provider). Unset = no OIDC; only dev login works.
     oidc_config_url: str | None = None
@@ -39,6 +41,16 @@ class Settings(BaseSettings):
     agent_model: str = "claude-haiku-5-5"
     agent_effort: str = "low"
     agent_max_tokens: int = 16000
+
+    def resolved_session_secret(self) -> str:
+        if self.session_secret:
+            return self.session_secret
+        path = self.data_dir / "session_secret"
+        if not path.exists():
+            self.data_dir.mkdir(parents=True, exist_ok=True)
+            path.write_text(secrets.token_hex(32))
+            path.chmod(0o600)
+        return path.read_text().strip()
 
     @property
     def db_path(self) -> Path:
