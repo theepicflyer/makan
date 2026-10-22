@@ -13,7 +13,16 @@
 	import { session, toasts } from '../state.svelte.ts';
 	import { tick } from 'svelte';
 
-	let { date, onchanged }: { date: string; onchanged: () => void } = $props();
+	let {
+		date,
+		onchanged,
+		inline = false
+	}: {
+		date: string;
+		onchanged: () => void;
+		/** Desktop: the composer sits in the page where it's placed, instead of floating over the nav. */
+		inline?: boolean;
+	} = $props();
 
 	interface Pending {
 		text: string;
@@ -245,7 +254,14 @@
 
 <input bind:this={fileInput} type="file" accept="image/*" class="hidden" onchange={pickPhoto} />
 
-{#if !open}
+{#if inline}
+	<div>
+		{@render attached()}
+		<Peek character="bao" mood={sending ? 'busy' : 'happy'} size={52} side="left" offset={22}>
+			{@render composer(true)}
+		</Peek>
+	</div>
+{:else if !open}
 	<div class="pointer-events-none fixed inset-x-0 z-20 px-4" style="bottom: calc(env(safe-area-inset-bottom) + var(--nav-gap) + var(--nav-h) + 10px)">
 		<div class="mx-auto max-w-lg">
 			{@render attached()}

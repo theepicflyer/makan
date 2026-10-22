@@ -27,6 +27,7 @@ Evals cost real money (Haiku is ~$0.001/case, Opus ~$0.02/case). Run a subset wi
 - `agent/`: `prompt.py` (system prompt + per-turn context), `tools.py` (7 tools, pydantic-validated, compact text results), `runner.py` (manual streaming loop, one thread per user per log date).
 - `mcp_server.py`: FastMCP with `OIDCProxy` in front of Pocket ID; mounted at `/` after the API and SPA routes. Tools resolve the caller by the token's `sub`, which must match a user who has signed in to the web app.
 - `web/src/lib/burrow/`: the Burrow design system (the household's shared look). `tokens.css`, `burrow.css` and `art.js` are copies of the design system's files; re-sync them rather than editing. The Svelte components next to them port its React components. `web/README.md` has the rules for new screens.
+- `web/` is phone first. From 1024px (Tailwind `lg`, `wide` in `state.svelte.ts`) a side rail (`SideNav`) replaces the bottom nav and screens lay out in columns; fixed elements place themselves with `--rail-w`, `--dock-h` and `--composer-h` from `layout.css`. Charts are built on `BarChart.svelte`; History's sums and averages live in `lib/history.ts`.
 - `main.py`: client-side routes are listed in `SPA_ROUTES`; anything unmatched falls through to the MCP/OAuth app. Add a route there when the web app gets a new top-level path.
 
 ## Rules that keep the agent cheap and correct

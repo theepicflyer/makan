@@ -5,6 +5,7 @@
 	import type { Entry, Meal, Nutrients } from '../types.ts';
 	import { MEAL_LABEL } from '../types.ts';
 	import { kcal } from '../format.ts';
+	import { wide } from '../state.svelte.ts';
 
 	let {
 		meal,
@@ -59,7 +60,7 @@
 		<div class="flex items-center gap-3">
 			<div class="min-w-0 flex-1">
 				<h2 class="bh-card__title">{label}</h2>
-				<p class="small text-ink-muted">{next ? 'Up next. Tell Bao below, or add food.' : 'Nothing logged'}</p>
+				<p class="small text-ink-muted">{next ? `Up next. Tell Bao${wide.current ? '' : ' below'}, or add food.` : 'Nothing logged'}</p>
 			</div>
 			<button class="bh-btn {next ? 'bh-btn--secondary' : 'bh-btn--ghost'} bh-btn--sm" aria-label="Add to {label}" onclick={() => onadd(meal)}>
 				<Icon name="plus" size={18} />Add

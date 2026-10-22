@@ -6,7 +6,7 @@
 	import TrailPath from '#lib/burrow/TrailPath.svelte';
 	import { get, patch, post } from '#lib/api.ts';
 	import type { Me, Usage } from '#lib/types.ts';
-	import { session, toasts } from '#lib/state.svelte.ts';
+	import { session, toasts, wide } from '#lib/state.svelte.ts';
 	import { onMount } from 'svelte';
 
 	type Manifest = Record<string, Record<string, unknown>>;
@@ -78,58 +78,85 @@
 	<h1 class="page-title">Settings</h1>
 </Habitat>
 
+{#snippet targetsCard()}
+	<section class="bh-card grid gap-4" aria-labelledby="targets-title">
+		<header class="bh-card__head mb-0"><h2 id="targets-title" class="bh-card__title">You and your targets</h2></header>
+		<Field label="Your name" bind:value={name} />
+		<div class="grid grid-cols-2 gap-3">
+			<Field label="Calories" suffix="kcal" type="number" inputmode="numeric" min="0" bind:value={targets.kcal} />
+			<Field label="Protein" dot="protein" suffix="g" type="number" inputmode="numeric" min="0" bind:value={targets.protein_g} />
+			<Field label="Carbs" dot="carbs" suffix="g" type="number" inputmode="numeric" min="0" bind:value={targets.carb_g} />
+			<Field label="Fat" dot="fat" suffix="g" type="number" inputmode="numeric" min="0" bind:value={targets.fat_g} />
+		</div>
+		{#if macroKcal > 0}
+			<p class="small text-ink-muted">These macros add up to about {Math.round(macroKcal).toLocaleString('en-SG')} kcal.</p>
+		{/if}
+		<button class="bh-btn bh-btn--primary w-full" onclick={save} disabled={busy}>Save targets</button>
+	</section>
+{/snippet}
+
+{#snippet usageCard()}
+	<section class="bh-card" aria-labelledby="usage-title">
+		<header class="bh-card__head mb-1"><h2 id="usage-title" class="bh-card__title">Assistant usage</h2></header>
+		{#if usage}
+			<p class="body text-ink-muted">
+				<span class="card-title bh-num text-ink">${usage.month_usd < 1 ? usage.month_usd.toFixed(3) : usage.month_usd.toFixed(2)}</span>
+				this month across {usage.turns} message{usage.turns === 1 ? '' : 's'}
+			</p>
+			<p class="small mt-1 text-ink-muted">Model: {usage.model}</p>
+		{:else}
+			<p class="body text-ink-muted">–</p>
+		{/if}
+	</section>
+{/snippet}
+
+{#snippet sourcesCard()}
+	<section class="bh-card small space-y-3 text-ink-muted" aria-labelledby="sources-title">
+		<h2 id="sources-title" class="bh-card__title">Data sources</h2>
+		<div>
+			<p class="body-strong text-ink">Singapore Food Insights Database (SG FoodID)</p>
+			<p class="mk-well mt-1 leading-relaxed">{sgNotice}</p>
+			{#if sg?.items}<p class="mt-1">{str(sg.items)} items · Health Promotion Board, Singapore</p>{/if}
+		</div>
+		<div>
+			<p class="body-strong text-ink">USDA FoodData Central</p>
+			<p class="mt-1 leading-relaxed">
+				{str(usda?.attribution) || 'U.S. Department of Agriculture, Agricultural Research Service. FoodData Central. fdc.nal.usda.gov.'}
+			</p>
+			{#if usda}
+				<p class="mt-1">
+					{usda.items ? `${str(usda.items)} items` : ''}{usda.licence ? ` · ${str(usda.licence)}` : ''}{usda.accessed ? ` · accessed ${str(usda.accessed)}` : ''}
+				</p>
+			{/if}
+		</div>
+		<p>Nutrition values are estimates. They are not medical advice.</p>
+	</section>
+{/snippet}
+
+{#snippet signOut()}
+	<button class="bh-btn bh-btn--secondary w-full" onclick={logout}><Icon name="sign-out" size={18} />Sign out</button>
+{/snippet}
+
 <div class="mk-page">
-	<!-- Kayu's wood chips wind down from the river behind the cards -->
-	<TrailPath kind="chips" from={0.6} to={0.5} seed={4} class="grid gap-9 pt-9">
-		<section class="bh-card grid gap-4" aria-labelledby="targets-title">
-			<header class="bh-card__head mb-0"><h2 id="targets-title" class="bh-card__title">You and your targets</h2></header>
-			<Field label="Your name" bind:value={name} />
-			<div class="grid grid-cols-2 gap-3">
-				<Field label="Calories" suffix="kcal" type="number" inputmode="numeric" min="0" bind:value={targets.kcal} />
-				<Field label="Protein" dot="protein" suffix="g" type="number" inputmode="numeric" min="0" bind:value={targets.protein_g} />
-				<Field label="Carbs" dot="carbs" suffix="g" type="number" inputmode="numeric" min="0" bind:value={targets.carb_g} />
-				<Field label="Fat" dot="fat" suffix="g" type="number" inputmode="numeric" min="0" bind:value={targets.fat_g} />
+	{#if wide.current}
+		<!-- desktop: you on the left, the app on the right, Kayu's chips winding behind both -->
+		<TrailPath kind="chips" from={0.5} to={0.25} seed={4} class="grid grid-cols-2 items-start gap-9 pt-9">
+			<div class="grid gap-9">
+				{@render targetsCard()}
+				{@render signOut()}
 			</div>
-			{#if macroKcal > 0}
-				<p class="small text-ink-muted">These macros add up to about {Math.round(macroKcal).toLocaleString('en-SG')} kcal.</p>
-			{/if}
-			<button class="bh-btn bh-btn--primary w-full" onclick={save} disabled={busy}>Save targets</button>
-		</section>
-
-		<section class="bh-card" aria-labelledby="usage-title">
-			<header class="bh-card__head mb-1"><h2 id="usage-title" class="bh-card__title">Assistant usage</h2></header>
-			{#if usage}
-				<p class="body text-ink-muted">
-					<span class="card-title bh-num text-ink">${usage.month_usd < 1 ? usage.month_usd.toFixed(3) : usage.month_usd.toFixed(2)}</span>
-					this month across {usage.turns} message{usage.turns === 1 ? '' : 's'}
-				</p>
-				<p class="small mt-1 text-ink-muted">Model: {usage.model}</p>
-			{:else}
-				<p class="body text-ink-muted">–</p>
-			{/if}
-		</section>
-
-		<section class="bh-card small space-y-3 text-ink-muted" aria-labelledby="sources-title">
-			<h2 id="sources-title" class="bh-card__title">Data sources</h2>
-			<div>
-				<p class="body-strong text-ink">Singapore Food Insights Database (SG FoodID)</p>
-				<p class="mk-well mt-1 leading-relaxed">{sgNotice}</p>
-				{#if sg?.items}<p class="mt-1">{str(sg.items)} items · Health Promotion Board, Singapore</p>{/if}
+			<div class="grid gap-9">
+				{@render usageCard()}
+				{@render sourcesCard()}
 			</div>
-			<div>
-				<p class="body-strong text-ink">USDA FoodData Central</p>
-				<p class="mt-1 leading-relaxed">
-					{str(usda?.attribution) || 'U.S. Department of Agriculture, Agricultural Research Service. FoodData Central. fdc.nal.usda.gov.'}
-				</p>
-				{#if usda}
-					<p class="mt-1">
-						{usda.items ? `${str(usda.items)} items` : ''}{usda.licence ? ` · ${str(usda.licence)}` : ''}{usda.accessed ? ` · accessed ${str(usda.accessed)}` : ''}
-					</p>
-				{/if}
-			</div>
-			<p>Nutrition values are estimates. They are not medical advice.</p>
-		</section>
-
-		<button class="bh-btn bh-btn--secondary w-full" onclick={logout}><Icon name="sign-out" size={18} />Sign out</button>
-	</TrailPath>
+		</TrailPath>
+	{:else}
+		<!-- Kayu's wood chips wind down from the river behind the cards -->
+		<TrailPath kind="chips" from={0.6} to={0.5} seed={4} class="grid gap-9 pt-9">
+			{@render targetsCard()}
+			{@render usageCard()}
+			{@render sourcesCard()}
+			{@render signOut()}
+		</TrailPath>
+	{/if}
 </div>
