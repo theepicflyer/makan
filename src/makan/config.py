@@ -37,6 +37,11 @@ class Settings(BaseSettings):
     # Before this hour, "today" still means the previous day.
     day_rollover_hour: int = 4
 
+    # Daily reminders to log, sent as Web Push. The VAPID key is made on first use and kept in the
+    # data directory; the subject (a mailto: or https: URL push services can contact) defaults to public_url.
+    reminders: bool = True
+    vapid_subject: str = ""
+
     anthropic_api_key: str | None = None
     agent_model: str = "claude-haiku-5-5"
     agent_effort: str = "low"

@@ -51,6 +51,23 @@ class User(Base):
     protein_target_g: Mapped[float | None] = mapped_column(Float)
     carb_target_g: Mapped[float | None] = mapped_column(Float)
     fat_target_g: Mapped[float | None] = mapped_column(Float)
+    # Daily reminder to log, "HH:MM" in the app's timezone, sent to each of the user's push_subscriptions.
+    reminder_time: Mapped[str] = mapped_column(String, default="21:00", server_default="21:00")
+    # The log date the last reminder was settled for (sent or skipped), so each day gets at most one.
+    reminded_on: Mapped[date | None] = mapped_column(Date)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+
+
+class PushSubscription(Base):
+    """A device that gets its user's reminders: a browser's Web Push subscription."""
+
+    __tablename__ = "push_subscriptions"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    endpoint: Mapped[str] = mapped_column(String, unique=True)
+    p256dh: Mapped[str] = mapped_column(String)
+    auth: Mapped[str] = mapped_column(String)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 

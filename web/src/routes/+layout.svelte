@@ -17,6 +17,10 @@
 	const isLogin = $derived(page.url.pathname.startsWith('/login'));
 
 	onMount(async () => {
+		// a tapped reminder asks the open app to show its day (see the service worker)
+		navigator.serviceWorker?.addEventListener('message', (event) => {
+			if (event.data?.type === 'open' && typeof event.data.url === 'string') goto(event.data.url);
+		});
 		if (isLogin) {
 			ready = true;
 			return;

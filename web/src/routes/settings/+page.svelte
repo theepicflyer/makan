@@ -4,7 +4,9 @@
 	import Habitat from '#lib/burrow/Habitat.svelte';
 	import Icon from '#lib/burrow/Icon.svelte';
 	import TrailPath from '#lib/burrow/TrailPath.svelte';
-	import { get, patch, post } from '#lib/api.ts';
+	import { ApiError, get, patch, post } from '#lib/api.ts';
+	import { clock } from '#lib/format.ts';
+	import { pushSupport, refresh, sendTest, turnOff, turnOn, type PushSupport } from '#lib/push.ts';
 	import type { Me, Usage } from '#lib/types.ts';
 	import { session, toasts, wide } from '#lib/state.svelte.ts';
 	import { onMount } from 'svelte';
@@ -22,7 +24,21 @@
 	let manifest = $state<Manifest | null>(null);
 	let busy = $state(false);
 
+	// the daily reminder: one time for the account, turned on per device
+	let reminderTime = $state(session.me?.reminder_time ?? '21:00');
+	let support = $state<PushSupport>('unsupported');
+	let permission = $state<NotificationPermission>('default');
+	let device = $state<PushSubscription | null>(null);
+	let pushBusy = $state(false);
+
 	onMount(async () => {
+		support = pushSupport();
+		if (support === 'ready') {
+			permission = Notification.permission;
+			refresh()
+				.then((sub) => (device = sub))
+				.catch(() => {});
+		}
 		get<Usage>('/api/usage').then((u) => (usage = u)).catch(() => {});
 		get<{ reference: Manifest }>('/api/about')
 			.then((a) => (manifest = a.reference ?? {}))
@@ -57,7 +73,63 @@
 		}
 	}
 
+	async function saveTime() {
+		if (!/^\d{2}:\d{2}$/.test(reminderTime)) {
+			reminderTime = session.me?.reminder_time ?? '21:00';
+			return;
+		}
+		try {
+			session.me = await patch<Me>('/api/me', { reminder_time: reminderTime });
+			toasts.show(`Reminder set for ${clock(reminderTime)}`, { character: 'kayu' });
+		} catch (err) {
+			toasts.error((err as Error).message);
+		}
+	}
+
+	async function remindersOn() {
+		pushBusy = true;
+		try {
+			device = await turnOn();
+			permission = Notification.permission;
+			if (device) toasts.show(`Reminders on. The next one is at ${clock(reminderTime)}.`, { character: 'kayu' });
+		} catch (err) {
+			toasts.error(`Couldn't turn on reminders: ${(err as Error).message}`);
+		} finally {
+			pushBusy = false;
+		}
+	}
+
+	async function remindersOff() {
+		pushBusy = true;
+		try {
+			await turnOff();
+			device = null;
+			toasts.show('Reminders off for this device', { character: 'kayu' });
+		} catch (err) {
+			toasts.error((err as Error).message);
+		} finally {
+			pushBusy = false;
+		}
+	}
+
+	async function test() {
+		if (!device) return;
+		pushBusy = true;
+		try {
+			await sendTest(device);
+			toasts.show('Sent. It should show up in a moment.', { character: 'kayu' });
+		} catch (err) {
+			toasts.error((err as Error).message);
+			// the server drops a device the push service has forgotten
+			if (err instanceof ApiError && err.status === 410) device = null;
+		} finally {
+			pushBusy = false;
+		}
+	}
+
 	async function logout() {
+		// reminders on this device were for this account; don't hand them to whoever signs in next
+		await turnOff().catch(() => {});
 		await post('/api/auth/logout');
 		session.me = null;
 		await goto('/login');
@@ -92,6 +164,35 @@
 			<p class="small text-ink-muted">These macros add up to about {Math.round(macroKcal).toLocaleString('en-SG')} kcal.</p>
 		{/if}
 		<button class="bh-btn bh-btn--primary w-full" onclick={save} disabled={busy}>Save targets</button>
+	</section>
+{/snippet}
+
+{#snippet reminderCard()}
+	<section class="bh-card grid gap-4" aria-labelledby="reminder-title">
+		<header class="bh-card__head mb-0"><h2 id="reminder-title" class="bh-card__title">Daily reminder</h2></header>
+		<p class="small -mt-2 text-ink-muted">A notification at this time each day, if breakfast, lunch or dinner isn't logged yet.</p>
+		<Field label="Remind me at" type="time" bind:value={reminderTime} onchange={saveTime} />
+		{#if support === 'install'}
+			<p class="mk-well small">
+				On iPhone, reminders need makan on your Home Screen: tap Share, then Add to Home Screen, and open makan from there.
+			</p>
+		{:else if support === 'unsupported'}
+			<p class="small text-ink-muted">This browser can't show notifications.</p>
+		{:else if permission === 'denied'}
+			<p class="mk-well small">Notifications are blocked for makan. Allow them in your phone's settings, then come back here.</p>
+		{:else if device}
+			<div>
+				<p class="small flex items-center gap-1.5 text-ink"><Icon name="check" size={18} />On for this device</p>
+				<div class="mk-card-actions">
+					<button class="bh-btn bh-btn--ghost bh-btn--sm" onclick={test} disabled={pushBusy}>Send a test</button>
+					<button class="bh-btn bh-btn--secondary bh-btn--sm" onclick={remindersOff} disabled={pushBusy}>Turn off</button>
+				</div>
+			</div>
+		{:else}
+			<button class="bh-btn bh-btn--secondary w-full" onclick={remindersOn} disabled={pushBusy}>
+				<Icon name="bell" size={18} />Turn on for this device
+			</button>
+		{/if}
 	</section>
 {/snippet}
 
@@ -143,6 +244,7 @@
 		<TrailPath kind="chips" from={0.5} to={0.25} seed={4} class="grid grid-cols-2 items-start gap-9 pt-9">
 			<div class="grid gap-9">
 				{@render targetsCard()}
+				{@render reminderCard()}
 				{@render signOut()}
 			</div>
 			<div class="grid gap-9">
@@ -154,6 +256,7 @@
 		<!-- Kayu's wood chips wind down from the river behind the cards -->
 		<TrailPath kind="chips" from={0.6} to={0.5} seed={4} class="grid gap-9 pt-9">
 			{@render targetsCard()}
+			{@render reminderCard()}
 			{@render usageCard()}
 			{@render sourcesCard()}
 			{@render signOut()}

@@ -15,6 +15,7 @@ dependencies = [
     "pillow>=13.0.0",
     "pydantic-settings>=2.16.1",
     "python-multipart>=0.0.32",
+    "pywebpush>=2.5.0",
     "sqlalchemy>=2.1.5",
     "uvicorn[standard]>=0.54.0",
 ]

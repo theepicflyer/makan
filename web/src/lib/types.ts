@@ -41,6 +41,8 @@ export interface Me {
 	targets: Targets;
 	today: string;
 	timezone: string;
+	/** "HH:MM": when the daily reminder goes out, on days breakfast, lunch or dinner isn't logged. */
+	reminder_time: string;
 }
 
 export interface Serving {
