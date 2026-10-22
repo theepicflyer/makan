@@ -1,5 +1,10 @@
 <script lang="ts">
 	import SourceBadge from '#lib/components/SourceBadge.svelte';
+	import EmptyState from '#lib/burrow/EmptyState.svelte';
+	import Habitat from '#lib/burrow/Habitat.svelte';
+	import Icon from '#lib/burrow/Icon.svelte';
+	import Loader from '#lib/burrow/Loader.svelte';
+	import TrailPath from '#lib/burrow/TrailPath.svelte';
 	import { get } from '#lib/api.ts';
 	import { servingKcal } from '#lib/format.ts';
 	import type { Food } from '#lib/types.ts';
@@ -46,10 +51,10 @@
 
 {#snippet foodRow(food: Food)}
 	<li>
-		<a href="/foods/{food.id}" class="flex min-h-14 items-center gap-3 rounded-xl px-2 py-2 hover:bg-wash">
-			<span class="min-w-0 flex-1">
-				<span class="block truncate text-[15px] font-medium">{food.name}</span>
-				<span class="block truncate text-[13px] text-muted">
+		<a href="/foods/{food.id}" class="bh-row mk-row-btn">
+			<span class="bh-row__text">
+				<span class="bh-row__title">{food.name}</span>
+				<span class="bh-row__sub truncate">
 					{food.brand ? `${food.brand} · ` : ''}{servingKcal(food)}{food.aliases.length ? ` · “${food.aliases.join('”, “')}”` : ''}
 				</span>
 			</span>
@@ -58,46 +63,60 @@
 	</li>
 {/snippet}
 
-<header class="mb-3 flex items-center justify-between pt-1">
-	<h1 class="text-2xl font-semibold tracking-tight">Foods</h1>
-	<a href="/foods/new" class="btn btn-primary min-h-10 text-sm">New food</a>
-</header>
+<!-- Bao's pantry: the household's own foods, and every reference food to search -->
+<Habitat kind="meadow" class="mk-top">
+	<p class="small text-ink-muted">Ours, SG FoodID and USDA</p>
+	<h1 class="page-title">Foods</h1>
+	<a href="/foods/new" class="bh-btn bh-btn--primary bh-btn--sm mt-2"><Icon name="plus" size={18} />New food</a>
+</Habitat>
 
-<div class="relative mb-4">
-	<svg class="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
-	<input class="field pl-10" type="search" bind:value={query} oninput={onInput} placeholder="Search all foods" aria-label="Search all foods" />
-</div>
+<div class="mk-page">
+	<!-- Bao's crumbs wind down from the meadow behind the search and the cards -->
+	<TrailPath kind="crumbs" from={0.78} to={0.4} seed={3} class="grid gap-9 pt-9 pb-4">
+		<label class="bh-field">
+			<span class="sr-only">Search all foods</span>
+			<span class="bh-field__box">
+				<span class="bh-field__affix"><Icon name="search" size={20} /></span>
+				<input class="bh-field__input" type="search" bind:value={query} oninput={onInput} placeholder="Search all foods" />
+			</span>
+		</label>
 
-{#if query.trim()}
-	<section class="card px-2 py-1">
-		{#if searching && !results.length}
-			<p class="px-2 py-4 text-sm text-muted">Searching…</p>
-		{:else if !results.length}
-			<p class="px-2 py-4 text-sm text-muted">No matches.</p>
+		{#if query.trim()}
+			<section class="bh-card py-1" aria-label="Search results">
+				{#if searching && !results.length}
+					<div class="grid justify-items-center py-6"><Loader label="Digging through the foods…" /></div>
+				{:else if !results.length}
+					<EmptyState trace="hole" title="No matches" body="Gali dug everywhere. Try a shorter word." />
+				{:else}
+					<ul class="mk-rows">
+						{#each results as food (food.id)}{@render foodRow(food)}{/each}
+					</ul>
+				{/if}
+			</section>
 		{:else}
-			<ul>
-				{#each results as food (food.id)}{@render foodRow(food)}{/each}
-			</ul>
-		{/if}
-	</section>
-{:else}
-	<section>
-		<h2 class="mb-2 text-[15px] font-semibold">Ours <span class="font-normal text-muted">· shared by the household</span></h2>
-		{#if ours === null}
-			<div class="card h-32 animate-pulse"></div>
-		{:else if !ours.length}
-			<div class="card px-4 py-4 text-[14px] text-ink-2">
-				<p>No household foods yet.</p>
-				<p class="mt-1 text-muted">Add the things you buy and eat often. Their aliases make them the default, so "a bowl of yogurt" means your yogurt.</p>
+			<section class="bh-card" aria-labelledby="ours-title">
+				<header class="bh-card__head mb-1">
+					<h2 id="ours-title" class="bh-card__title">Ours</h2>
+					<span class="small text-ink-muted">shared by the household</span>
+				</header>
+				{#if ours === null}
+					<div class="grid justify-items-center py-6"><Loader kind="crumbs" /></div>
+				{:else if !ours.length}
+					<EmptyState
+						trace="sunflower"
+						title="No household foods yet"
+						body="Add the things you buy and eat often. Their aliases make them the default, so “a bowl of yogurt” means your yogurt."
+					/>
+				{:else}
+					<ul class="mk-rows">
+						{#each ours as food (food.id)}{@render foodRow(food)}{/each}
+					</ul>
+				{/if}
+			</section>
+			<div class="bh-card bh-card--tint body flex gap-3">
+				<span class="shrink-0 pt-0.5"><Icon name="camera" size={22} /></span>
+				<span>Send a photo of a nutrition label to Bao on the Today screen and it saves the food here for you.</span>
 			</div>
-		{:else}
-			<ul class="card px-2 py-1">
-				{#each ours as food (food.id)}{@render foodRow(food)}{/each}
-			</ul>
 		{/if}
-		<p class="mt-3 flex gap-2 rounded-2xl bg-wash px-4 py-3 text-[13px] text-ink-2">
-			<svg class="mt-0.5 shrink-0" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l1.5-2h7L17 8h3v11H4z" /><circle cx="12" cy="13" r="3.5" /></svg>
-			<span>Tip: send a photo of a nutrition label to the assistant on the Today screen and it saves the food here for you.</span>
-		</p>
-	</section>
-{/if}
+	</TrailPath>
+</div>

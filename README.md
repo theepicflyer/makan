@@ -1,12 +1,12 @@
 # makan
 
-A self-hosted calorie and macro tracker for a two-person household in Singapore. You log food by meal, either by searching and tapping, or by telling the assistant what you ate ("breakfast kopi c and kaya toast, lunch chicken rice…") or sending it a photo. It runs as one Docker container behind your reverse proxy, signs in through Pocket ID, and installs on a phone as a PWA.
+A self-hosted calorie and macro tracker for a two-person household in Singapore. You log food by meal, either by searching and tapping, or by telling Bao, the assistant, what you ate ("breakfast kopi c and kaya toast, lunch chicken rice…") or sending it a photo. It runs as one Docker container behind your reverse proxy, signs in through Pocket ID, and installs on a phone as a PWA.
 
 <p>
-  <img src="docs/screenshots/today.png" width="200" alt="Today: calories and macros against targets, then entries by meal">
+  <img src="docs/screenshots/today.png" width="200" alt="Today: Bao's meadow, the day's calories as a sunflower, and macros against targets">
   <img src="docs/screenshots/assistant.png" width="200" alt="The assistant logging dinner from a text message, with an undo">
   <img src="docs/screenshots/add.png" width="200" alt="Adding to a meal: same as yesterday, pinned foods, saved meals and frequent foods">
-  <img src="docs/screenshots/history.png" width="200" alt="History: daily calories against target and average macros">
+  <img src="docs/screenshots/history.png" width="200" alt="History: averages, and daily calories against the target">
 </p>
 
 ## What it does
@@ -22,6 +22,8 @@ Both people search the same food database but see only their own log, targets an
 Quick adds cover pinned items, frequent and recent foods, saved meals and "same as yesterday".
 
 The assistant (Claude) turns a text dump or a meal photo into entries, applies them straight away, and fixes them when you reply ("actually 2", "that was lunch"). It can also edit past days and read a nutrition label into an Ours food. Each of its replies has an undo.
+
+The look comes from Burrow, the household's shared design system (also used by the money app): plain cards and numbers, with Bao the hamster and friends living around them. Bao is also the assistant you chat with. Each screen has its animal's home as a header, the day's calories are a sunflower that opens a petal at a time, logged meals get a bite out of the corner, and a trail of crumbs or footprints winds down each screen behind the cards to the next thing to do. It follows the phone's light or dark setting.
 
 A read-only MCP endpoint at `/mcp` lets another Claude agent, such as a fitness analyst on claude.ai, read your log, daily totals and targets. Whoever signs in sees only their own data.
 
@@ -88,7 +90,7 @@ cd web && npm run check && npm run build                              # type-che
 Layout:
 
 - `src/makan/`: the FastAPI app (`main.py`, `api.py`, `auth.py`), the food and log logic (`foods.py`, `log.py`), the agent (`agent/`), the MCP server (`mcp_server.py`), and Alembic migrations.
-- `web/`: the SvelteKit PWA, built to `web/build` and served by the backend.
+- `web/`: the SvelteKit PWA, built to `web/build` and served by the backend. `web/src/lib/burrow/` holds the Burrow design system's tokens, styles and drawings.
 - `data/reference/`: the food snapshot. `scripts/` holds the scripts that build it.
 - `evals/`: the agent eval cases, runner and report.
 - `docs/screenshots/`: the screenshots above, taken from a demo account with made-up meals.

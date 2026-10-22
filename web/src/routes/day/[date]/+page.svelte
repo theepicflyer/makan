@@ -1,14 +1,21 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import SummaryCard from '#lib/components/SummaryCard.svelte';
+	import DaySummary from '#lib/components/DaySummary.svelte';
+	import MacrosCard from '#lib/components/MacrosCard.svelte';
 	import MealSection from '#lib/components/MealSection.svelte';
 	import EntrySheet from '#lib/components/EntrySheet.svelte';
 	import AddSheet from '#lib/components/AddSheet.svelte';
 	import Assistant from '#lib/components/Assistant.svelte';
 	import Sheet from '#lib/components/Sheet.svelte';
+	import Field from '#lib/burrow/Field.svelte';
+	import Habitat from '#lib/burrow/Habitat.svelte';
+	import Icon from '#lib/burrow/Icon.svelte';
+	import Loader from '#lib/burrow/Loader.svelte';
+	import TrailPath from '#lib/burrow/TrailPath.svelte';
+	import type { Mood } from '#lib/burrow/art.js';
 	import { get, post } from '#lib/api.ts';
-	import { addDays, dayLabel, longDate } from '#lib/format.ts';
+	import { addDays, dayLabel, daySubtitle, dayTitle } from '#lib/format.ts';
 	import { MEALS, MEAL_LABEL, type Day, type Entry, type Meal } from '#lib/types.ts';
 	import { session, toasts } from '#lib/state.svelte.ts';
 
@@ -59,6 +66,23 @@
 		else dateInput.click();
 	}
 
+	// Bao's mood follows the day: asleep before anything is logged, glad near the target, worried past it.
+	const mood = $derived.by((): Mood => {
+		if (!day || day.date !== date || !MEALS.some((m) => day?.meals[m]?.length)) return 'sleepy';
+		const eaten = day.totals.kcal ?? 0;
+		const target = day.targets.kcal;
+		if (target && eaten > target) return 'worried';
+		if (target && eaten >= target * 0.9) return 'joy';
+		return 'happy';
+	});
+
+	// Today's trail leads to the first empty meal after the last one logged.
+	const next = $derived.by((): Meal | null => {
+		if (!day || date !== today) return null;
+		const last = MEALS.findLastIndex((m) => day?.meals[m]?.length);
+		return MEALS.find((m, i) => i > last && !day?.meals[m]?.length) ?? null;
+	});
+
 	function startSave(meal: Meal) {
 		saveMeal = meal;
 		saveName = `Usual ${MEAL_LABEL[meal].toLowerCase()}`;
@@ -81,79 +105,86 @@
 <svelte:head><title>{valid ? `${dayLabel(date, today)} · makan` : 'makan'}</title></svelte:head>
 
 {#if !valid}
-	<p class="py-10 text-center text-muted">That's not a date. <a class="underline" href="/day/{today}">Go to today</a></p>
+	<div class="mk-page py-10 text-center text-ink-muted">That's not a date. <a class="mk-link" href="/day/{today}">Go to today</a></div>
 {:else}
-	<header class="mb-3 flex items-center gap-1">
-		<button class="grid h-11 w-11 place-items-center rounded-full hover:bg-wash" aria-label="Previous day" onclick={() => go(addDays(date, -1))}>
-			<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12.5 4.5L7 10l5.5 5.5" /></svg>
-		</button>
-		<button class="relative min-h-11 min-w-0 flex-1 rounded-xl text-center hover:bg-wash" onclick={openDatePicker} aria-label="Pick a date">
-			<span class="block text-[17px] leading-tight font-semibold">{dayLabel(date, today)}</span>
-			<span class="block text-[12px] leading-tight text-muted">{longDate(date)}</span>
-			<input
-				bind:this={dateInput}
-				type="date"
-				class="pointer-events-none absolute inset-0 opacity-0"
-				tabindex="-1"
-				aria-hidden="true"
-				value={date}
-				onchange={(e) => {
-					const v = (e.currentTarget as HTMLInputElement).value;
-					if (v) go(v);
-				}}
-			/>
-		</button>
-		<button class="grid h-11 w-11 place-items-center rounded-full hover:bg-wash" aria-label="Next day" onclick={() => go(addDays(date, 1))}>
-			<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7.5 4.5L13 10l-5.5 5.5" /></svg>
-		</button>
-		{#if date !== today}
-			<button class="btn btn-ghost ml-1 min-h-9 px-3 text-sm" onclick={() => go(today)}>Today</button>
-		{/if}
-	</header>
-
-	{#if loadError && !day}
-		<p class="py-10 text-center text-critical-text">{loadError}</p>
-	{:else if day}
-		<div class="space-y-3 transition-opacity {day.date !== date ? 'opacity-50' : ''}">
-			<SummaryCard totals={day.totals} targets={day.targets} />
-			{#each MEALS as meal (meal)}
-				<MealSection
-					{meal}
-					entries={day.meals[meal] ?? []}
-					subtotal={day.meal_totals[meal]}
-					onadd={(m) => {
-						addMeal = m;
-						addOpen = true;
+	<Habitat kind="meadow" {mood} class="mk-top">
+		<p class="small text-ink-muted">{daySubtitle(date, today)}</p>
+		<h1 class="page-title">{dayTitle(date, today)}</h1>
+		<div class="mt-2 flex items-center gap-1.5">
+			<button class="bh-btn bh-btn--secondary bh-btn--sm bh-btn--icon" aria-label="Previous day" onclick={() => go(addDays(date, -1))}>
+				<Icon name="chevron-left" size={18} />
+			</button>
+			<button class="bh-btn bh-btn--secondary bh-btn--sm bh-btn--icon relative" onclick={openDatePicker} aria-label="Pick a date">
+				<Icon name="calendar" size={18} />
+				<input
+					bind:this={dateInput}
+					type="date"
+					class="pointer-events-none absolute inset-0 opacity-0"
+					tabindex="-1"
+					aria-hidden="true"
+					value={date}
+					onchange={(e) => {
+						const v = (e.currentTarget as HTMLInputElement).value;
+						if (v) go(v);
 					}}
-					onedit={(e) => {
-						editing = e;
-						editOpen = true;
-					}}
-					onsave={startSave}
 				/>
-			{/each}
-			<!-- room for the docked assistant composer -->
-			<div class="h-16"></div>
+			</button>
+			<button class="bh-btn bh-btn--secondary bh-btn--sm bh-btn--icon" aria-label="Next day" onclick={() => go(addDays(date, 1))}>
+				<Icon name="chevron-right" size={18} />
+			</button>
+			{#if date !== today}
+				<button class="bh-btn bh-btn--ghost bh-btn--sm" onclick={() => go(today)}>Today</button>
+			{/if}
 		</div>
-	{:else}
-		<div class="space-y-3">
-			<div class="card h-44 animate-pulse"></div>
-			{#each MEALS as m (m)}<div class="card h-20 animate-pulse"></div>{/each}
-		</div>
-	{/if}
+	</Habitat>
+
+	<div class="mk-page">
+		{#if loadError && !day}
+			<p class="py-10 text-center font-semibold text-tomato-text">Couldn't load this day: {loadError}</p>
+		{:else if day}
+			<div class="transition-opacity {day.date !== date ? 'opacity-50' : ''}">
+				<DaySummary totals={day.totals} targets={day.targets} />
+				<!-- Bao's crumbs wind down from the sunflower behind the cards, strongest up to the next meal -->
+				<TrailPath kind="crumbs" from={0.5} to={0.3} seed={1} class="grid gap-9 pt-9">
+					<MacrosCard protein={day.totals.protein_g ?? 0} carbs={day.totals.carb_g ?? 0} fat={day.totals.fat_g ?? 0} targets={day.targets} />
+					{#each MEALS as meal (meal)}
+						<MealSection
+							{meal}
+							entries={day.meals[meal] ?? []}
+							subtotal={day.meal_totals[meal]}
+							next={meal === next}
+							onadd={(m) => {
+								addMeal = m;
+								addOpen = true;
+							}}
+							onedit={(e) => {
+								editing = e;
+								editOpen = true;
+							}}
+							onsave={startSave}
+						/>
+					{/each}
+				</TrailPath>
+				<!-- room for the docked composer and Bao over it -->
+				<div class="h-16"></div>
+			</div>
+		{:else}
+			<div class="grid justify-items-center py-16"><Loader kind="crumbs" label="Fetching your day…" /></div>
+		{/if}
+	</div>
 
 	<Assistant {date} onchanged={refresh} />
 	<EntrySheet entry={editing} bind:open={editOpen} onchanged={refresh} />
 	<AddSheet bind:open={addOpen} meal={addMeal} {date} onchanged={refresh} />
 	<Sheet bind:open={saveOpen} title="Save as quick meal">
-		<div class="space-y-3 pt-1">
-			<p class="text-[14px] text-ink-2">
+		<div class="space-y-4 pt-1">
+			<p class="body text-ink-muted">
 				Saves the database foods in {saveMeal ? MEAL_LABEL[saveMeal].toLowerCase() : 'this meal'} so you can log them again in one tap.
 			</p>
-			<label class="block"><span class="label">Name</span><input class="field" bind:value={saveName} /></label>
+			<Field label="Name" bind:value={saveName} />
 		</div>
 		{#snippet footer()}
-			<button class="btn btn-primary w-full" disabled={!saveName.trim()} onclick={confirmSave}>Save</button>
+			<button class="bh-btn bh-btn--primary w-full" disabled={!saveName.trim()} onclick={confirmSave}>Save meal</button>
 		{/snippet}
 	</Sheet>
 {/if}

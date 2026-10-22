@@ -4,6 +4,10 @@
 	import FoodForm from '#lib/components/FoodForm.svelte';
 	import SourceBadge from '#lib/components/SourceBadge.svelte';
 	import PortionPicker from '#lib/components/PortionPicker.svelte';
+	import Breadcrumbs from '#lib/burrow/Breadcrumbs.svelte';
+	import Icon from '#lib/burrow/Icon.svelte';
+	import Loader from '#lib/burrow/Loader.svelte';
+	import Peek from '#lib/burrow/Peek.svelte';
 	import { del, get, patch, post } from '#lib/api.ts';
 	import { draftFrom, draftPayload, emptyDraft } from '#lib/fooddraft.ts';
 	import { initialPortion, portionPayload } from '#lib/format.ts';
@@ -73,7 +77,7 @@
 		busy = true;
 		try {
 			await del(`/api/foods/${food.id}`);
-			toasts.show(`Deleted ${food.name}`);
+			toasts.show(`Deleted ${food.name}`, { character: 'kayu', mood: 'happy' });
 			await goto('/foods');
 		} catch (err) {
 			toasts.error((err as Error).message);
@@ -99,57 +103,56 @@
 
 <svelte:head><title>{isNew ? 'New food' : (food?.name ?? 'Food')} · makan</title></svelte:head>
 
-<header class="mb-4 flex items-center gap-1 pt-1">
-	<a href="/foods" class="-ml-2 grid h-11 w-11 place-items-center rounded-full hover:bg-wash" aria-label="Back to foods">
-		<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12.5 4.5L7 10l5.5 5.5" /></svg>
-	</a>
-	<h1 class="min-w-0 flex-1 truncate text-xl font-semibold tracking-tight">
-		{isNew ? 'New household food' : (food?.name ?? '')}
-	</h1>
-</header>
+<div class="mk-page mk-top">
+	<header class="pt-5 pb-4">
+		<Breadcrumbs items={[{ label: 'Foods', href: '/foods' }, { label: isNew ? 'New food' : (food?.name ?? 'Food') }]} />
+		<h1 class="page-title mt-2">{isNew ? 'New household food' : (food?.name ?? '')}</h1>
+	</header>
 
-{#if error}
-	<p class="py-8 text-center text-critical-text">{error}</p>
-{:else if isNew || food?.editable}
-	<div class="card p-4">
-		<FoodForm bind:draft />
-	</div>
-	<div class="mt-4 flex gap-2">
-		{#if !isNew}
-			<button class="btn btn-danger" onclick={remove} disabled={busy}>Delete</button>
-			<button class="btn btn-ghost" onclick={pin} disabled={busy}>Pin</button>
-		{/if}
-		<button class="btn btn-primary ml-auto min-w-32" onclick={save} disabled={busy}>Save</button>
-	</div>
-{:else if food}
-	<div class="space-y-4">
-		<div class="text-[13px] text-ink-2">
-			<div class="flex items-center gap-2"><SourceBadge source={food.source} /><span>{food.source_label}</span></div>
-			{#if food.category}<div class="mt-1 text-muted">{food.category}</div>{/if}
+	{#if error}
+		<p class="py-8 text-center font-semibold text-tomato-text">Couldn't load this food: {error}</p>
+	{:else if isNew || food?.editable}
+		<!-- editing is Kayu's job -->
+		<Peek character="kayu" mood={busy ? 'busy' : 'happy'} size={72} offset={20}>
+			<div class="bh-card"><FoodForm bind:draft /></div>
+		</Peek>
+		<div class="mt-4 flex items-center gap-1">
+			{#if !isNew}
+				<button class="bh-btn bh-btn--ghost mk-danger -ml-3" onclick={remove} disabled={busy}><Icon name="trash" size={18} />Delete</button>
+				<button class="bh-btn bh-btn--ghost" onclick={pin} disabled={busy}><Icon name="pin" size={18} />Pin</button>
+			{/if}
+			<button class="bh-btn bh-btn--primary ml-auto min-w-32" onclick={save} disabled={busy}>Save food</button>
 		</div>
-		{#if food.description}<p class="text-[14px] text-ink-2">{food.description}</p>{/if}
-		<section class="card overflow-hidden">
-			<h2 class="border-b border-line px-4 py-2.5 text-[13px] font-semibold text-ink-2">Per 100 g</h2>
-			<table class="w-full text-[14px]">
-				<tbody>
-					{#each ROWS as r (r.key)}
-						<tr class="border-b border-line last:border-0">
-							<th scope="row" class="px-4 py-2 text-left font-normal text-ink-2">{r.label}</th>
-							<td class="px-4 py-2 text-right tabular">
-								{food.per_100g[r.key] == null ? '–' : `${Math.round((food.per_100g[r.key] ?? 0) * 10) / 10} ${r.unit}`}
-							</td>
-						</tr>
-					{/each}
-				</tbody>
-			</table>
-		</section>
-		<section class="card p-4">
-			<h2 class="mb-3 text-[15px] font-semibold">Pin to quick add</h2>
-			<PortionPicker {food} bind:value={portion} />
-			<button class="btn btn-primary mt-3 w-full" onclick={pin}>Pin this portion</button>
-		</section>
-		<p class="text-[13px] text-muted">Reference data is read-only. To change it, create a household food instead.</p>
-	</div>
-{:else}
-	<div class="card h-64 animate-pulse"></div>
-{/if}
+	{:else if food}
+		<div class="space-y-4">
+			<div class="small text-ink-muted">
+				<div class="flex items-center gap-2"><SourceBadge source={food.source} /><span>{food.source_label}</span></div>
+				{#if food.category}<div class="mt-1">{food.category}</div>{/if}
+			</div>
+			{#if food.description}<p class="body text-ink-muted">{food.description}</p>{/if}
+			<section class="bh-card py-2" aria-labelledby="per100-title">
+				<h2 id="per100-title" class="bh-card__title pt-2 pb-1">Per 100 g</h2>
+				<table class="body w-full">
+					<tbody>
+						{#each ROWS as r (r.key)}
+							<tr class="border-b border-line last:border-0">
+								<th scope="row" class="py-2.5 text-left font-normal text-ink-muted">{r.label}</th>
+								<td class="bh-num py-2.5 text-right font-semibold">
+									{food.per_100g[r.key] == null ? '–' : `${Math.round((food.per_100g[r.key] ?? 0) * 10) / 10} ${r.unit}`}
+								</td>
+							</tr>
+						{/each}
+					</tbody>
+				</table>
+			</section>
+			<section class="bh-card" aria-labelledby="pin-title">
+				<header class="bh-card__head"><h2 id="pin-title" class="bh-card__title">Pin to quick add</h2></header>
+				<PortionPicker {food} bind:value={portion} />
+				<button class="bh-btn bh-btn--primary mt-4 w-full" onclick={pin}><Icon name="pin" size={18} />Pin this portion</button>
+			</section>
+			<p class="small text-ink-muted">Reference data is read-only. To change it, create a household food instead.</p>
+		</div>
+	{:else}
+		<div class="grid justify-items-center py-16"><Loader kind="crumbs" /></div>
+	{/if}
+</div>

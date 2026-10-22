@@ -1,29 +1,37 @@
 <script lang="ts">
+	import { page } from '$app/state';
+	import Mascot from '../burrow/Mascot.svelte';
 	import { toasts } from '../state.svelte.ts';
+
+	// One at a time, the newest, just above the nav (and the composer on day screens).
+	const toast = $derived(toasts.items.at(-1));
+	const onDay = $derived(page.url.pathname.startsWith('/day'));
+	const onLogin = $derived(page.url.pathname.startsWith('/login'));
 </script>
 
 <div
-	class="pointer-events-none fixed inset-x-0 top-0 z-50 flex flex-col items-center gap-2 px-4 pt-[max(12px,env(safe-area-inset-top))]"
+	class="pointer-events-none fixed inset-x-0 z-50 px-4"
+	style="bottom: calc(env(safe-area-inset-bottom) + {onLogin ? '16px' : `var(--nav-gap) + var(--nav-h) + ${onDay ? '104px' : '16px'}`})"
 	aria-live="polite"
 >
-	{#each toasts.items as t (t.id)}
-		<div
-			class="pointer-events-auto flex w-full max-w-md items-center gap-3 rounded-2xl px-4 py-2.5 text-sm shadow-lg {t.tone === 'error'
-				? 'bg-critical text-white'
-				: 'bg-ink text-surface'}"
-			role="status"
-		>
-			<span class="min-w-0 flex-1">{t.message}</span>
-			{#if t.action}
-				<button
-					class="-my-1 min-h-9 rounded-full px-3 font-semibold underline-offset-2 hover:underline"
-					onclick={async () => {
-						const action = t.action;
-						toasts.dismiss(t.id);
-						await action?.run();
-					}}>{t.action.label}</button
-				>
-			{/if}
-		</div>
-	{/each}
+	{#if toast}
+		{#key toast.id}
+			<div class="bh-toast pointer-events-auto mx-auto max-w-md" role="status">
+				<span class="bh-toast__bub">
+					<Mascot character={toast.character ?? 'bao'} mood={toast.mood ?? (toast.action ? 'happy' : 'joy')} size={40} />
+				</span>
+				<span class="bh-toast__text">{toast.message}</span>
+				{#if toast.action}
+					<button
+						class="bh-btn bh-btn--ghost"
+						onclick={async () => {
+							const action = toast.action;
+							toasts.dismiss(toast.id);
+							await action?.run();
+						}}>{toast.action.label}</button
+					>
+				{/if}
+			</div>
+		{/key}
+	{/if}
 </div>

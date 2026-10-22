@@ -1,0 +1,97 @@
+/* Burrow — generated from tokens.json (https://claude.ai/artifact/ShL86DzdjvTZDwRHLsd8L4). Regenerate, don't edit. */
+:root {
+	color-scheme: light;
+	--paper: #fff7ea;
+	--surface: #ffffff;
+	--surface-sunk: #f7ebd8;
+	--line: #e6d6be;
+	--ink: #2b2240;
+	--ink-muted: #665a7a;
+	--outline: #2b2240;
+	--tomato: #ff6a48;
+	--tomato-soft: #ffe1d8;
+	--tomato-text: #c2381c;
+	--sunny: #ffc83a;
+	--sunny-soft: #fff0c2;
+	--mint: #34c08f;
+	--mint-soft: #d5f4e6;
+	--mint-text: #12774f;
+	--sky: #5db6ff;
+	--sky-soft: #dcefff;
+	--sky-text: #1d6ccb;
+	--bubblegum: #ff8fb3;
+	--accent: var(--tomato);
+	--accent-soft: var(--tomato-soft);
+	--on-accent: #2b2240;
+	--protein: var(--sky);
+	--carbs: var(--sunny);
+	--fat: var(--mint);
+	--grass: #9fd86f;
+	--soil: #c99a6e;
+	--soil-deep: #7a5235;
+	--water: #9ed6f5;
+	--bark: #8a5a3b;
+	--fur-hamster: #eea955;
+	--fur-squirrel: #c8693a;
+	--skin-molerat: #f3b2a6;
+	--fur-beaver: #8b5a3c;
+	--shadow-sticker: 0 3px 0 #2b2240;
+	--shadow-lift: 0 8px 24px rgba(43, 34, 64, 0.10);
+}
+@media (prefers-color-scheme: dark) {
+	:root {
+		color-scheme: dark;
+		--paper: #1d1828;
+		--surface: #2a2339;
+		--surface-sunk: #15111e;
+		--line: #3b3350;
+		--ink: #fff3e2;
+		--ink-muted: #bdb2cf;
+		--outline: #0e0b14;
+		--tomato: #ff7a5a;
+		--tomato-soft: #4a2a2b;
+		--tomato-text: #ff9378;
+		--sunny-soft: #463b22;
+		--mint: #3ccb97;
+		--mint-soft: #1f3a33;
+		--mint-text: #5fdcac;
+		--sky: #6cc0ff;
+		--sky-soft: #1f3148;
+		--sky-text: #86ccff;
+		--accent: var(--tomato);
+		--accent-soft: var(--tomato-soft);
+		--on-accent: #1d1828;
+		--protein: var(--sky);
+		--carbs: var(--sunny);
+		--fat: var(--mint);
+		--grass: #4f8a3c;
+		--soil: #5a3e2c;
+		--soil-deep: #2a1c14;
+		--water: #2b5a78;
+		--shadow-sticker: 0 3px 0 #0e0b14;
+		--shadow-lift: 0 8px 24px rgba(0, 0, 0, 0.40);
+	}
+}
+:root {
+	--space-1: 4px;
+	--space-2: 8px;
+	--space-3: 12px;
+	--space-4: 16px;
+	--space-6: 24px;
+	--space-8: 32px;
+	--radius-sm: 10px;
+	--radius-md: 16px;
+	--radius-lg: 24px;
+	--radius-pill: 999px;
+	--border-sticker: 2px;
+	--border-hair: 1px;
+	--font-display: Fredoka, "Avenir Next Rounded", "SF Pro Rounded", system-ui, sans-serif;
+	--font-sans: Figtree, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+.hero-number { font-family: var(--font-display); font-size: 44px; line-height: 48px; font-weight: 600; }
+.page-title { font-family: var(--font-display); font-size: 28px; line-height: 34px; font-weight: 600; }
+.card-title { font-family: var(--font-display); font-size: 19px; line-height: 24px; font-weight: 600; }
+.body { font-family: var(--font-sans); font-size: 16px; line-height: 22px; font-weight: 400; }
+.body-strong { font-family: var(--font-sans); font-size: 16px; line-height: 22px; font-weight: 600; }
+.small { font-family: var(--font-sans); font-size: 14px; line-height: 20px; font-weight: 400; }
+.label { font-family: var(--font-sans); font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0.02em; }

@@ -1,15 +1,17 @@
 <script lang="ts">
+	import Field from '../burrow/Field.svelte';
+	import Icon from '../burrow/Icon.svelte';
 	import type { FoodDraft, NutrientKey } from '../types.ts';
 
 	let { draft = $bindable() }: { draft: FoodDraft } = $props();
 
 	let aliasInput = $state('');
 
-	const FIELDS: { key: NutrientKey; label: string; unit: string }[] = [
+	const FIELDS: { key: NutrientKey; label: string; unit: string; dot?: string }[] = [
 		{ key: 'kcal', label: 'Calories', unit: 'kcal' },
-		{ key: 'protein_g', label: 'Protein', unit: 'g' },
-		{ key: 'carb_g', label: 'Carbs', unit: 'g' },
-		{ key: 'fat_g', label: 'Fat', unit: 'g' },
+		{ key: 'protein_g', label: 'Protein', unit: 'g', dot: 'protein' },
+		{ key: 'carb_g', label: 'Carbs', unit: 'g', dot: 'carbs' },
+		{ key: 'fat_g', label: 'Fat', unit: 'g', dot: 'fat' },
 		{ key: 'fibre_g', label: 'Fibre', unit: 'g' },
 		{ key: 'sugar_g', label: 'Sugar', unit: 'g' },
 		{ key: 'sodium_mg', label: 'Sodium', unit: 'mg' },
@@ -53,90 +55,112 @@
 	}
 </script>
 
+{#snippet basisChip(basis: 'per_100g' | 'per_serving', text: string)}
+	{@const selected = draft.basis === basis}
+	<button role="radio" aria-checked={selected} class="bh-chip {selected ? 'is-selected' : ''}" onclick={() => setBasis(basis)}>
+		{#if selected}<Icon name="check" size={16} />{/if}{text}
+	</button>
+{/snippet}
+
 <div class="space-y-5">
 	<div class="grid gap-3">
-		<label class="block"><span class="label">Name</span><input class="field" bind:value={draft.name} placeholder="e.g. Greek Light Yogurt" required /></label>
-		<label class="block"><span class="label">Brand</span><input class="field" bind:value={draft.brand} placeholder="Optional" /></label>
+		<Field label="Name" bind:value={draft.name} placeholder="e.g. Greek Light Yogurt" required />
+		<Field label="Brand" bind:value={draft.brand} placeholder="Optional" />
 	</div>
 
 	<div>
-		<span class="label">Answers to</span>
-		<div class="flex flex-wrap gap-1.5">
-			{#each draft.aliases as alias (alias)}
-				<span class="inline-flex h-8 items-center gap-1 rounded-full bg-wash pr-1 pl-3 text-[14px]">
-					{alias}
-					<button
-						class="grid h-7 w-7 place-items-center rounded-full text-ink-2 hover:bg-wash"
-						aria-label="Remove {alias}"
-						onclick={() => (draft.aliases = draft.aliases.filter((a) => a !== alias))}
-					>
-						<svg width="10" height="10" viewBox="0 0 16 16" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M4 4l8 8M12 4l-8 8" /></svg>
-					</button>
-				</span>
-			{/each}
+		<span class="mk-section-label">Answers to</span>
+		{#if draft.aliases.length}
+			<div class="mk-choice mb-2">
+				{#each draft.aliases as alias (alias)}
+					<span class="bh-chip is-selected pr-1">
+						{alias}
+						<button
+							class="grid h-7 w-7 place-items-center rounded-full hover:bg-surface"
+							aria-label="Remove {alias}"
+							onclick={() => (draft.aliases = draft.aliases.filter((a) => a !== alias))}
+						>
+							<Icon name="close" size={14} />
+						</button>
+					</span>
+				{/each}
+			</div>
+		{/if}
+		<div class="flex gap-2">
+			<span class="bh-field__box min-w-0 flex-1">
+				<input
+					class="bh-field__input"
+					bind:value={aliasInput}
+					placeholder="e.g. yogurt"
+					aria-label="Add a word this food answers to"
+					onkeydown={(e) => {
+						if (e.key === 'Enter' || e.key === ',') {
+							e.preventDefault();
+							addAlias();
+						}
+					}}
+				/>
+			</span>
+			<button class="bh-btn bh-btn--secondary" onclick={addAlias} disabled={!aliasInput.trim()}>Add</button>
 		</div>
-		<div class="mt-2 flex gap-2">
-			<input
-				class="field"
-				bind:value={aliasInput}
-				placeholder="e.g. yogurt"
-				aria-label="Add a word this food answers to"
-				onkeydown={(e) => {
-					if (e.key === 'Enter' || e.key === ',') {
-						e.preventDefault();
-						addAlias();
-					}
-				}}
-			/>
-			<button class="btn btn-ghost" onclick={addAlias} disabled={!aliasInput.trim()}>Add</button>
-		</div>
-		<p class="mt-1.5 text-[13px] text-muted">Generic words that should mean this food, so "a bowl of yogurt" picks it.</p>
+		<p class="bh-field__hint mt-1.5">Generic words that should mean this food, so “a bowl of yogurt” picks it.</p>
 	</div>
 
 	<div>
-		<div class="mb-2 flex items-center justify-between gap-2">
-			<span class="label mb-0">Nutrition</span>
-			<div class="grid grid-cols-2 gap-1 rounded-full bg-wash p-1 text-[13px]" role="radiogroup" aria-label="Nutrition basis">
-				<button role="radio" aria-checked={draft.basis === 'per_100g'} class="min-h-9 rounded-full px-3 font-medium {draft.basis === 'per_100g' ? 'bg-segment shadow-sm' : 'text-ink-2'}" onclick={() => setBasis('per_100g')}>Per 100 g</button>
-				<button role="radio" aria-checked={draft.basis === 'per_serving'} class="min-h-9 rounded-full px-3 font-medium {draft.basis === 'per_serving' ? 'bg-segment shadow-sm' : 'text-ink-2'}" onclick={() => setBasis('per_serving')}>Per serving</button>
+		<div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+			<span class="mk-section-label mb-0">Nutrition</span>
+			<div class="mk-choice" role="radiogroup" aria-label="Nutrition basis">
+				{@render basisChip('per_100g', 'Per 100 g')}
+				{@render basisChip('per_serving', 'Per serving')}
 			</div>
 		</div>
 		{#if draft.basis === 'per_serving'}
-			<label class="mb-3 block"><span class="label">Serving size (g)</span><input class="field tabular" type="number" inputmode="decimal" min="1" bind:value={draft.serving_grams} /></label>
+			<Field label="Serving size" suffix="g" class="mb-3" type="number" inputmode="decimal" min="1" bind:value={draft.serving_grams} />
 		{/if}
 		<div class="grid grid-cols-2 gap-3">
 			{#each FIELDS as f (f.key)}
-				<label class="block">
-					<span class="label">{f.label} <span class="font-normal text-muted">({f.unit})</span></span>
-					<input class="field tabular" type="number" inputmode="decimal" min="0" step="any" bind:value={draft.nutrients[f.key]} required={f.key === 'kcal'} />
-				</label>
+				<Field
+					label={f.label}
+					dot={f.dot}
+					suffix={f.unit}
+					type="number"
+					inputmode="decimal"
+					min="0"
+					step="any"
+					bind:value={draft.nutrients[f.key]}
+					required={f.key === 'kcal'}
+				/>
 			{/each}
 		</div>
 	</div>
 
 	<div>
-		<span class="label">Servings</span>
+		<span class="mk-section-label">Servings</span>
 		<div class="space-y-2">
 			{#each draft.servings as s, i (i)}
-				<div class="flex items-center gap-2">
-					<input class="field min-w-0 flex-1" bind:value={s.label} placeholder="tub, bowl, slice" aria-label="Serving name" />
-					<input class="field tabular w-24" type="number" inputmode="decimal" min="1" bind:value={s.grams} aria-label="Grams" />
-					<span class="text-[13px] text-muted">g</span>
+				<div class="flex items-center gap-1.5">
+					<span class="bh-field__box min-w-0 flex-1">
+						<input class="bh-field__input" bind:value={s.label} placeholder="tub, bowl, slice" aria-label="Serving name" />
+					</span>
+					<span class="bh-field__box w-24">
+						<input class="bh-field__input bh-num" type="number" inputmode="decimal" min="1" bind:value={s.grams} aria-label="Grams" />
+						<span class="bh-field__affix">g</span>
+					</span>
 					<button
-						class="grid h-11 w-11 shrink-0 place-items-center rounded-full {s.default ? 'text-ink' : 'text-muted'}"
+						class="bh-btn bh-btn--ghost bh-btn--sm bh-btn--icon shrink-0 {s.default ? 'text-ink' : 'text-ink-muted'}"
 						aria-label={s.default ? 'Default serving' : 'Make default'}
 						aria-pressed={s.default}
 						title="Default serving"
 						onclick={() => setDefault(i)}
 					>
-						<svg width="18" height="18" viewBox="0 0 24 24" fill={s.default ? 'currentColor' : 'none'} stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z" /></svg>
+						<Icon name="star" size={18} filled={s.default} />
 					</button>
-					<button class="grid h-11 w-11 shrink-0 place-items-center rounded-full text-muted hover:bg-wash" aria-label="Remove serving" onclick={() => removeServing(i)}>
-						<svg width="14" height="14" viewBox="0 0 16 16" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 4l8 8M12 4l-8 8" /></svg>
+					<button class="bh-btn bh-btn--ghost bh-btn--sm bh-btn--icon shrink-0 text-ink-muted" aria-label="Remove serving" onclick={() => removeServing(i)}>
+						<Icon name="close" size={16} />
 					</button>
 				</div>
 			{/each}
 		</div>
-		<button class="btn btn-ghost mt-2 min-h-10 text-sm" onclick={addServing}>Add serving</button>
+		<button class="bh-btn bh-btn--ghost bh-btn--sm -ml-3 mt-2" onclick={addServing}><Icon name="plus" size={18} />Add serving</button>
 	</div>
 </div>

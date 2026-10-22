@@ -1,5 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import Field from '#lib/burrow/Field.svelte';
+	import World from '#lib/burrow/World.svelte';
 	import { get, post } from '#lib/api.ts';
 	import { session, toasts } from '#lib/state.svelte.ts';
 	import { onMount } from 'svelte';
@@ -29,36 +31,37 @@
 
 <svelte:head><title>Sign in · makan</title></svelte:head>
 
-<main class="mx-auto flex min-h-dvh max-w-sm flex-col justify-center px-6 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
-	<img src="/icons/icon.svg" alt="" class="mb-6 h-16 w-16" />
-	<h1 class="text-3xl font-semibold tracking-tight">makan</h1>
-	<p class="mt-1 text-ink-2">Calories and macros for the two of us.</p>
+<main class="mx-auto flex min-h-dvh max-w-md flex-col justify-center px-4 pt-[env(safe-area-inset-top)] pb-[max(24px,env(safe-area-inset-bottom))]">
+	<!-- the whole household: Kacang's oak, Gali's burrow, Bao's sunflowers, Kayu's river -->
+	<World />
+	<h1 class="mt-6 font-[family-name:var(--font-display)] text-[40px] leading-[44px] font-semibold">makan</h1>
+	<p class="body mt-1 text-ink-muted">Calories and macros for the two of us.</p>
 
-	<div class="mt-10 space-y-3">
+	<div class="mt-8 space-y-3">
 		{#if config?.oidc}
-			<a href="/auth/login" data-sveltekit-reload class="btn btn-primary w-full">Sign in with Pocket ID</a>
+			<a href="/auth/login" data-sveltekit-reload class="bh-btn bh-btn--primary w-full">Sign in with Pocket ID</a>
 		{/if}
 		{#if config?.dev}
-			<div class="card space-y-3 p-4">
-				<p class="text-[13px] font-semibold text-ink-2">Development sign-in</p>
+			<div class="bh-card space-y-3">
+				<p class="label text-ink-muted">Development sign-in</p>
 				<div class="flex gap-2">
-					<button class="btn btn-ghost flex-1" disabled={busy} onclick={() => devLogin('Alice')}>Alice</button>
-					<button class="btn btn-ghost flex-1" disabled={busy} onclick={() => devLogin('Bob')}>Bob</button>
+					<button class="bh-btn bh-btn--secondary flex-1" disabled={busy} onclick={() => devLogin('Alice')}>Alice</button>
+					<button class="bh-btn bh-btn--secondary flex-1" disabled={busy} onclick={() => devLogin('Bob')}>Bob</button>
 				</div>
 				<form
-					class="flex gap-2"
+					class="flex items-end gap-2"
 					onsubmit={(e) => {
 						e.preventDefault();
 						devLogin(name);
 					}}
 				>
-					<input class="field" bind:value={name} placeholder="Or any name" aria-label="Name" />
-					<button class="btn btn-primary" disabled={busy || !name.trim()}>Go</button>
+					<Field label="Or any name" class="min-w-0 flex-1" bind:value={name} placeholder="e.g. Sam" />
+					<button class="bh-btn bh-btn--primary" disabled={busy || !name.trim()}>Go</button>
 				</form>
 			</div>
 		{/if}
 		{#if config && !config.oidc && !config.dev}
-			<p class="text-sm text-critical-text">No sign-in method is configured on the server.</p>
+			<p class="small font-semibold text-tomato-text">No sign-in method is configured on the server.</p>
 		{/if}
 	</div>
 </main>

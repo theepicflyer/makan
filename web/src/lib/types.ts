@@ -1,3 +1,5 @@
+import type { TraceName } from './burrow/art.js';
+
 export type Meal = 'breakfast' | 'lunch' | 'dinner' | 'snacks';
 export const MEALS: Meal[] = ['breakfast', 'lunch', 'dinner', 'snacks'];
 export const MEAL_LABEL: Record<Meal, string> = {
@@ -6,6 +8,12 @@ export const MEAL_LABEL: Record<Meal, string> = {
 	dinner: 'Dinner',
 	snacks: 'Snacks'
 };
+
+/** The Burrow trace on each meal's list tiles: toast crumbs, a seed, a berry, a sunflower. */
+export const MEAL_TRACE = { breakfast: 'crumbs', lunch: 'seed', dinner: 'berry', snacks: 'sunflower' } as const satisfies Record<
+	Meal,
+	TraceName
+>;
 
 export type NutrientKey =
 	| 'kcal'

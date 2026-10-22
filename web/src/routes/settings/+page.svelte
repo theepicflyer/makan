@@ -1,5 +1,9 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import Field from '#lib/burrow/Field.svelte';
+	import Habitat from '#lib/burrow/Habitat.svelte';
+	import Icon from '#lib/burrow/Icon.svelte';
+	import TrailPath from '#lib/burrow/TrailPath.svelte';
 	import { get, patch, post } from '#lib/api.ts';
 	import type { Me, Usage } from '#lib/types.ts';
 	import { session, toasts } from '#lib/state.svelte.ts';
@@ -45,7 +49,7 @@
 					fat_g: num(targets.fat_g)
 				}
 			});
-			toasts.show('Saved');
+			toasts.show('Targets saved', { character: 'kayu' });
 		} catch (err) {
 			toasts.error((err as Error).message);
 		} finally {
@@ -69,58 +73,63 @@
 
 <svelte:head><title>Settings · makan</title></svelte:head>
 
-<h1 class="mb-4 pt-1 text-2xl font-semibold tracking-tight">Settings</h1>
+<Habitat kind="river" mood={busy ? 'busy' : 'happy'} class="mk-top">
+	<p class="small text-ink-muted">Signed in as {session.me?.name}</p>
+	<h1 class="page-title">Settings</h1>
+</Habitat>
 
-<div class="space-y-4">
-	<section class="card space-y-4 p-4">
-		<label class="block"><span class="label">Your name</span><input class="field" bind:value={name} /></label>
-		<div>
-			<h2 class="label">Daily targets</h2>
+<div class="mk-page">
+	<!-- Kayu's wood chips wind down from the river behind the cards -->
+	<TrailPath kind="chips" from={0.6} to={0.5} seed={4} class="grid gap-9 pt-9">
+		<section class="bh-card grid gap-4" aria-labelledby="targets-title">
+			<header class="bh-card__head mb-0"><h2 id="targets-title" class="bh-card__title">You and your targets</h2></header>
+			<Field label="Your name" bind:value={name} />
 			<div class="grid grid-cols-2 gap-3">
-				<label class="block"><span class="label font-normal">Calories (kcal)</span><input class="field tabular" type="number" inputmode="numeric" min="0" bind:value={targets.kcal} /></label>
-				<label class="block"><span class="label font-normal"><span class="mr-1 inline-block h-2 w-2 rounded-full bg-protein"></span>Protein (g)</span><input class="field tabular" type="number" inputmode="numeric" min="0" bind:value={targets.protein_g} /></label>
-				<label class="block"><span class="label font-normal"><span class="mr-1 inline-block h-2 w-2 rounded-full bg-carb"></span>Carbs (g)</span><input class="field tabular" type="number" inputmode="numeric" min="0" bind:value={targets.carb_g} /></label>
-				<label class="block"><span class="label font-normal"><span class="mr-1 inline-block h-2 w-2 rounded-full bg-fat"></span>Fat (g)</span><input class="field tabular" type="number" inputmode="numeric" min="0" bind:value={targets.fat_g} /></label>
+				<Field label="Calories" suffix="kcal" type="number" inputmode="numeric" min="0" bind:value={targets.kcal} />
+				<Field label="Protein" dot="protein" suffix="g" type="number" inputmode="numeric" min="0" bind:value={targets.protein_g} />
+				<Field label="Carbs" dot="carbs" suffix="g" type="number" inputmode="numeric" min="0" bind:value={targets.carb_g} />
+				<Field label="Fat" dot="fat" suffix="g" type="number" inputmode="numeric" min="0" bind:value={targets.fat_g} />
 			</div>
 			{#if macroKcal > 0}
-				<p class="mt-2 text-[13px] text-muted">These macros add up to about {Math.round(macroKcal).toLocaleString('en-SG')} kcal.</p>
+				<p class="small text-ink-muted">These macros add up to about {Math.round(macroKcal).toLocaleString('en-SG')} kcal.</p>
 			{/if}
-		</div>
-		<button class="btn btn-primary w-full" onclick={save} disabled={busy}>Save</button>
-	</section>
+			<button class="bh-btn bh-btn--primary w-full" onclick={save} disabled={busy}>Save targets</button>
+		</section>
 
-	<section class="card p-4">
-		<h2 class="text-[15px] font-semibold">Assistant usage</h2>
-		{#if usage}
-			<p class="mt-1 text-[14px] text-ink-2">
-				<span class="text-xl font-semibold text-ink">${usage.month_usd < 1 ? usage.month_usd.toFixed(3) : usage.month_usd.toFixed(2)}</span> this month across {usage.turns} message{usage.turns === 1 ? '' : 's'}
-			</p>
-			<p class="mt-0.5 text-[13px] text-muted">Model: {usage.model}</p>
-		{:else}
-			<p class="mt-1 text-[14px] text-muted">–</p>
-		{/if}
-	</section>
-
-	<section class="card space-y-3 p-4 text-[13px] text-ink-2">
-		<h2 class="text-[15px] font-semibold text-ink">Data sources</h2>
-		<div>
-			<p class="font-medium text-ink">Singapore Food Insights Database (SG FoodID)</p>
-			<p class="mt-1 rounded-xl bg-wash px-3 py-2 leading-relaxed">{sgNotice}</p>
-			{#if sg?.items}<p class="mt-1 text-muted">{str(sg.items)} items · Health Promotion Board, Singapore</p>{/if}
-		</div>
-		<div>
-			<p class="font-medium text-ink">USDA FoodData Central</p>
-			<p class="mt-1 leading-relaxed">
-				{str(usda?.attribution) || 'U.S. Department of Agriculture, Agricultural Research Service. FoodData Central. fdc.nal.usda.gov.'}
-			</p>
-			{#if usda}
-				<p class="mt-1 text-muted">
-					{usda.items ? `${str(usda.items)} items` : ''}{usda.licence ? ` · ${str(usda.licence)}` : ''}{usda.accessed ? ` · accessed ${str(usda.accessed)}` : ''}
+		<section class="bh-card" aria-labelledby="usage-title">
+			<header class="bh-card__head mb-1"><h2 id="usage-title" class="bh-card__title">Assistant usage</h2></header>
+			{#if usage}
+				<p class="body text-ink-muted">
+					<span class="card-title bh-num text-ink">${usage.month_usd < 1 ? usage.month_usd.toFixed(3) : usage.month_usd.toFixed(2)}</span>
+					this month across {usage.turns} message{usage.turns === 1 ? '' : 's'}
 				</p>
+				<p class="small mt-1 text-ink-muted">Model: {usage.model}</p>
+			{:else}
+				<p class="body text-ink-muted">–</p>
 			{/if}
-		</div>
-		<p class="text-muted">Nutrition values are estimates. They are not medical advice.</p>
-	</section>
+		</section>
 
-	<button class="btn btn-ghost w-full" onclick={logout}>Sign out</button>
+		<section class="bh-card small space-y-3 text-ink-muted" aria-labelledby="sources-title">
+			<h2 id="sources-title" class="bh-card__title">Data sources</h2>
+			<div>
+				<p class="body-strong text-ink">Singapore Food Insights Database (SG FoodID)</p>
+				<p class="mk-well mt-1 leading-relaxed">{sgNotice}</p>
+				{#if sg?.items}<p class="mt-1">{str(sg.items)} items · Health Promotion Board, Singapore</p>{/if}
+			</div>
+			<div>
+				<p class="body-strong text-ink">USDA FoodData Central</p>
+				<p class="mt-1 leading-relaxed">
+					{str(usda?.attribution) || 'U.S. Department of Agriculture, Agricultural Research Service. FoodData Central. fdc.nal.usda.gov.'}
+				</p>
+				{#if usda}
+					<p class="mt-1">
+						{usda.items ? `${str(usda.items)} items` : ''}{usda.licence ? ` · ${str(usda.licence)}` : ''}{usda.accessed ? ` · accessed ${str(usda.accessed)}` : ''}
+					</p>
+				{/if}
+			</div>
+			<p>Nutrition values are estimates. They are not medical advice.</p>
+		</section>
+
+		<button class="bh-btn bh-btn--secondary w-full" onclick={logout}><Icon name="sign-out" size={18} />Sign out</button>
+	</TrailPath>
 </div>
