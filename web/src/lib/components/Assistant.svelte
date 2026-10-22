@@ -1,4 +1,5 @@
 <script lang="ts">
+	import NutrientIcon from './NutrientIcon.svelte';
 	import Sheet from './Sheet.svelte';
 	import Icon from '../burrow/Icon.svelte';
 	import Loader from '../burrow/Loader.svelte';
@@ -310,7 +311,7 @@
 										<span class="w-16 shrink-0 text-ink-muted">{changeLabel(c)}</span>
 										<span class="min-w-0 flex-1 truncate">{c.name ?? '–'}</span>
 										{#if c.table === 'entries' && c.kcal != null}
-											<span class="bh-num shrink-0 font-semibold">{kcal(c.kcal)}</span>
+											<span class="bh-num shrink-0 font-semibold"><NutrientIcon kind="energy" labelled />{kcal(c.kcal)}</span>
 										{/if}
 									</li>
 								{/each}

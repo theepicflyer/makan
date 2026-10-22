@@ -1,4 +1,5 @@
 <script lang="ts">
+	import NutrientIcon from '#lib/components/NutrientIcon.svelte';
 	import SourceBadge from '#lib/components/SourceBadge.svelte';
 	import EmptyState from '#lib/burrow/EmptyState.svelte';
 	import Habitat from '#lib/burrow/Habitat.svelte';
@@ -55,7 +56,7 @@
 			<span class="bh-row__text">
 				<span class="bh-row__title">{food.name}</span>
 				<span class="bh-row__sub truncate">
-					{food.brand ? `${food.brand} · ` : ''}{servingKcal(food)}{food.aliases.length ? ` · “${food.aliases.join('”, “')}”` : ''}
+					{food.brand ? `${food.brand} · ` : ''}<NutrientIcon kind="energy" />{servingKcal(food)}{food.aliases.length ? ` · “${food.aliases.join('”, “')}”` : ''}
 				</span>
 			</span>
 			<SourceBadge source={food.source} />

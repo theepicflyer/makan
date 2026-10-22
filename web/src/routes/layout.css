@@ -25,6 +25,8 @@
 
 :root {
 	--scrim: rgba(43, 34, 64, 0.4);
+	/* energy's colour beside Burrow's protein, carbs and fat: the flame in makan's tomato */
+	--energy: var(--tomato);
 	/* the floating nav: 54px items + 12px padding + 4px outline */
 	--nav-h: 70px;
 	--nav-gap: 12px;
@@ -255,14 +257,25 @@ textarea {
 		text-decoration: underline;
 	}
 
-	.mk-dot {
+	/* NutrientIcon: the flame, drumstick, wheat and drop that mark energy, protein, carbs and fat */
+	.mk-nutrient {
 		display: inline-block;
-		width: 10px;
-		height: 10px;
-		margin-right: 6px;
-		border-radius: 50%;
-		border: 1.5px solid var(--outline);
-		vertical-align: -1px;
+		flex: none;
+		margin-right: 0.25em;
+		vertical-align: -0.22em;
+	}
+
+	/* MacroAmounts: protein, carbs and fat after their symbols, inline so it sits in a line of text */
+	.mk-macros > span {
+		white-space: nowrap;
+	}
+
+	.mk-macros > span + span {
+		margin-left: 0.5em;
+	}
+
+	.mk-macros .mk-nutrient {
+		margin-right: 0.1em;
 	}
 
 	/* A well: tracks, previews and notes sunk into a card. */

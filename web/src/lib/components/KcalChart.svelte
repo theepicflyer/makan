@@ -1,5 +1,6 @@
 <script lang="ts">
 	import BarChart from './BarChart.svelte';
+	import NutrientIcon from './NutrientIcon.svelte';
 	import type { HistoryDay } from '../types.ts';
 	import { kcal } from '../format.ts';
 	import { dayAria, dayAxisLabel, shortDate } from '../history.ts';
@@ -62,11 +63,11 @@
 		{@const d = days[i]}
 		<div class="text-ink-muted">{shortDate(d.date)}</div>
 		{#if d.entries}
-			<div class="body-strong bh-num">{kcal(d.kcal)} kcal</div>
+			<div class="body-strong bh-num"><NutrientIcon kind="energy" />{kcal(d.kcal)} kcal</div>
 			<div class="bh-num mt-1 space-y-0.5 text-ink-muted">
-				<div><span class="mk-dot" style="background: var(--protein)"></span><b class="text-ink">{Math.round(d.protein_g ?? 0)} g</b> protein</div>
-				<div><span class="mk-dot" style="background: var(--carbs)"></span><b class="text-ink">{Math.round(d.carb_g ?? 0)} g</b> carbs</div>
-				<div><span class="mk-dot" style="background: var(--fat)"></span><b class="text-ink">{Math.round(d.fat_g ?? 0)} g</b> fat</div>
+				<div><NutrientIcon kind="protein" /><b class="text-ink">{Math.round(d.protein_g ?? 0)} g</b> protein</div>
+				<div><NutrientIcon kind="carbs" /><b class="text-ink">{Math.round(d.carb_g ?? 0)} g</b> carbs</div>
+				<div><NutrientIcon kind="fat" /><b class="text-ink">{Math.round(d.fat_g ?? 0)} g</b> fat</div>
 			</div>
 		{:else}
 			<div class="body-strong">Not logged</div>

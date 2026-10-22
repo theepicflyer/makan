@@ -1,17 +1,18 @@
 <script lang="ts">
 	import Field from '../burrow/Field.svelte';
 	import Icon from '../burrow/Icon.svelte';
+	import { NUTRIENT_OF } from './NutrientIcon.svelte';
 	import type { FoodDraft, NutrientKey } from '../types.ts';
 
 	let { draft = $bindable() }: { draft: FoodDraft } = $props();
 
 	let aliasInput = $state('');
 
-	const FIELDS: { key: NutrientKey; label: string; unit: string; dot?: string }[] = [
+	const FIELDS: { key: NutrientKey; label: string; unit: string }[] = [
 		{ key: 'kcal', label: 'Calories', unit: 'kcal' },
-		{ key: 'protein_g', label: 'Protein', unit: 'g', dot: 'protein' },
-		{ key: 'carb_g', label: 'Carbs', unit: 'g', dot: 'carbs' },
-		{ key: 'fat_g', label: 'Fat', unit: 'g', dot: 'fat' },
+		{ key: 'protein_g', label: 'Protein', unit: 'g' },
+		{ key: 'carb_g', label: 'Carbs', unit: 'g' },
+		{ key: 'fat_g', label: 'Fat', unit: 'g' },
 		{ key: 'fibre_g', label: 'Fibre', unit: 'g' },
 		{ key: 'sugar_g', label: 'Sugar', unit: 'g' },
 		{ key: 'sodium_mg', label: 'Sodium', unit: 'mg' },
@@ -121,7 +122,7 @@
 			{#each FIELDS as f (f.key)}
 				<Field
 					label={f.label}
-					dot={f.dot}
+					nutrient={NUTRIENT_OF[f.key]}
 					suffix={f.unit}
 					type="number"
 					inputmode="decimal"

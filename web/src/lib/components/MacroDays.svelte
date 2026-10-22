@@ -1,5 +1,6 @@
 <script lang="ts">
 	import BarChart from './BarChart.svelte';
+	import NutrientIcon from './NutrientIcon.svelte';
 	import type { HistoryDay, Targets } from '../types.ts';
 	import { grams } from '../format.ts';
 	import { dayAxisLabel, loggedAverage, shortDate } from '../history.ts';
@@ -11,9 +12,9 @@
 	let active = $state<number | null>(null);
 
 	const MACROS = [
-		{ key: 'protein_g', label: 'Protein', color: 'var(--protein)', target: () => targets.protein_g },
-		{ key: 'carb_g', label: 'Carbs', color: 'var(--carbs)', target: () => targets.carb_g },
-		{ key: 'fat_g', label: 'Fat', color: 'var(--fat)', target: () => targets.fat_g }
+		{ key: 'protein_g', kind: 'protein', label: 'Protein', color: 'var(--protein)', target: () => targets.protein_g },
+		{ key: 'carb_g', kind: 'carbs', label: 'Carbs', color: 'var(--carbs)', target: () => targets.carb_g },
+		{ key: 'fat_g', kind: 'fat', label: 'Fat', color: 'var(--fat)', target: () => targets.fat_g }
 	] as const;
 
 	const axis = $derived(days.map((d) => dayAxisLabel(d.date, days.length)));
@@ -31,7 +32,7 @@
 			{@const last = k === MACROS.length - 1}
 			<div>
 				<div class="flex items-baseline justify-between gap-2 px-1">
-					<span class="label"><span class="mk-dot" style="background: {m.color}"></span>{m.label}</span>
+					<span class="label"><NutrientIcon kind={m.kind} size={14} />{m.label}</span>
 					<span class="small bh-num text-ink-muted">
 						{#if day}
 							<b class="text-ink">{day.entries ? `${grams(day[m.key])} g` : 'Not logged'}</b>

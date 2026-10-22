@@ -1,7 +1,8 @@
 <script lang="ts">
 	import type { HTMLInputAttributes } from 'svelte/elements';
+	import NutrientIcon, { type Nutrient } from '../components/NutrientIcon.svelte';
 
-	/* Burrow's labelled input. `dot` names a colour token shown before the label (macro fields). */
+	/* Burrow's labelled input. `nutrient` puts makan's symbol for it before the label (calorie and macro fields). */
 	let {
 		label,
 		value = $bindable(),
@@ -9,7 +10,7 @@
 		suffix,
 		hint,
 		error,
-		dot,
+		nutrient,
 		class: cls = '',
 		...rest
 	}: {
@@ -19,14 +20,14 @@
 		suffix?: string;
 		hint?: string;
 		error?: string;
-		dot?: string;
+		nutrient?: Nutrient;
 		class?: string;
 	} & Omit<HTMLInputAttributes, 'value' | 'prefix' | 'class'> = $props();
 </script>
 
 <label class="bh-field {error ? 'has-error' : ''} {cls}">
 	<span class="bh-field__label">
-		{#if dot}<span class="mk-dot" style="background: var(--{dot})"></span>{/if}{label}
+		{#if nutrient}<NutrientIcon kind={nutrient} size={14} />{/if}{label}
 	</span>
 	<span class="bh-field__box">
 		{#if prefix}<span class="bh-field__affix">{prefix}</span>{/if}

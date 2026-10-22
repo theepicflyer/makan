@@ -1,5 +1,6 @@
 <script lang="ts">
 	import BarChart from './BarChart.svelte';
+	import NutrientIcon from './NutrientIcon.svelte';
 	import type { HistoryDay } from '../types.ts';
 	import { kcal } from '../format.ts';
 	import { weekdayKcal } from '../history.ts';
@@ -31,7 +32,7 @@
 			{@const w = week[i]}
 			<div class="text-ink-muted">{w.name}s</div>
 			{#if w.avg != null}
-				<div class="body-strong bh-num">{kcal(w.avg)} kcal</div>
+				<div class="body-strong bh-num"><NutrientIcon kind="energy" />{kcal(w.avg)} kcal</div>
 				<div class="text-ink-muted">average of {w.count} day{w.count === 1 ? '' : 's'}</div>
 			{:else}
 				<div class="body-strong">Not logged</div>

@@ -2,6 +2,7 @@
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import FoodForm from '#lib/components/FoodForm.svelte';
+	import NutrientIcon, { NUTRIENT_OF } from '#lib/components/NutrientIcon.svelte';
 	import SourceBadge from '#lib/components/SourceBadge.svelte';
 	import PortionPicker from '#lib/components/PortionPicker.svelte';
 	import Breadcrumbs from '#lib/burrow/Breadcrumbs.svelte';
@@ -136,8 +137,12 @@
 				<table class="body w-full">
 					<tbody>
 						{#each ROWS as r (r.key)}
+							{@const symbol = NUTRIENT_OF[r.key]}
 							<tr class="border-b border-line last:border-0">
-								<th scope="row" class="py-2.5 text-left font-normal text-ink-muted">{r.label}</th>
+								<!-- the symbol's slot is kept on every row so the names line up -->
+								<th scope="row" class="py-2.5 text-left font-normal text-ink-muted">
+									<span class="inline-block w-[22px]">{#if symbol}<NutrientIcon kind={symbol} />{/if}</span>{r.label}
+								</th>
 								<td class="bh-num py-2.5 text-right font-semibold">
 									{food.per_100g[r.key] == null ? '–' : `${Math.round((food.per_100g[r.key] ?? 0) * 10) / 10} ${r.unit}`}
 								</td>

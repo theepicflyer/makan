@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import Icon from '../burrow/Icon.svelte';
+	import NutrientIcon, { NUTRIENT_OF } from './NutrientIcon.svelte';
 	import type { HistoryDay, NutrientKey, Targets } from '../types.ts';
 	import { dayLabel, grams, kcal } from '../format.ts';
 	import { loggedAverage } from '../history.ts';
@@ -9,13 +10,13 @@
 	let { days, targets, today }: { days: HistoryDay[]; targets: Targets; today: string } = $props();
 
 	type Col = 'date' | 'delta' | 'entries' | NutrientKey;
-	const COLUMNS: { key: Col; label: string; dot?: string }[] = [
+	const COLUMNS: { key: Col; label: string }[] = [
 		{ key: 'date', label: 'Day' },
 		{ key: 'kcal', label: 'Calories' },
 		{ key: 'delta', label: 'vs target' },
-		{ key: 'protein_g', label: 'Protein', dot: 'protein' },
-		{ key: 'carb_g', label: 'Carbs', dot: 'carbs' },
-		{ key: 'fat_g', label: 'Fat', dot: 'fat' },
+		{ key: 'protein_g', label: 'Protein' },
+		{ key: 'carb_g', label: 'Carbs' },
+		{ key: 'fat_g', label: 'Fat' },
 		{ key: 'fibre_g', label: 'Fibre' },
 		{ key: 'sugar_g', label: 'Sugar' },
 		{ key: 'sodium_mg', label: 'Sodium' },
@@ -92,9 +93,10 @@
 			<thead>
 				<tr>
 					{#each columns as c (c.key)}
+						{@const symbol = NUTRIENT_OF[c.key as NutrientKey]}
 						<th scope="col" aria-sort={sortKey === c.key ? (desc ? 'descending' : 'ascending') : undefined}>
 							<button class="mk-sort" aria-pressed={sortKey === c.key} onclick={() => sortBy(c.key)}>
-								{#if c.dot}<span class="mk-dot" style="background: var(--{c.dot})"></span>{/if}{c.label}{#if UNIT[c.key]}<span class="font-normal">&nbsp;{UNIT[c.key]}</span>{/if}
+								{#if symbol}<NutrientIcon kind={symbol} size={14} />{/if}{c.label}{#if UNIT[c.key]}<span class="font-normal">&nbsp;{UNIT[c.key]}</span>{/if}
 								{#if sortKey === c.key}<Icon name={desc ? 'arrow-down' : 'arrow-up'} size={14} />{/if}
 							</button>
 						</th>

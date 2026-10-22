@@ -4,7 +4,9 @@
 	import DayTable from '#lib/components/DayTable.svelte';
 	import KcalChart from '#lib/components/KcalChart.svelte';
 	import MacroDays from '#lib/components/MacroDays.svelte';
+	import MacroAmounts from '#lib/components/MacroAmounts.svelte';
 	import MacrosCard from '#lib/components/MacrosCard.svelte';
+	import NutrientIcon, { type Nutrient } from '#lib/components/NutrientIcon.svelte';
 	import WeekdayCard from '#lib/components/WeekdayCard.svelte';
 	import Habitat from '#lib/burrow/Habitat.svelte';
 	import Icon from '#lib/burrow/Icon.svelte';
@@ -76,9 +78,9 @@
 
 <svelte:head><title>History · makan</title></svelte:head>
 
-{#snippet tile(label: string, value: string, of?: string, note?: string)}
+{#snippet tile(label: string, value: string, of?: string, note?: string, nutrient?: Nutrient)}
 	<div>
-		<div class="label text-ink-muted">{label}</div>
+		<div class="label text-ink-muted">{#if nutrient}<NutrientIcon kind={nutrient} size={14} />{/if}{label}</div>
 		<div class="card-title bh-num mt-1">{value}{#if of}<span class="small text-ink-muted">{` / ${of}`}</span>{/if}</div>
 		{#if note}<div class="small text-ink-muted">{note}</div>{/if}
 	</div>
@@ -115,10 +117,10 @@
 {#snippet split()}
 	<!-- the share of calories from each macro (4, 4 and 9 kcal a gram), against the split the targets make -->
 	{@const parts = [
-		{ label: 'Protein', color: 'var(--protein)', kcal: avg('protein_g') * 4, target: (data?.targets.protein_g ?? 0) * 4 },
-		{ label: 'Carbs', color: 'var(--carbs)', kcal: avg('carb_g') * 4, target: (data?.targets.carb_g ?? 0) * 4 },
-		{ label: 'Fat', color: 'var(--fat)', kcal: avg('fat_g') * 9, target: (data?.targets.fat_g ?? 0) * 9 }
-	]}
+		{ kind: 'protein', label: 'Protein', color: 'var(--protein)', kcal: avg('protein_g') * 4, target: (data?.targets.protein_g ?? 0) * 4 },
+		{ kind: 'carbs', label: 'Carbs', color: 'var(--carbs)', kcal: avg('carb_g') * 4, target: (data?.targets.carb_g ?? 0) * 4 },
+		{ kind: 'fat', label: 'Fat', color: 'var(--fat)', kcal: avg('fat_g') * 9, target: (data?.targets.fat_g ?? 0) * 9 }
+	] as const}
 	{@const total = parts.reduce((s, p) => s + p.kcal, 0)}
 	{@const targetTotal = parts.reduce((s, p) => s + p.target, 0)}
 	<section class="bh-card" aria-labelledby="split-title">
@@ -134,7 +136,7 @@
 			<div class="mt-3 grid grid-cols-3 gap-2">
 				{#each parts as p (p.label)}
 					<div>
-						<div class="label"><span class="mk-dot" style="background: {p.color}"></span>{p.label}</div>
+						<div class="label"><NutrientIcon kind={p.kind} size={14} />{p.label}</div>
 						<div class="body-strong bh-num mt-0.5">{Math.round((p.kcal / total) * 100)}%</div>
 						{#if targetTotal > 0}<div class="small bh-num text-ink-muted">target {Math.round((p.target / targetTotal) * 100)}%</div>{/if}
 					</div>
@@ -180,7 +182,7 @@
 		<div class="transition-opacity {loading ? 'opacity-50' : ''}">
 			<TrailPath kind="footprints" from={0.3} to={0.5} seed={2} class="grid grid-cols-12 gap-9 py-9">
 				<section class="bh-card col-span-12 grid grid-cols-4 gap-6" aria-label="Summary">
-					{@render tile('Average calories', logged.length ? kcal(avg('kcal')) : '–', undefined, 'kcal a day, logged days')}
+					{@render tile('Average calories', logged.length ? kcal(avg('kcal')) : '–', undefined, 'kcal a day, logged days', 'energy')}
 					{#if avgDelta != null}
 						{@render tile(
 							'Against your target',
@@ -213,7 +215,7 @@
 			<!-- Gali's footprints wind down behind the cards and into the tunnel -->
 			<TrailPath kind="footprints" from={0.62} toPx={32} seed={2} class="grid gap-9 py-9">
 				<section class="bh-card grid grid-cols-3 gap-3" aria-label="Summary">
-					{@render tile('Avg kcal', logged.length ? kcal(avg('kcal')) : '–', undefined, 'logged days')}
+					{@render tile('Avg kcal', logged.length ? kcal(avg('kcal')) : '–', undefined, 'logged days', 'energy')}
 					{@render tile('Days logged', `${logged.length}`, `${range}`)}
 					{@render tile('At or under', onTarget != null ? `${onTarget}` : '–', onTarget != null ? `${logged.length}` : undefined, 'target')}
 				</section>
@@ -233,11 +235,7 @@
 					>
 						<a href="/day/{d.date}" class="bh-card block py-3 no-underline hover:bg-surface-sunk">
 							{#if d.entries}
-								<span class="small bh-num flex flex-wrap gap-x-3 text-ink-muted">
-									<span><span class="mk-dot" style="background: var(--protein)"></span>P {Math.round(d.protein_g ?? 0)} g</span>
-									<span><span class="mk-dot" style="background: var(--carbs)"></span>C {Math.round(d.carb_g ?? 0)} g</span>
-									<span><span class="mk-dot" style="background: var(--fat)"></span>F {Math.round(d.fat_g ?? 0)} g</span>
-								</span>
+								<span class="small block text-ink-muted"><MacroAmounts protein={d.protein_g} carbs={d.carb_g} fat={d.fat_g} unit=" g" /></span>
 								<span class="small mt-1 flex items-center gap-1 font-semibold text-sky-text">
 									{d.entries} item{d.entries === 1 ? '' : 's'}<Icon name="chevron-right" size={16} />
 								</span>

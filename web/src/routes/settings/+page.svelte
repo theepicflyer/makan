@@ -83,10 +83,10 @@
 		<header class="bh-card__head mb-0"><h2 id="targets-title" class="bh-card__title">You and your targets</h2></header>
 		<Field label="Your name" bind:value={name} />
 		<div class="grid grid-cols-2 gap-3">
-			<Field label="Calories" suffix="kcal" type="number" inputmode="numeric" min="0" bind:value={targets.kcal} />
-			<Field label="Protein" dot="protein" suffix="g" type="number" inputmode="numeric" min="0" bind:value={targets.protein_g} />
-			<Field label="Carbs" dot="carbs" suffix="g" type="number" inputmode="numeric" min="0" bind:value={targets.carb_g} />
-			<Field label="Fat" dot="fat" suffix="g" type="number" inputmode="numeric" min="0" bind:value={targets.fat_g} />
+			<Field label="Calories" nutrient="energy" suffix="kcal" type="number" inputmode="numeric" min="0" bind:value={targets.kcal} />
+			<Field label="Protein" nutrient="protein" suffix="g" type="number" inputmode="numeric" min="0" bind:value={targets.protein_g} />
+			<Field label="Carbs" nutrient="carbs" suffix="g" type="number" inputmode="numeric" min="0" bind:value={targets.carb_g} />
+			<Field label="Fat" nutrient="fat" suffix="g" type="number" inputmode="numeric" min="0" bind:value={targets.fat_g} />
 		</div>
 		{#if macroKcal > 0}
 			<p class="small text-ink-muted">These macros add up to about {Math.round(macroKcal).toLocaleString('en-SG')} kcal.</p>

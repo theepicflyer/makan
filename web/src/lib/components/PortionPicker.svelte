@@ -1,4 +1,5 @@
 <script lang="ts">
+	import NutrientIcon from './NutrientIcon.svelte';
 	import Icon from '../burrow/Icon.svelte';
 	import Field from '../burrow/Field.svelte';
 	import type { Food, Portion } from '../types.ts';
@@ -67,13 +68,13 @@
 
 	<div class="mk-well">
 		<div class="flex items-baseline gap-1.5">
-			<span class="card-title bh-num">{kcal(n.kcal)}</span><span class="small">kcal</span>
+			<span class="card-title bh-num"><NutrientIcon kind="energy" size={20} />{kcal(n.kcal)}</span><span class="small">kcal</span>
 			<span class="small bh-num ml-auto text-ink-muted">{Math.round(totalGrams || 0)} g</span>
 		</div>
 		<div class="small bh-num mt-1 flex flex-wrap gap-x-4 text-ink-muted">
-			<span><span class="mk-dot" style="background: var(--protein)"></span>Protein {fmtG(n.protein_g)} g</span>
-			<span><span class="mk-dot" style="background: var(--carbs)"></span>Carbs {fmtG(n.carb_g)} g</span>
-			<span><span class="mk-dot" style="background: var(--fat)"></span>Fat {fmtG(n.fat_g)} g</span>
+			<span><NutrientIcon kind="protein" />Protein {fmtG(n.protein_g)} g</span>
+			<span><NutrientIcon kind="carbs" />Carbs {fmtG(n.carb_g)} g</span>
+			<span><NutrientIcon kind="fat" />Fat {fmtG(n.fat_g)} g</span>
 		</div>
 	</div>
 </div>
