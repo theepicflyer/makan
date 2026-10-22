@@ -1,7 +1,5 @@
 <script lang="ts">
-	import Meter from '../burrow/Meter.svelte';
 	import Ring from '../burrow/Ring.svelte';
-	import TrailGap from '../burrow/TrailGap.svelte';
 	import type { Nutrients, Targets } from '../types.ts';
 	import { kcal } from '../format.ts';
 
@@ -32,14 +30,3 @@
 		{/if}
 	</p>
 </div>
-
-<TrailGap kind="crumbs" from={0.5} to={0.14} height={44} />
-
-<section class="bh-card" aria-labelledby="macros-title">
-	<header class="bh-card__head"><h2 id="macros-title" class="bh-card__title">Macros</h2></header>
-	<div class="grid gap-3.5">
-		<Meter label="Protein" value={totals.protein_g ?? 0} max={targets.protein_g} color="protein" cap="sunflower" />
-		<Meter label="Carbs" value={totals.carb_g ?? 0} max={targets.carb_g} color="carbs" cap="sunflower" />
-		<Meter label="Fat" value={totals.fat_g ?? 0} max={targets.fat_g} color="fat" cap="sunflower" />
-	</div>
-</section>

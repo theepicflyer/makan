@@ -55,7 +55,7 @@
 		<Trace name="crumbs" size={26} class="bh-nibble__crumbs" />
 	</div>
 {:else}
-	<section class="bh-card {next ? '' : 'mk-card--quiet'}" aria-label={label}>
+	<section class="bh-card {next ? '' : 'mk-card--quiet'}" aria-label={label} data-trail-end={next || undefined}>
 		<div class="flex items-center gap-3">
 			<div class="min-w-0 flex-1">
 				<h2 class="bh-card__title">{label}</h2>

@@ -2,6 +2,7 @@
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import DaySummary from '#lib/components/DaySummary.svelte';
+	import MacrosCard from '#lib/components/MacrosCard.svelte';
 	import MealSection from '#lib/components/MealSection.svelte';
 	import EntrySheet from '#lib/components/EntrySheet.svelte';
 	import AddSheet from '#lib/components/AddSheet.svelte';
@@ -11,7 +12,7 @@
 	import Habitat from '#lib/burrow/Habitat.svelte';
 	import Icon from '#lib/burrow/Icon.svelte';
 	import Loader from '#lib/burrow/Loader.svelte';
-	import TrailGap from '#lib/burrow/TrailGap.svelte';
+	import TrailPath from '#lib/burrow/TrailPath.svelte';
 	import type { Mood } from '#lib/burrow/art.js';
 	import { get, post } from '#lib/api.ts';
 	import { addDays, dayLabel, daySubtitle, dayTitle } from '#lib/format.ts';
@@ -82,12 +83,6 @@
 		return MEALS.find((m, i) => i > last && !day?.meals[m]?.length) ?? null;
 	});
 
-	// Zigzag between the cards: from the end of one block to the start of the next.
-	const GAPS = [
-		[0.14, 0.86],
-		[0.86, 0.14]
-	] as const;
-
 	function startSave(meal: Meal) {
 		saveMeal = meal;
 		saveName = `Usual ${MEAL_LABEL[meal].toLowerCase()}`;
@@ -149,25 +144,27 @@
 		{:else if day}
 			<div class="transition-opacity {day.date !== date ? 'opacity-50' : ''}">
 				<DaySummary totals={day.totals} targets={day.targets} />
-				{#each MEALS as meal, i (meal)}
-					{@const ahead = next != null && MEALS.indexOf(next) < i}
-					<TrailGap kind="crumbs" from={GAPS[i % 2][0]} to={GAPS[i % 2][1]} height={40} done={ahead ? 0 : 1} fade={ahead ? 0.2 : 0.5} />
-					<MealSection
-						{meal}
-						entries={day.meals[meal] ?? []}
-						subtotal={day.meal_totals[meal]}
-						next={meal === next}
-						onadd={(m) => {
-							addMeal = m;
-							addOpen = true;
-						}}
-						onedit={(e) => {
-							editing = e;
-							editOpen = true;
-						}}
-						onsave={startSave}
-					/>
-				{/each}
+				<!-- Bao's crumbs wind down from the sunflower behind the cards, strongest up to the next meal -->
+				<TrailPath kind="crumbs" from={0.5} to={0.3} seed={1} class="grid gap-9 pt-9">
+					<MacrosCard protein={day.totals.protein_g ?? 0} carbs={day.totals.carb_g ?? 0} fat={day.totals.fat_g ?? 0} targets={day.targets} />
+					{#each MEALS as meal (meal)}
+						<MealSection
+							{meal}
+							entries={day.meals[meal] ?? []}
+							subtotal={day.meal_totals[meal]}
+							next={meal === next}
+							onadd={(m) => {
+								addMeal = m;
+								addOpen = true;
+							}}
+							onedit={(e) => {
+								editing = e;
+								editOpen = true;
+							}}
+							onsave={startSave}
+						/>
+					{/each}
+				</TrailPath>
 				<!-- room for the docked composer and Bao over it -->
 				<div class="h-16"></div>
 			</div>

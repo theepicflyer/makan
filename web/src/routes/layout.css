@@ -224,8 +224,27 @@ textarea {
 	/* Meals with nothing in them yet: a dashed outline instead of a floating card. */
 	.mk-card--quiet {
 		box-shadow: none;
-		background: transparent;
+		background: var(--paper); /* opaque, so the trail stays behind it */
 		border: 2px dashed var(--line);
+	}
+
+	/* TrailPath: the trail sits behind the cards it winds between. */
+	.mk-trailpath {
+		position: relative;
+		isolation: isolate;
+		/* as a grid, one column no wider than the page (a chart measuring itself can't push it out) */
+		grid-template-columns: minmax(0, 1fr);
+	}
+
+	.mk-trailpath__art {
+		position: absolute;
+		inset: 0;
+		z-index: -1;
+	}
+
+	/* a long trail draws in faster than Burrow's 70ms a step */
+	.mk-trailpath__art.bh-trail--animate .bh-trail__step {
+		animation-delay: calc(var(--i) * 16ms);
 	}
 
 	/* Bottom sheets */

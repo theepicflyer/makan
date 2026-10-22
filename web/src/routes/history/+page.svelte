@@ -1,10 +1,10 @@
 <script lang="ts">
 	import KcalChart from '#lib/components/KcalChart.svelte';
+	import MacrosCard from '#lib/components/MacrosCard.svelte';
 	import Habitat from '#lib/burrow/Habitat.svelte';
 	import Icon from '#lib/burrow/Icon.svelte';
 	import Loader from '#lib/burrow/Loader.svelte';
-	import Meter from '#lib/burrow/Meter.svelte';
-	import TrailGap from '#lib/burrow/TrailGap.svelte';
+	import TrailPath from '#lib/burrow/TrailPath.svelte';
 	import TunnelRow from '#lib/burrow/TunnelRow.svelte';
 	import { get } from '#lib/api.ts';
 	import { addDays, dayLabel, kcal, parseDate } from '#lib/format.ts';
@@ -58,54 +58,47 @@
 
 	{#if data}
 		<div class="transition-opacity {loading ? 'opacity-50' : ''}">
-			<TrailGap kind="footprints" from={0.12} to={0.5} height={40} />
-			<section class="bh-card grid grid-cols-3 gap-3" aria-label="Summary">
-				<div>
-					<div class="label text-ink-muted">Avg kcal</div>
-					<div class="card-title bh-num mt-1">{logged.length ? kcal(avg('kcal')) : '–'}</div>
-					<div class="small text-ink-muted">logged days</div>
-				</div>
-				<div>
-					<div class="label text-ink-muted">Days logged</div>
-					<div class="card-title bh-num mt-1">{logged.length}<span class="small text-ink-muted">{` / ${range}`}</span></div>
-				</div>
-				<div>
-					<div class="label text-ink-muted">At or under</div>
-					<div class="card-title bh-num mt-1">
-						{onTarget ?? '–'}<span class="small text-ink-muted">{onTarget != null ? ` / ${logged.length}` : ''}</span>
+			<!-- Gali's footprints wind down behind the cards and into the tunnel -->
+			<TrailPath kind="footprints" from={0.62} toPx={32} seed={2} class="grid gap-9 py-9">
+				<section class="bh-card grid grid-cols-3 gap-3" aria-label="Summary">
+					<div>
+						<div class="label text-ink-muted">Avg kcal</div>
+						<div class="card-title bh-num mt-1">{logged.length ? kcal(avg('kcal')) : '–'}</div>
+						<div class="small text-ink-muted">logged days</div>
 					</div>
-					<div class="small text-ink-muted">target</div>
-				</div>
-			</section>
-
-			<TrailGap kind="footprints" from={0.5} to={0.14} height={40} />
-			<section class="bh-card px-3 pb-2" aria-labelledby="chart-title">
-				<header class="bh-card__head mb-1 px-1">
-					<h2 id="chart-title" class="bh-card__title">Daily calories</h2>
-				</header>
-				<KcalChart days={data.days} target={data.targets.kcal} {today} />
-				<p class="small px-1 pb-1 text-ink-muted">Dots mark days with nothing logged.</p>
-			</section>
-
-			<TrailGap kind="footprints" from={0.14} to={0.86} height={40} />
-			<section class="bh-card" aria-labelledby="macros-title">
-				<header class="bh-card__head">
-					<h2 id="macros-title" class="bh-card__title">Average macros</h2>
-					<span class="small text-ink-muted">logged days</span>
-				</header>
-				{#if logged.length}
-					<div class="grid gap-3.5">
-						<Meter label="Protein" value={avg('protein_g')} max={data.targets.protein_g} color="protein" cap="sunflower" />
-						<Meter label="Carbs" value={avg('carb_g')} max={data.targets.carb_g} color="carbs" cap="sunflower" />
-						<Meter label="Fat" value={avg('fat_g')} max={data.targets.fat_g} color="fat" cap="sunflower" />
+					<div>
+						<div class="label text-ink-muted">Days logged</div>
+						<div class="card-title bh-num mt-1">{logged.length}<span class="small text-ink-muted">{` / ${range}`}</span></div>
 					</div>
-				{:else}
-					<p class="body text-ink-muted">Nothing logged in this range yet.</p>
-				{/if}
-			</section>
+					<div>
+						<div class="label text-ink-muted">At or under</div>
+						<div class="card-title bh-num mt-1">
+							{onTarget ?? '–'}<span class="small text-ink-muted">{onTarget != null ? ` / ${logged.length}` : ''}</span>
+						</div>
+						<div class="small text-ink-muted">target</div>
+					</div>
+				</section>
+
+				<section class="bh-card px-3 pb-2" aria-labelledby="chart-title">
+					<header class="bh-card__head mb-1 px-1">
+						<h2 id="chart-title" class="bh-card__title">Daily calories</h2>
+					</header>
+					<KcalChart days={data.days} target={data.targets.kcal} {today} />
+					<p class="small px-1 pb-1 text-ink-muted">Dots mark days with nothing logged.</p>
+				</section>
+
+				<MacrosCard
+					title="Average macros"
+					note="logged days"
+					protein={avg('protein_g')}
+					carbs={avg('carb_g')}
+					fat={avg('fat_g')}
+					targets={data.targets}
+					empty={logged.length ? undefined : 'Nothing logged in this range yet.'}
+				/>
+			</TrailPath>
 
 			<!-- Gali's tunnel: a chamber per day, newest first, footprints between them -->
-			<TrailGap kind="footprints" from={0.86} to={0.08} height={44} />
 			<div class="bh-tunnel">
 				{#each newestFirst as d, i (d.date)}
 					{@const when = parseDate(d.date)}

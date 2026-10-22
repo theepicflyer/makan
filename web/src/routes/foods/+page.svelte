@@ -4,7 +4,7 @@
 	import Habitat from '#lib/burrow/Habitat.svelte';
 	import Icon from '#lib/burrow/Icon.svelte';
 	import Loader from '#lib/burrow/Loader.svelte';
-	import TrailGap from '#lib/burrow/TrailGap.svelte';
+	import TrailPath from '#lib/burrow/TrailPath.svelte';
 	import { get } from '#lib/api.ts';
 	import { servingKcal } from '#lib/format.ts';
 	import type { Food } from '#lib/types.ts';
@@ -70,52 +70,53 @@
 	<a href="/foods/new" class="bh-btn bh-btn--primary bh-btn--sm mt-2"><Icon name="plus" size={18} />New food</a>
 </Habitat>
 
-<div class="mk-page pt-4">
-	<label class="bh-field">
-		<span class="sr-only">Search all foods</span>
-		<span class="bh-field__box">
-			<span class="bh-field__affix"><Icon name="search" size={20} /></span>
-			<input class="bh-field__input" type="search" bind:value={query} oninput={onInput} placeholder="Search all foods" />
-		</span>
-	</label>
+<div class="mk-page">
+	<!-- Bao's crumbs wind down from the meadow behind the search and the cards -->
+	<TrailPath kind="crumbs" from={0.78} to={0.4} seed={3} class="grid gap-9 pt-9 pb-4">
+		<label class="bh-field">
+			<span class="sr-only">Search all foods</span>
+			<span class="bh-field__box">
+				<span class="bh-field__affix"><Icon name="search" size={20} /></span>
+				<input class="bh-field__input" type="search" bind:value={query} oninput={onInput} placeholder="Search all foods" />
+			</span>
+		</label>
 
-	<TrailGap kind="crumbs" from={0.5} to={0.14} height={36} />
-
-	{#if query.trim()}
-		<section class="bh-card py-1" aria-label="Search results">
-			{#if searching && !results.length}
-				<div class="grid justify-items-center py-6"><Loader label="Digging through the foods…" /></div>
-			{:else if !results.length}
-				<EmptyState trace="hole" title="No matches" body="Gali dug everywhere. Try a shorter word." />
-			{:else}
-				<ul class="mk-rows">
-					{#each results as food (food.id)}{@render foodRow(food)}{/each}
-				</ul>
-			{/if}
-		</section>
-	{:else}
-		<section class="bh-card" aria-labelledby="ours-title">
-			<header class="bh-card__head mb-1">
-				<h2 id="ours-title" class="bh-card__title">Ours</h2>
-				<span class="small text-ink-muted">shared by the household</span>
-			</header>
-			{#if ours === null}
-				<div class="grid justify-items-center py-6"><Loader kind="crumbs" /></div>
-			{:else if !ours.length}
-				<EmptyState
-					trace="sunflower"
-					title="No household foods yet"
-					body="Add the things you buy and eat often. Their aliases make them the default, so “a bowl of yogurt” means your yogurt."
-				/>
-			{:else}
-				<ul class="mk-rows">
-					{#each ours as food (food.id)}{@render foodRow(food)}{/each}
-				</ul>
-			{/if}
-		</section>
-		<div class="bh-card bh-card--tint body mt-3 flex gap-3">
-			<span class="shrink-0 pt-0.5"><Icon name="camera" size={22} /></span>
-			<span>Send a photo of a nutrition label to Bao on the Today screen and it saves the food here for you.</span>
-		</div>
-	{/if}
+		{#if query.trim()}
+			<section class="bh-card py-1" aria-label="Search results">
+				{#if searching && !results.length}
+					<div class="grid justify-items-center py-6"><Loader label="Digging through the foods…" /></div>
+				{:else if !results.length}
+					<EmptyState trace="hole" title="No matches" body="Gali dug everywhere. Try a shorter word." />
+				{:else}
+					<ul class="mk-rows">
+						{#each results as food (food.id)}{@render foodRow(food)}{/each}
+					</ul>
+				{/if}
+			</section>
+		{:else}
+			<section class="bh-card" aria-labelledby="ours-title">
+				<header class="bh-card__head mb-1">
+					<h2 id="ours-title" class="bh-card__title">Ours</h2>
+					<span class="small text-ink-muted">shared by the household</span>
+				</header>
+				{#if ours === null}
+					<div class="grid justify-items-center py-6"><Loader kind="crumbs" /></div>
+				{:else if !ours.length}
+					<EmptyState
+						trace="sunflower"
+						title="No household foods yet"
+						body="Add the things you buy and eat often. Their aliases make them the default, so “a bowl of yogurt” means your yogurt."
+					/>
+				{:else}
+					<ul class="mk-rows">
+						{#each ours as food (food.id)}{@render foodRow(food)}{/each}
+					</ul>
+				{/if}
+			</section>
+			<div class="bh-card bh-card--tint body flex gap-3">
+				<span class="shrink-0 pt-0.5"><Icon name="camera" size={22} /></span>
+				<span>Send a photo of a nutrition label to Bao on the Today screen and it saves the food here for you.</span>
+			</div>
+		{/if}
+	</TrailPath>
 </div>
