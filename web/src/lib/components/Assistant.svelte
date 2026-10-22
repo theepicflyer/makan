@@ -1,4 +1,5 @@
 <script lang="ts">
+	import NutrientIcon from './NutrientIcon.svelte';
 	import Sheet from './Sheet.svelte';
 	import Icon from '../burrow/Icon.svelte';
 	import Loader from '../burrow/Loader.svelte';
@@ -13,7 +14,16 @@
 	import { session, toasts } from '../state.svelte.ts';
 	import { tick } from 'svelte';
 
-	let { date, onchanged }: { date: string; onchanged: () => void } = $props();
+	let {
+		date,
+		onchanged,
+		inline = false
+	}: {
+		date: string;
+		onchanged: () => void;
+		/** Desktop: the composer sits in the page where it's placed, instead of floating over the nav. */
+		inline?: boolean;
+	} = $props();
 
 	interface Pending {
 		text: string;
@@ -245,7 +255,14 @@
 
 <input bind:this={fileInput} type="file" accept="image/*" class="hidden" onchange={pickPhoto} />
 
-{#if !open}
+{#if inline}
+	<div>
+		{@render attached()}
+		<Peek character="bao" mood={sending ? 'busy' : 'happy'} size={52} side="left" offset={22}>
+			{@render composer(true)}
+		</Peek>
+	</div>
+{:else if !open}
 	<div class="pointer-events-none fixed inset-x-0 z-20 px-4" style="bottom: calc(env(safe-area-inset-bottom) + var(--nav-gap) + var(--nav-h) + 10px)">
 		<div class="mx-auto max-w-lg">
 			{@render attached()}
@@ -294,7 +311,7 @@
 										<span class="w-16 shrink-0 text-ink-muted">{changeLabel(c)}</span>
 										<span class="min-w-0 flex-1 truncate">{c.name ?? '–'}</span>
 										{#if c.table === 'entries' && c.kcal != null}
-											<span class="bh-num shrink-0 font-semibold">{kcal(c.kcal)}</span>
+											<span class="bh-num shrink-0 font-semibold"><NutrientIcon kind="energy" labelled />{kcal(c.kcal)}</span>
 										{/if}
 									</li>
 								{/each}

@@ -157,10 +157,10 @@
 				<div class="space-y-3">
 					<Field label="Name" bind:value={name} />
 					<div class="grid grid-cols-2 gap-3">
-						<Field label="Calories" suffix="kcal" type="number" inputmode="decimal" bind:value={est.kcal} />
-						<Field label="Protein" dot="protein" suffix="g" type="number" inputmode="decimal" bind:value={est.protein_g} />
-						<Field label="Carbs" dot="carbs" suffix="g" type="number" inputmode="decimal" bind:value={est.carb_g} />
-						<Field label="Fat" dot="fat" suffix="g" type="number" inputmode="decimal" bind:value={est.fat_g} />
+						<Field label="Calories" nutrient="energy" suffix="kcal" type="number" inputmode="decimal" bind:value={est.kcal} />
+						<Field label="Protein" nutrient="protein" suffix="g" type="number" inputmode="decimal" bind:value={est.protein_g} />
+						<Field label="Carbs" nutrient="carbs" suffix="g" type="number" inputmode="decimal" bind:value={est.carb_g} />
+						<Field label="Fat" nutrient="fat" suffix="g" type="number" inputmode="decimal" bind:value={est.fat_g} />
 					</div>
 					<p class="small text-ink-muted">Estimated item, not linked to a database food.</p>
 				</div>

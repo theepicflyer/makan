@@ -12,11 +12,24 @@ from sqlalchemy.orm import Session
 
 from makan import foods as food_svc
 from makan import log as log_svc
+from makan import reminders
 from makan.agent.runner import AgentConfig, run_turn, serialize_turn, undo_turn
 from makan.auth import current_user
 from makan.config import get_settings
 from makan.db import get_db
-from makan.models import MEALS, NUTRIENTS, Entry, Food, Photo, Pin, SavedMeal, Thread, Turn, User
+from makan.models import (
+    MEALS,
+    NUTRIENTS,
+    Entry,
+    Food,
+    Photo,
+    Pin,
+    PushSubscription,
+    SavedMeal,
+    Thread,
+    Turn,
+    User,
+)
 from makan.photos import PhotoError, save_photo
 
 router = APIRouter(prefix="/api")
@@ -82,6 +95,7 @@ def user_out(user: User) -> dict[str, Any]:
         "targets": log_svc.targets(user),
         "today": settings.today().isoformat(),
         "timezone": settings.timezone,
+        "reminder_time": user.reminder_time,
     }
 
 
@@ -91,6 +105,7 @@ def user_out(user: User) -> dict[str, Any]:
 class MeUpdate(BaseModel):
     name: str | None = None
     targets: dict[str, float | None] | None = None
+    reminder_time: str | None = None
 
 
 @router.get("/me")
@@ -106,6 +121,11 @@ def update_me(body: MeUpdate, user: User = Depends(current_user), db: Session = 
         try:
             log_svc.touch_user_targets(user, body.targets)
         except log_svc.LogError as exc:
+            raise _bad_request(exc) from exc
+    if body.reminder_time is not None:
+        try:
+            reminders.set_time(user, body.reminder_time)
+        except ValueError as exc:
             raise _bad_request(exc) from exc
     db.flush()
     return user_out(user)
@@ -519,6 +539,91 @@ def get_photo(photo_id: int, user: User = Depends(current_user), db: Session = D
     if photo is None or photo.user_id != user.id:
         raise HTTPException(404)
     return FileResponse(get_settings().photo_dir / photo.path, media_type=photo.media_type)
+
+
+# --- reminders -------------------------------------------------------------------
+
+
+class SubscriptionIn(BaseModel):
+    """A browser's PushSubscription, as its toJSON() gives it."""
+
+    endpoint: str
+    keys: dict[str, str]
+
+
+class EndpointIn(BaseModel):
+    endpoint: str
+
+
+def _own_subscription(db: Session, user: User, endpoint: str) -> PushSubscription | None:
+    return db.scalar(
+        select(PushSubscription).where(
+            PushSubscription.endpoint == endpoint, PushSubscription.user_id == user.id
+        )
+    )
+
+
+@router.get("/push/key")
+def push_key(user: User = Depends(current_user)):
+    return {"key": reminders.public_key()}
+
+
+@router.post("/push/subscriptions")
+def push_subscribe(
+    body: SubscriptionIn, user: User = Depends(current_user), db: Session = Depends(get_db)
+):
+    """Turn reminders on for a device, or refresh it. A device belongs to whoever signed in last."""
+    try:
+        reminders.check_endpoint(body.endpoint)
+    except ValueError as exc:
+        raise _bad_request(exc) from exc
+    if not body.keys.get("p256dh") or not body.keys.get("auth"):
+        raise HTTPException(400, "subscription keys missing")
+    first = (
+        db.scalar(select(PushSubscription.id).where(PushSubscription.user_id == user.id)) is None
+    )
+    sub = db.scalar(select(PushSubscription).where(PushSubscription.endpoint == body.endpoint))
+    if sub is None:
+        sub = PushSubscription(endpoint=body.endpoint)
+        db.add(sub)
+    sub.user_id = user.id
+    sub.p256dh = body.keys["p256dh"]
+    sub.auth = body.keys["auth"]
+    if first:
+        reminders.settle(user)
+    db.flush()
+    return {"ok": True}
+
+
+@router.post("/push/unsubscribe")
+def push_unsubscribe(
+    body: EndpointIn, user: User = Depends(current_user), db: Session = Depends(get_db)
+):
+    sub = _own_subscription(db, user, body.endpoint)
+    if sub is not None:
+        db.delete(sub)
+    return {"ok": True}
+
+
+@router.post("/push/test")
+def push_test(body: EndpointIn, user: User = Depends(current_user), db: Session = Depends(get_db)):
+    """Send this device a notification now, to check reminders reach it."""
+    sub = _own_subscription(db, user, body.endpoint)
+    if sub is None:
+        raise HTTPException(404, "Reminders aren't on for this device")
+    try:
+        reminders.push(reminders.subscription_info(sub), reminders.confirmation(user))
+    except reminders.Gone as exc:
+        db.delete(sub)
+        db.commit()  # keep the removal; the error below would otherwise roll it back
+        raise HTTPException(
+            410, "This device stopped accepting notifications. Turn reminders on again."
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(
+            502, "Couldn't reach the notification service. Try again in a minute."
+        ) from exc
+    return {"ok": True}
 
 
 @router.get("/usage")

@@ -17,7 +17,7 @@
 	import { get, post } from '#lib/api.ts';
 	import { addDays, dayLabel, daySubtitle, dayTitle } from '#lib/format.ts';
 	import { MEALS, MEAL_LABEL, type Day, type Entry, type Meal } from '#lib/types.ts';
-	import { session, toasts } from '#lib/state.svelte.ts';
+	import { session, toasts, wide } from '#lib/state.svelte.ts';
 
 	const date = $derived(page.params.date ?? '');
 	const today = $derived(session.me?.today ?? date);
@@ -138,32 +138,53 @@
 		</div>
 	</Habitat>
 
+	{#snippet meals(d: Day)}
+		{#each MEALS as meal (meal)}
+			<MealSection
+				{meal}
+				entries={d.meals[meal] ?? []}
+				subtotal={d.meal_totals[meal]}
+				next={meal === next}
+				onadd={(m) => {
+					addMeal = m;
+					addOpen = true;
+				}}
+				onedit={(e) => {
+					editing = e;
+					editOpen = true;
+				}}
+				onsave={startSave}
+			/>
+		{/each}
+	{/snippet}
+
+	{#snippet macros(d: Day)}
+		<MacrosCard protein={d.totals.protein_g ?? 0} carbs={d.totals.carb_g ?? 0} fat={d.totals.fat_g ?? 0} targets={d.targets} />
+	{/snippet}
+
 	<div class="mk-page">
 		{#if loadError && !day}
 			<p class="py-10 text-center font-semibold text-tomato-text">Couldn't load this day: {loadError}</p>
+		{:else if day && wide.current}
+			<!-- desktop: the day at a glance and Bao on the left, the meals on the right -->
+			<div class="grid grid-cols-[minmax(0,19rem)_minmax(0,1fr)] items-start gap-8 pt-6 pb-6 xl:grid-cols-[minmax(0,23rem)_minmax(0,1fr)] xl:gap-10 transition-opacity {day.date !== date ? 'opacity-50' : ''}">
+				<div class="grid gap-8 [@media(min-height:780px)]:sticky [@media(min-height:780px)]:top-6">
+					<DaySummary totals={day.totals} targets={day.targets} />
+					{@render macros(day)}
+					<Assistant {date} onchanged={refresh} inline />
+				</div>
+				<!-- Bao's crumbs wind down behind the meals, strongest up to the next one -->
+				<TrailPath kind="crumbs" from={0.5} to={0.3} seed={1} class="grid gap-9">
+					{@render meals(day)}
+				</TrailPath>
+			</div>
 		{:else if day}
 			<div class="transition-opacity {day.date !== date ? 'opacity-50' : ''}">
 				<DaySummary totals={day.totals} targets={day.targets} />
 				<!-- Bao's crumbs wind down from the sunflower behind the cards, strongest up to the next meal -->
 				<TrailPath kind="crumbs" from={0.5} to={0.3} seed={1} class="grid gap-9 pt-9">
-					<MacrosCard protein={day.totals.protein_g ?? 0} carbs={day.totals.carb_g ?? 0} fat={day.totals.fat_g ?? 0} targets={day.targets} />
-					{#each MEALS as meal (meal)}
-						<MealSection
-							{meal}
-							entries={day.meals[meal] ?? []}
-							subtotal={day.meal_totals[meal]}
-							next={meal === next}
-							onadd={(m) => {
-								addMeal = m;
-								addOpen = true;
-							}}
-							onedit={(e) => {
-								editing = e;
-								editOpen = true;
-							}}
-							onsave={startSave}
-						/>
-					{/each}
+					{@render macros(day)}
+					{@render meals(day)}
 				</TrailPath>
 				<!-- room for the docked composer and Bao over it -->
 				<div class="h-16"></div>
@@ -173,7 +194,9 @@
 		{/if}
 	</div>
 
-	<Assistant {date} onchanged={refresh} />
+	{#if !wide.current}
+		<Assistant {date} onchanged={refresh} />
+	{/if}
 	<EntrySheet entry={editing} bind:open={editOpen} onchanged={refresh} />
 	<AddSheet bind:open={addOpen} meal={addMeal} {date} onchanged={refresh} />
 	<Sheet bind:open={saveOpen} title="Save as quick meal">

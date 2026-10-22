@@ -3,15 +3,15 @@
 	import Mascot from '../burrow/Mascot.svelte';
 	import { toasts } from '../state.svelte.ts';
 
-	// One at a time, the newest, just above the nav (and the composer on day screens).
+	// One at a time, the newest, just above the nav (and the composer on day screens); centred on the page beside the rail.
 	const toast = $derived(toasts.items.at(-1));
 	const onDay = $derived(page.url.pathname.startsWith('/day'));
 	const onLogin = $derived(page.url.pathname.startsWith('/login'));
 </script>
 
 <div
-	class="pointer-events-none fixed inset-x-0 z-50 px-4"
-	style="bottom: calc(env(safe-area-inset-bottom) + {onLogin ? '16px' : `var(--nav-gap) + var(--nav-h) + ${onDay ? '104px' : '16px'}`})"
+	class="pointer-events-none fixed right-0 z-50 px-4"
+	style="left: {onLogin ? '0px' : 'var(--rail-w)'}; bottom: calc(env(safe-area-inset-bottom) + {onLogin ? '16px' : `var(--dock-h) + ${onDay ? 'var(--composer-h) + 16px' : '16px'}`})"
 	aria-live="polite"
 >
 	{#if toast}

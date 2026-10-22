@@ -16,6 +16,8 @@ os.environ.update(
         "MCP_DEV_USER": "Tester",
         "OIDC_CONFIG_URL": "",
         "PUBLIC_URL": "http://testserver",
+        # tests drive reminders.tick() themselves
+        "REMINDERS": "false",
     }
 )
 

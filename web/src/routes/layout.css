@@ -25,9 +25,31 @@
 
 :root {
 	--scrim: rgba(43, 34, 64, 0.4);
+	/* energy's colour beside Burrow's protein, carbs and fat: the flame in makan's tomato */
+	--energy: var(--tomato);
 	/* the floating nav: 54px items + 12px padding + 4px outline */
 	--nav-h: 70px;
 	--nav-gap: 12px;
+	/* What fixed things clear: on phones the floating nav (and the composer on day screens);
+	   on desktop the side rail, with nothing along the bottom. */
+	--dock-h: calc(var(--nav-gap) + var(--nav-h));
+	--composer-h: 88px;
+	--rail-w: 0px;
+}
+
+/* Desktop and laptop: matches Tailwind's lg and `wide` in state.svelte.ts. */
+@media (min-width: 1024px) {
+	:root {
+		--dock-h: 0px;
+		--composer-h: 0px;
+		--rail-w: 220px;
+	}
+}
+
+@media (min-width: 1280px) {
+	:root {
+		--rail-w: 248px;
+	}
 }
 
 @media (prefers-color-scheme: dark) {
@@ -100,6 +122,126 @@ textarea {
 		padding-top: env(safe-area-inset-top);
 	}
 
+	/* On desktop the page column has its own gutter and the habitat is a rounded band inside it. */
+	@media (min-width: 1024px) {
+		.mk-page {
+			padding: 0;
+		}
+
+		.bh-habitat {
+			border-radius: var(--radius-lg);
+		}
+	}
+
+	/* The side rail on desktop: a sticker card like the nav, standing up. */
+	.mk-rail {
+		position: sticky;
+		top: 0;
+		display: flex;
+		flex-direction: column;
+		width: var(--rail-w);
+		height: 100dvh;
+		flex: none;
+		padding: var(--space-6) var(--space-4);
+	}
+
+	.mk-rail__card {
+		display: grid;
+		gap: var(--space-1);
+		padding: var(--space-3);
+		border-radius: var(--radius-lg);
+		background: var(--surface);
+		border: var(--border-sticker) solid var(--outline);
+		box-shadow: var(--shadow-lift);
+	}
+
+	.mk-rail__brand {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+		padding: var(--space-1) var(--space-2) var(--space-3);
+		font: 600 24px/30px var(--font-display);
+		text-decoration: none;
+	}
+
+	.mk-rail__item {
+		display: flex;
+		align-items: center;
+		gap: var(--space-3);
+		padding: 6px var(--space-2);
+		border-radius: var(--radius-md);
+		color: var(--ink-muted);
+		font: 600 16px/22px var(--font-sans);
+		text-decoration: none;
+	}
+
+	.mk-rail__item:hover {
+		background: var(--surface-sunk);
+		color: var(--ink);
+	}
+
+	.mk-rail__item.is-active {
+		color: var(--ink);
+	}
+
+	.mk-rail__item.is-active .bh-nav__pill {
+		background: var(--accent-soft);
+	}
+
+	/* Tables of numbers: the day table on History. */
+	.mk-table {
+		width: 100%;
+		border-collapse: collapse;
+		font: 400 14px/20px var(--font-sans);
+		font-variant-numeric: tabular-nums;
+	}
+
+	.mk-table th,
+	.mk-table td {
+		padding: 9px var(--space-3);
+		text-align: right;
+		white-space: nowrap;
+	}
+
+	.mk-table th:first-child,
+	.mk-table td:first-child {
+		text-align: left;
+		padding-left: var(--space-2);
+	}
+
+	.mk-table thead th {
+		font: 600 12px/16px var(--font-sans);
+		letter-spacing: 0.02em;
+		color: var(--ink-muted);
+		border-bottom: var(--border-sticker) solid var(--line);
+	}
+
+	.mk-table tbody tr + tr td {
+		border-top: var(--border-hair) solid var(--line);
+	}
+
+	.mk-table tbody tr:hover td {
+		background: var(--surface-sunk);
+	}
+
+	.mk-table tfoot td {
+		border-top: var(--border-sticker) solid var(--line);
+		color: var(--ink-muted);
+	}
+
+	.mk-sort {
+		display: inline-flex;
+		align-items: center;
+		gap: 2px;
+		border-radius: var(--radius-sm);
+		cursor: pointer;
+	}
+
+	.mk-sort:hover,
+	.mk-sort[aria-pressed='true'] {
+		color: var(--ink);
+	}
+
 	.mk-hero {
 		font: 600 40px/44px var(--font-display);
 		font-variant-numeric: tabular-nums;
@@ -115,14 +257,25 @@ textarea {
 		text-decoration: underline;
 	}
 
-	.mk-dot {
+	/* NutrientIcon: the flame, drumstick, wheat and drop that mark energy, protein, carbs and fat */
+	.mk-nutrient {
 		display: inline-block;
-		width: 10px;
-		height: 10px;
-		margin-right: 6px;
-		border-radius: 50%;
-		border: 1.5px solid var(--outline);
-		vertical-align: -1px;
+		flex: none;
+		margin-right: 0.25em;
+		vertical-align: -0.22em;
+	}
+
+	/* MacroAmounts: protein, carbs and fat after their symbols, inline so it sits in a line of text */
+	.mk-macros > span {
+		white-space: nowrap;
+	}
+
+	.mk-macros > span + span {
+		margin-left: 0.5em;
+	}
+
+	.mk-macros .mk-nutrient {
+		margin-right: 0.1em;
 	}
 
 	/* A well: tracks, previews and notes sunk into a card. */

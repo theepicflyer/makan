@@ -6,6 +6,7 @@
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import BottomNav from '#lib/components/BottomNav.svelte';
+	import SideNav from '#lib/components/SideNav.svelte';
 	import Toasts from '#lib/components/Toasts.svelte';
 	import Loader from '#lib/burrow/Loader.svelte';
 	import { session } from '#lib/state.svelte.ts';
@@ -16,6 +17,10 @@
 	const isLogin = $derived(page.url.pathname.startsWith('/login'));
 
 	onMount(async () => {
+		// a tapped reminder asks the open app to show its day (see the service worker)
+		navigator.serviceWorker?.addEventListener('message', (event) => {
+			if (event.data?.type === 'open' && typeof event.data.url === 'string') goto(event.data.url);
+		});
 		if (isLogin) {
 			ready = true;
 			return;
@@ -33,9 +38,13 @@
 {#if isLogin}
 	{@render children()}
 {:else if ready && session.me}
-	<!-- room under the content for the floating nav and Bao peeking over it -->
-	<div class="mx-auto min-h-dvh max-w-lg pb-[calc(env(safe-area-inset-bottom)+var(--nav-gap)+var(--nav-h)+64px)]">
-		{@render children()}
+	<div class="lg:flex">
+		<SideNav />
+		<!-- phones: one column with room underneath for the floating nav and Bao peeking over it;
+		     desktop: a wider column beside the rail -->
+		<div class="mx-auto min-h-dvh w-full max-w-lg min-w-0 pb-[calc(env(safe-area-inset-bottom)+var(--dock-h)+64px)] lg:max-w-6xl lg:px-8 lg:pt-6">
+			{@render children()}
+		</div>
 	</div>
 	<BottomNav />
 {:else}

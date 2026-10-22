@@ -5,6 +5,12 @@ export function kcal(value: number | null | undefined): string {
 	return Math.round(value).toLocaleString('en-SG');
 }
 
+/** "21:00" as "9:00 pm". */
+export function clock(hhmm: string): string {
+	const [h, m] = hhmm.split(':').map(Number);
+	return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${h < 12 ? 'am' : 'pm'}`;
+}
+
 export function grams(value: number | null | undefined): string {
 	if (value == null) return '–';
 	return `${Math.round(value)}`;

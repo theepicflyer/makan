@@ -47,3 +47,40 @@ sw.addEventListener('fetch', (event) => {
 		event.respondWith(caches.match(req).then((hit) => hit ?? fetch(req)));
 	}
 });
+
+// Daily reminders: the server sends { title, body, url } (src/makan/reminders.py).
+sw.addEventListener('push', (event) => {
+	let msg: { title?: string; body?: string; url?: string } = {};
+	try {
+		msg = event.data?.json() ?? {};
+	} catch {
+		msg = { body: event.data?.text() };
+	}
+	event.waitUntil(
+		sw.registration.showNotification(msg.title ?? 'makan', {
+			body: msg.body,
+			icon: '/icons/icon-192.png',
+			badge: '/icons/badge-96.png',
+			// a new reminder replaces the last one rather than stacking
+			tag: 'reminder',
+			data: { url: msg.url ?? '/' }
+		})
+	);
+});
+
+// A tap opens the day it's about: in the open app if there is one (the layout navigates on the message), else a new window.
+sw.addEventListener('notificationclick', (event) => {
+	event.notification.close();
+	const url: string = event.notification.data?.url ?? '/';
+	event.waitUntil(
+		(async () => {
+			const [open] = await sw.clients.matchAll({ type: 'window', includeUncontrolled: true });
+			if (open) {
+				await open.focus();
+				open.postMessage({ type: 'open', url });
+			} else {
+				await sw.clients.openWindow(url);
+			}
+		})()
+	);
+});

@@ -1,7 +1,8 @@
 """ASGI app: JSON API, browser login, the built web app, and the MCP endpoint, on one origin."""
 
+import asyncio
 import logging
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -10,7 +11,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
-from makan import api, auth
+from makan import api, auth, reminders
 from makan.config import get_settings
 from makan.db import session_scope
 from makan.foods import load_reference
@@ -53,8 +54,15 @@ def create_app() -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         startup()
-        async with mcp_app.lifespan(app):
-            yield
+        scheduler = asyncio.create_task(reminders.run()) if settings.reminders else None
+        try:
+            async with mcp_app.lifespan(app):
+                yield
+        finally:
+            if scheduler:
+                scheduler.cancel()
+                with suppress(asyncio.CancelledError):
+                    await scheduler
 
     app = FastAPI(title="makan", lifespan=lifespan, docs_url=None, redoc_url=None)
     app.add_middleware(

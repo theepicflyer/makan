@@ -1,3 +1,4 @@
+import { MediaQuery } from 'svelte/reactivity';
 import { get } from './api.ts';
 import type { Me } from './types.ts';
 import type { Character, Mood } from './burrow/art.js';
@@ -21,6 +22,9 @@ class Session {
 }
 
 export const session = new Session();
+
+/** Desktop and laptop widths, where screens lay out in columns beside the side rail (Tailwind's lg). */
+export const wide = new MediaQuery('min-width: 1024px', false);
 
 export interface Toast {
 	id: number;

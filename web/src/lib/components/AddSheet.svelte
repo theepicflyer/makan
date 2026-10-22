@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Sheet from './Sheet.svelte';
+	import NutrientIcon from './NutrientIcon.svelte';
 	import PortionPicker from './PortionPicker.svelte';
 	import SourceBadge from './SourceBadge.svelte';
 	import EmptyState from '../burrow/EmptyState.svelte';
@@ -170,7 +171,7 @@
 				<span class="bh-row__title">{item.name}</span>
 				<span class="bh-row__sub truncate">{portionText(item.servings, item.serving_label, item.grams)}</span>
 			</span>
-			<span class="bh-row__amount">{kcal(item.kcal)}</span>
+			<span class="bh-row__amount"><NutrientIcon kind="energy" labelled />{kcal(item.kcal)}</span>
 		</button>
 		{#if remove}
 			<button class="bh-btn bh-btn--ghost bh-btn--sm bh-btn--icon ml-1 shrink-0 text-ink-muted" aria-label="Remove {item.name}" onclick={remove}>
@@ -226,7 +227,7 @@
 							<button class="bh-row mk-row-btn" onclick={() => choose(food)}>
 								<span class="bh-row__text">
 									<span class="bh-row__title">{food.name}</span>
-									<span class="bh-row__sub truncate">{food.brand ? `${food.brand} · ` : ''}{servingKcal(food)}</span>
+									<span class="bh-row__sub truncate">{food.brand ? `${food.brand} · ` : ''}<NutrientIcon kind="energy" />{servingKcal(food)}</span>
 								</span>
 								<SourceBadge source={food.source} />
 							</button>
@@ -245,7 +246,7 @@
 								<span class="bh-row__title">Yesterday's {MEAL_LABEL[meal].toLowerCase()}</span>
 								<span class="bh-row__sub truncate">{quick.yesterday.items.map((i) => i.name).join(', ')}</span>
 							</span>
-							<span class="bh-row__amount">{kcal(quick.yesterday.kcal)}</span>
+							<span class="bh-row__amount"><NutrientIcon kind="energy" labelled />{kcal(quick.yesterday.kcal)}</span>
 						</button>
 					</section>
 				{/if}
