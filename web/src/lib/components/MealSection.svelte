@@ -1,5 +1,7 @@
 <script lang="ts">
 	import EntryRow from './EntryRow.svelte';
+	import Icon from '../burrow/Icon.svelte';
+	import Trace from '../burrow/Trace.svelte';
 	import type { Entry, Meal, Nutrients } from '../types.ts';
 	import { MEAL_LABEL } from '../types.ts';
 	import { kcal } from '../format.ts';
@@ -8,6 +10,7 @@
 		meal,
 		entries,
 		subtotal,
+		next = false,
 		onadd,
 		onedit,
 		onsave
@@ -15,42 +18,52 @@
 		meal: Meal;
 		entries: Entry[];
 		subtotal: Nutrients;
+		/** The meal the day's trail leads to: the first empty one after the last logged. */
+		next?: boolean;
 		onadd: (meal: Meal) => void;
 		onedit: (entry: Entry) => void;
 		onsave: (meal: Meal) => void;
 	} = $props();
+
+	const label = $derived(MEAL_LABEL[meal]);
 </script>
 
-<section class="card px-2 pt-2 pb-1" aria-label={MEAL_LABEL[meal]}>
-	<header class="flex items-center gap-2 px-2 pt-1 pb-1">
-		<h3 class="text-[15px] font-semibold">{MEAL_LABEL[meal]}</h3>
-		{#if entries.length}
-			<span class="text-[13px] text-muted tabular">{kcal(subtotal.kcal)} kcal</span>
-		{/if}
-		<div class="ml-auto flex items-center">
-			{#if entries.some((e) => e.food_id != null)}
-				<button
-					class="grid h-11 w-11 place-items-center rounded-full text-ink-2 hover:bg-wash"
-					aria-label="Save {MEAL_LABEL[meal]} as a quick meal"
-					title="Save as quick meal"
-					onclick={() => onsave(meal)}
-				>
-					<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-6-4-6 4z" /></svg>
+{#if entries.length}
+	<!-- a logged meal: Bao took a bite out of the corner -->
+	<div class="bh-nibble">
+		<section class="bh-card bh-card--nibbled" aria-label={label}>
+			<header class="bh-card__head mk-nibble-head mb-1 justify-start">
+				<h2 class="bh-card__title">{label}</h2>
+				<span class="small bh-num text-ink-muted">{kcal(subtotal.kcal)} kcal</span>
+			</header>
+			<ul class="mk-rows">
+				{#each entries as entry (entry.id)}
+					<li><EntryRow {entry} onclick={() => onedit(entry)} /></li>
+				{/each}
+			</ul>
+			<div class="mk-card-actions">
+				{#if entries.some((e) => e.food_id != null)}
+					<button class="bh-btn bh-btn--ghost bh-btn--sm" aria-label="Save {label} as a quick meal" onclick={() => onsave(meal)}>
+						<Icon name="bookmark" size={18} />Save meal
+					</button>
+				{/if}
+				<button class="bh-btn bh-btn--secondary bh-btn--sm" aria-label="Add to {label}" onclick={() => onadd(meal)}>
+					<Icon name="plus" size={18} />Add
 				</button>
-			{/if}
-			<button class="btn btn-ghost min-h-9 px-3 text-sm" onclick={() => onadd(meal)} aria-label="Add to {MEAL_LABEL[meal]}">
-				<svg width="14" height="14" viewBox="0 0 16 16" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 3v10M3 8h10" /></svg>
-				Add
+			</div>
+		</section>
+		<Trace name="crumbs" size={26} class="bh-nibble__crumbs" />
+	</div>
+{:else}
+	<section class="bh-card {next ? '' : 'mk-card--quiet'}" aria-label={label}>
+		<div class="flex items-center gap-3">
+			<div class="min-w-0 flex-1">
+				<h2 class="bh-card__title">{label}</h2>
+				<p class="small text-ink-muted">{next ? 'Up next. Type what you ate below, or add food.' : 'Nothing logged'}</p>
+			</div>
+			<button class="bh-btn {next ? 'bh-btn--secondary' : 'bh-btn--ghost'} bh-btn--sm" aria-label="Add to {label}" onclick={() => onadd(meal)}>
+				<Icon name="plus" size={18} />Add
 			</button>
 		</div>
-	</header>
-	{#if entries.length}
-		<ul>
-			{#each entries as entry (entry.id)}
-				<li><EntryRow {entry} onclick={() => onedit(entry)} /></li>
-			{/each}
-		</ul>
-	{:else}
-		<p class="px-2 pb-2 text-[13px] text-muted">Nothing logged</p>
-	{/if}
-</section>
+	</section>
+{/if}

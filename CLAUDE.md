@@ -26,6 +26,7 @@ Evals cost real money (Haiku is ~$0.001/case, Opus ~$0.02/case). Run a subset wi
 - `log.py`: entries store nutrient totals copied at log time, so editing a food never rewrites history. `ChangeLog` records every agent write so a whole turn can be undone.
 - `agent/`: `prompt.py` (system prompt + per-turn context), `tools.py` (7 tools, pydantic-validated, compact text results), `runner.py` (manual streaming loop, one thread per user per log date).
 - `mcp_server.py`: FastMCP with `OIDCProxy` in front of Pocket ID; mounted at `/` after the API and SPA routes. Tools resolve the caller by the token's `sub`, which must match a user who has signed in to the web app.
+- `web/src/lib/burrow/`: the Burrow design system (the household's shared look). `tokens.css`, `burrow.css` and `art.js` are copies of the design system's files; re-sync them rather than editing. The Svelte components next to them port its React components. `web/README.md` has the rules for new screens.
 - `main.py`: client-side routes are listed in `SPA_ROUTES`; anything unmatched falls through to the MCP/OAuth app. Add a route there when the web app gets a new top-level path.
 
 ## Rules that keep the agent cheap and correct

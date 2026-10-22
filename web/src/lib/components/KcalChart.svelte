@@ -37,7 +37,7 @@
 	}
 
 	function barPath(x: number, top: number, w: number, base: number): string {
-		const r = Math.min(4, w / 2, base - top);
+		const r = Math.min(6, w / 2, base - top);
 		return `M${x},${base} V${top + r} Q${x},${top} ${x + r},${top} H${x + w - r} Q${x + w},${top} ${x + w},${top + r} V${base} Z`;
 	}
 
@@ -46,28 +46,32 @@
 </script>
 
 {#if target}
-	<div class="mb-1 flex items-center justify-end gap-1.5 px-1 text-[12px] text-ink-2">
-		<span class="inline-block h-[2px] w-4 rounded bg-ink"></span>Target {kcal(target)} kcal
+	<div class="label mb-1 flex items-center justify-end gap-1.5 px-1 text-ink-muted">
+		<svg width="18" height="4" aria-hidden="true"><line x1="1" x2="17" y1="2" y2="2" stroke="var(--ink)" stroke-width="2" stroke-dasharray="4 3" stroke-linecap="round" /></svg>Target {kcal(target)} kcal
 	</div>
 {/if}
 <div class="relative" bind:clientWidth={width}>
 	<svg {width} height={HEIGHT} role="img" aria-label="Daily calories{target ? ` against a ${Math.round(target)} kcal target` : ''}">
 		{#each ticks as t (t)}
-			<line x1={PAD.left} x2={width - PAD.right} y1={y(t)} y2={y(t)} stroke={t === 0 ? 'var(--axis)' : 'var(--grid)'} stroke-width="1" />
-			<text x={PAD.left - 6} y={y(t) + 4} text-anchor="end" font-size="11" fill="var(--muted)" class="tabular">{tickLabel(t)}</text>
+			<line x1={PAD.left} x2={width - PAD.right} y1={y(t)} y2={y(t)} stroke={t === 0 ? 'var(--ink-muted)' : 'var(--line)'} stroke-width={t === 0 ? 1.5 : 1} />
+			<text x={PAD.left - 6} y={y(t) + 4} text-anchor="end" font-size="11" fill="var(--ink-muted)" class="tabular">{tickLabel(t)}</text>
 		{/each}
 		{#each days as d, i (d.date)}
 			{@const cx = PAD.left + band * i + band / 2}
 			{#if d.entries > 0}
+				<!-- sticker bars: the sunflower's petal colour, today in makan's tomato -->
 				<path
 					d={barPath(cx - barW / 2, y(d.kcal ?? 0), barW, y(0))}
-					fill={d.date === today ? 'var(--ink)' : 'var(--bar)'}
+					fill={d.date === today ? 'var(--accent)' : 'var(--sunny)'}
+					stroke="var(--outline)"
+					stroke-width="1.5"
+					stroke-linejoin="round"
 					opacity={active == null || active === i ? 1 : 0.4}
 				/>
 			{:else}
-				<circle cx={cx} cy={y(0) - 4} r="2" fill="var(--axis)" />
+				<circle cx={cx} cy={y(0) - 5} r="2.5" fill="var(--ink-muted)" />
 			{/if}
-			<text x={cx} y={HEIGHT - 8} text-anchor="middle" font-size="11" fill={d.date === today ? 'var(--ink)' : 'var(--muted)'} font-weight={d.date === today ? 600 : 400}>{xLabel(d.date, i)}</text>
+			<text x={cx} y={HEIGHT - 8} text-anchor="middle" font-size="11" fill={d.date === today ? 'var(--ink)' : 'var(--ink-muted)'} font-weight={d.date === today ? 600 : 400}>{xLabel(d.date, i)}</text>
 			<!-- hit target: the whole band, taller than the bar -->
 			<rect
 				x={PAD.left + band * i}
@@ -87,25 +91,25 @@
 		{/each}
 		{#if target}
 			<!-- a surface halo keeps the target line readable where it crosses bars -->
-			<line x1={PAD.left} x2={width - PAD.right} y1={y(target)} y2={y(target)} stroke="var(--surface)" stroke-width="4" pointer-events="none" />
-			<line x1={PAD.left} x2={width - PAD.right} y1={y(target)} y2={y(target)} stroke="var(--ink)" stroke-width="1.5" pointer-events="none" />
+			<line x1={PAD.left} x2={width - PAD.right} y1={y(target)} y2={y(target)} stroke="var(--surface)" stroke-width="5" pointer-events="none" />
+			<line x1={PAD.left} x2={width - PAD.right} y1={y(target)} y2={y(target)} stroke="var(--ink)" stroke-width="2" stroke-dasharray="4 3" stroke-linecap="round" pointer-events="none" />
 		{/if}
 	</svg>
 	{#if tip}
 		<div
-			class="pointer-events-none absolute top-0 z-10 w-40 -translate-x-1/2 rounded-xl border border-line bg-surface-2 px-3 py-2 text-[12px] shadow-lg"
-			style="left: {Math.min(Math.max(tipX, 80), width - 80)}px"
+			class="small pointer-events-none absolute top-0 z-10 w-44 -translate-x-1/2 rounded-[var(--radius-md)] border-2 border-outline bg-surface px-3 py-2 shadow-[var(--shadow-lift)]"
+			style="left: {Math.min(Math.max(tipX, 88), width - 88)}px"
 		>
-			<div class="text-muted">{parseDate(tip.date).toLocaleDateString('en-SG', { weekday: 'short', day: 'numeric', month: 'short' })}</div>
+			<div class="text-ink-muted">{parseDate(tip.date).toLocaleDateString('en-SG', { weekday: 'short', day: 'numeric', month: 'short' })}</div>
 			{#if tip.entries}
-				<div class="text-[15px] font-semibold">{kcal(tip.kcal)} kcal</div>
-				<div class="mt-1 space-y-0.5 text-ink-2">
-					<div class="flex items-center gap-1.5"><span class="h-0.5 w-3 rounded bg-protein"></span><b class="text-ink">{Math.round(tip.protein_g ?? 0)} g</b> protein</div>
-					<div class="flex items-center gap-1.5"><span class="h-0.5 w-3 rounded bg-carb"></span><b class="text-ink">{Math.round(tip.carb_g ?? 0)} g</b> carbs</div>
-					<div class="flex items-center gap-1.5"><span class="h-0.5 w-3 rounded bg-fat"></span><b class="text-ink">{Math.round(tip.fat_g ?? 0)} g</b> fat</div>
+				<div class="body-strong bh-num">{kcal(tip.kcal)} kcal</div>
+				<div class="bh-num mt-1 space-y-0.5 text-ink-muted">
+					<div><span class="mk-dot" style="background: var(--protein)"></span><b class="text-ink">{Math.round(tip.protein_g ?? 0)} g</b> protein</div>
+					<div><span class="mk-dot" style="background: var(--carbs)"></span><b class="text-ink">{Math.round(tip.carb_g ?? 0)} g</b> carbs</div>
+					<div><span class="mk-dot" style="background: var(--fat)"></span><b class="text-ink">{Math.round(tip.fat_g ?? 0)} g</b> fat</div>
 				</div>
 			{:else}
-				<div class="font-semibold">Not logged</div>
+				<div class="body-strong">Not logged</div>
 			{/if}
 		</div>
 	{/if}

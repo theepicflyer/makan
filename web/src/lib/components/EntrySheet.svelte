@@ -2,6 +2,8 @@
 	import Sheet from './Sheet.svelte';
 	import PortionPicker from './PortionPicker.svelte';
 	import SourceBadge from './SourceBadge.svelte';
+	import Field from '../burrow/Field.svelte';
+	import Icon from '../burrow/Icon.svelte';
 	import { MEALS, MEAL_LABEL, type Entry, type Food, type Meal, type Portion } from '../types.ts';
 	import { del, get, patch, post } from '../api.ts';
 	import { initialPortion, portionPayload } from '../format.ts';
@@ -90,7 +92,7 @@
 			await del(`/api/entries/${e.id}`);
 			open = false;
 			onchanged();
-			toasts.show(`Removed ${e.name}`, {
+			toasts.show(`Removed ${e.name} from ${MEAL_LABEL[e.meal].toLowerCase()}`, {
 				action: {
 					label: 'Undo',
 					run: async () => {
@@ -138,57 +140,54 @@
 	{#if entry}
 		<div class="space-y-5 pt-1">
 			{#if entry.photo_id}
-				<img src="/api/photos/{entry.photo_id}" alt="Meal" class="max-h-56 w-full rounded-2xl object-cover" />
+				<img src="/api/photos/{entry.photo_id}" alt="Meal" class="max-h-56 w-full rounded-[var(--radius-md)] border-2 border-outline object-cover" />
 			{/if}
 
 			{#if entry.food_id != null}
 				{#if food}
-					<div class="flex items-center gap-2 text-[13px] text-ink-2">
+					<div class="small flex items-center gap-2 text-ink-muted">
 						<SourceBadge source={food.source} />
 						<span class="truncate">{food.brand ? `${food.brand} · ` : ''}{food.name}</span>
 					</div>
 					<PortionPicker {food} bind:value={portion} />
 				{:else}
-					<div class="h-32 animate-pulse rounded-xl bg-wash"></div>
+					<div class="mk-well h-32 motion-safe:animate-pulse"></div>
 				{/if}
 			{:else}
 				<div class="space-y-3">
-					<label class="block"><span class="label">Name</span><input class="field" bind:value={name} /></label>
+					<Field label="Name" bind:value={name} />
 					<div class="grid grid-cols-2 gap-3">
-						<label class="block"><span class="label">kcal</span><input class="field tabular" type="number" inputmode="decimal" bind:value={est.kcal} /></label>
-						<label class="block"><span class="label">Protein (g)</span><input class="field tabular" type="number" inputmode="decimal" bind:value={est.protein_g} /></label>
-						<label class="block"><span class="label">Carbs (g)</span><input class="field tabular" type="number" inputmode="decimal" bind:value={est.carb_g} /></label>
-						<label class="block"><span class="label">Fat (g)</span><input class="field tabular" type="number" inputmode="decimal" bind:value={est.fat_g} /></label>
+						<Field label="Calories" suffix="kcal" type="number" inputmode="decimal" bind:value={est.kcal} />
+						<Field label="Protein" dot="protein" suffix="g" type="number" inputmode="decimal" bind:value={est.protein_g} />
+						<Field label="Carbs" dot="carbs" suffix="g" type="number" inputmode="decimal" bind:value={est.carb_g} />
+						<Field label="Fat" dot="fat" suffix="g" type="number" inputmode="decimal" bind:value={est.fat_g} />
 					</div>
-					<p class="text-[13px] text-muted">Estimated item, not linked to a database food.</p>
+					<p class="small text-ink-muted">Estimated item, not linked to a database food.</p>
 				</div>
 			{/if}
 
 			<div>
-				<span class="label">Meal</span>
-				<div class="grid grid-cols-4 gap-1 rounded-full bg-wash p-1" role="radiogroup" aria-label="Meal">
+				<span class="mk-section-label">Meal</span>
+				<div class="mk-choice" role="radiogroup" aria-label="Meal">
 					{#each MEALS as m (m)}
-						<button
-							role="radio"
-							aria-checked={meal === m}
-							class="min-h-10 rounded-full text-[13px] font-medium {meal === m ? 'bg-segment shadow-sm' : 'text-ink-2'}"
-							onclick={() => (meal = m)}>{MEAL_LABEL[m]}</button
-						>
+						<button role="radio" aria-checked={meal === m} class="bh-chip {meal === m ? 'is-selected' : ''}" onclick={() => (meal = m)}>
+							{#if meal === m}<Icon name="check" size={16} />{/if}{MEAL_LABEL[m]}
+						</button>
 					{/each}
 				</div>
 			</div>
 
-			<label class="block"><span class="label">Date</span><input class="field" type="date" bind:value={date} /></label>
-			<label class="block"><span class="label">Note</span><input class="field" bind:value={note} placeholder="Optional" /></label>
+			<Field label="Date" type="date" bind:value={date} />
+			<Field label="Note" bind:value={note} placeholder="e.g. less rice, no skin" />
 		</div>
 	{/if}
 	{#snippet footer()}
-		<div class="flex items-center gap-2">
-			<button class="btn btn-danger" onclick={remove} disabled={busy}>Delete</button>
+		<div class="flex items-center gap-1">
+			<button class="bh-btn bh-btn--ghost mk-danger -ml-3" onclick={remove} disabled={busy}><Icon name="trash" size={18} />Delete</button>
 			{#if food}
-				<button class="btn btn-ghost" onclick={pin} disabled={busy}>Pin</button>
+				<button class="bh-btn bh-btn--ghost" onclick={pin} disabled={busy}><Icon name="pin" size={18} />Pin</button>
 			{/if}
-			<button class="btn btn-primary ml-auto min-w-28" onclick={save} disabled={busy}>Save</button>
+			<button class="bh-btn bh-btn--primary ml-auto min-w-28" onclick={save} disabled={busy}>Save</button>
 		</div>
 	{/snippet}
 </Sheet>

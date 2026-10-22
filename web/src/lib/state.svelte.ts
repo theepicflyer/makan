@@ -1,5 +1,6 @@
 import { get } from './api.ts';
 import type { Me } from './types.ts';
+import type { Character, Mood } from './burrow/art.js';
 
 class Session {
 	me = $state<Me | null>(null);
@@ -26,6 +27,9 @@ export interface Toast {
 	message: string;
 	action?: { label: string; run: () => void | Promise<void> };
 	tone?: 'info' | 'error';
+	/** The animal in the toast, by job: Bao for food (the default), Kayu for settings, saving and errors. */
+	character?: Character;
+	mood?: Mood;
 }
 
 class Toasts {
@@ -40,7 +44,7 @@ class Toasts {
 	}
 
 	error(message: string) {
-		return this.show(message, { tone: 'error' }, 6000);
+		return this.show(message, { tone: 'error', character: 'kayu', mood: 'worried' }, 6000);
 	}
 
 	dismiss(id: number) {

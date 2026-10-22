@@ -46,6 +46,21 @@ export function dayLabel(iso: string, today: string): string {
 	});
 }
 
+const RELATIVE = ['Today', 'Yesterday', 'Tomorrow'];
+
+/** The day screen's title: Today, Yesterday, Tomorrow, else the weekday. */
+export function dayTitle(iso: string, today: string): string {
+	const rel = dayLabel(iso, today);
+	return RELATIVE.includes(rel) ? rel : parseDate(iso).toLocaleDateString('en-SG', { weekday: 'long' });
+}
+
+/** The line above the title: the full date for relative days, else the date (with the year when it isn't this one). */
+export function daySubtitle(iso: string, today: string): string {
+	if (RELATIVE.includes(dayLabel(iso, today))) return longDate(iso);
+	const sameYear = iso.slice(0, 4) === today.slice(0, 4);
+	return parseDate(iso).toLocaleDateString('en-SG', { day: 'numeric', month: 'long', ...(sameYear ? {} : { year: 'numeric' }) });
+}
+
 export function longDate(iso: string): string {
 	return parseDate(iso).toLocaleDateString('en-SG', {
 		weekday: 'long',

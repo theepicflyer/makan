@@ -1,9 +1,13 @@
 <script lang="ts">
+	import '@fontsource/fredoka/latin-600.css';
+	import '@fontsource/figtree/latin-400.css';
+	import '@fontsource/figtree/latin-600.css';
 	import './layout.css';
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import BottomNav from '#lib/components/BottomNav.svelte';
 	import Toasts from '#lib/components/Toasts.svelte';
+	import Loader from '#lib/burrow/Loader.svelte';
 	import { session } from '#lib/state.svelte.ts';
 	import { onMount } from 'svelte';
 
@@ -29,12 +33,13 @@
 {#if isLogin}
 	{@render children()}
 {:else if ready && session.me}
-	<div class="mx-auto min-h-dvh max-w-lg px-4 pt-[max(12px,env(safe-area-inset-top))] pb-[calc(56px+env(safe-area-inset-bottom)+24px)]">
+	<!-- room under the content for the floating nav and Bao peeking over it -->
+	<div class="mx-auto min-h-dvh max-w-lg pb-[calc(env(safe-area-inset-bottom)+var(--nav-gap)+var(--nav-h)+64px)]">
 		{@render children()}
 	</div>
 	<BottomNav />
 {:else}
-	<div class="grid min-h-dvh place-items-center text-muted">
-		<span class="h-6 w-6 animate-spin rounded-full border-2 border-grid border-t-ink" aria-label="Loading"></span>
+	<div class="grid min-h-dvh place-items-center">
+		<Loader kind="crumbs" />
 	</div>
 {/if}
