@@ -218,7 +218,7 @@
 			{#if searching && !results.length}
 				<div class="grid justify-items-center py-8"><Loader label="Digging through the foods…" /></div>
 			{:else if !results.length}
-				<EmptyState character="gali" mood="worried" size={88} title="No matches" body="Gali dug everywhere. Try a shorter word, or describe it to the assistant." />
+				<EmptyState character="gali" mood="worried" size={88} title="No matches" body="Try a shorter word, or describe it to Bao instead." />
 			{:else}
 				<ul class="mk-rows">
 					{#each results as food (food.id)}

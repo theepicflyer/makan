@@ -4,6 +4,7 @@
 	import Loader from '../burrow/Loader.svelte';
 	import Mascot from '../burrow/Mascot.svelte';
 	import Peek from '../burrow/Peek.svelte';
+	import type { Mood } from '../burrow/art.js';
 	import type { Turn, TurnChange } from '../types.ts';
 	import { get, post } from '../api.ts';
 	import { sendTurn, TOOL_LABEL } from '../agent.ts';
@@ -33,7 +34,8 @@
 	let end: HTMLDivElement | undefined = $state();
 	let loadedDate = '';
 
-	const title = $derived(`Assistant · ${dayLabel(date, session.me?.today ?? date)}`);
+	// Bao, makan's host in Burrow, is the face of the assistant.
+	const title = $derived(`Bao · ${dayLabel(date, session.me?.today ?? date)}`);
 	const canSend = $derived(!sending && (text.trim().length > 0 || photo != null));
 
 	$effect(() => {
@@ -169,6 +171,12 @@
 		return { destroy: () => node.removeEventListener('input', resize) };
 	}
 
+	// Glad when a message logged something, worried when it failed.
+	function replyMood(turn: Turn): Mood {
+		if (turn.status === 'error') return 'worried';
+		return turn.changes.length && !turn.undone ? 'joy' : 'happy';
+	}
+
 	function changeLabel(c: TurnChange): string {
 		if (c.table === 'foods') {
 			return { create: 'New food', update: 'Updated food', delete: 'Deleted food' }[c.action];
@@ -194,15 +202,15 @@
 			{onkeydown}
 			rows="1"
 			enterkeyhint="send"
-			placeholder={docked ? 'What did you eat?' : 'Reply or correct something…'}
-			aria-label="Message the assistant"
+			placeholder={docked ? 'Tell Bao what you ate' : 'Reply or correct something…'}
+			aria-label="Message Bao"
 			class="body max-h-[120px] min-h-11 min-w-0 flex-1 resize-none bg-transparent py-2.5 text-ink outline-none placeholder:text-ink-muted focus-visible:outline-none"
 		></textarea>
 		{#if docked && (turns.length || pending)}
 			<button
 				type="button"
 				class="bh-btn bh-btn--ghost bh-btn--icon relative shrink-0 min-h-11 w-11"
-				aria-label="Show conversation"
+				aria-label="Show the chat with Bao"
 				onclick={() => (open = true)}
 			>
 				<Icon name="chat" size={22} />
@@ -241,7 +249,7 @@
 	<div class="pointer-events-none fixed inset-x-0 z-20 px-4" style="bottom: calc(env(safe-area-inset-bottom) + var(--nav-gap) + var(--nav-h) + 10px)">
 		<div class="mx-auto max-w-lg">
 			{@render attached()}
-			<!-- Bao listens over the composer; nibbling while the assistant works -->
+			<!-- Bao listens over the composer, nibbling while working on a message -->
 			<Peek character="bao" mood={sending ? 'busy' : 'happy'} size={52} side="left" offset={22}>
 				{@render composer(true)}
 			</Peek>
@@ -255,7 +263,7 @@
 			<div class="bh-card bh-card--tint flex gap-3">
 				<Mascot character="bao" mood="happy" size={72} />
 				<div class="body min-w-0">
-					<p class="font-semibold">Tell me what you ate, in any order.</p>
+					<p class="font-semibold">I'm Bao. Tell me what you ate, in any order.</p>
 					<p class="mt-1 text-ink-muted">“Breakfast kopi c and 2 kaya toast, lunch chicken rice, dinner a bowl of yogurt.”</p>
 					<p class="mt-1 text-ink-muted">Send a meal photo, or a nutrition label to save a food. I log straight away; just tell me if something's off.</p>
 				</div>
@@ -273,14 +281,17 @@
 						{/if}
 					</div>
 				{/if}
-				<div class="max-w-[92%]">
-					<div class="mk-bubble mk-bubble--them">{turn.reply_text || (turn.status === 'error' ? 'Something went wrong. Try sending it again.' : '…')}</div>
+				<div>
+					<div class="flex max-w-[92%] items-end gap-2">
+						<Mascot character="bao" mood={replyMood(turn)} size={40} />
+						<div class="mk-bubble mk-bubble--them min-w-0">{turn.reply_text || (turn.status === 'error' ? 'Something went wrong. Try sending it again.' : '…')}</div>
+					</div>
 					{#if turn.changes.length}
-						<div class="mt-1.5 rounded-[var(--radius-md)] border-2 border-line px-3 py-2 {turn.undone ? 'opacity-60' : ''}">
+						<div class="mt-1.5 ml-12 rounded-[var(--radius-md)] border-2 border-line px-3 py-2 {turn.undone ? 'opacity-60' : ''}">
 							<ul class="small space-y-1">
 								{#each turn.changes as c, i (i)}
 									<li class="flex gap-2 {turn.undone ? 'line-through' : ''}">
-										<span class="w-20 shrink-0 text-ink-muted">{changeLabel(c)}</span>
+										<span class="w-16 shrink-0 text-ink-muted">{changeLabel(c)}</span>
 										<span class="min-w-0 flex-1 truncate">{c.name ?? '–'}</span>
 										{#if c.table === 'entries' && c.kcal != null}
 											<span class="bh-num shrink-0 font-semibold">{kcal(c.kcal)}</span>
@@ -312,7 +323,8 @@
 				</div>
 				<div class="flex max-w-[92%] items-end gap-2">
 					{#if pending.error}
-						<div class="mk-bubble border-2 border-tomato-text font-semibold text-tomato-text">{pending.error}</div>
+						<Mascot character="bao" mood="worried" size={40} />
+						<div class="mk-bubble min-w-0 border-2 border-tomato-text font-semibold text-tomato-text">{pending.error}</div>
 					{:else}
 						<Mascot character="bao" mood="busy" size={40} />
 						<div class="mk-bubble mk-bubble--them min-w-0">

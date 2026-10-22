@@ -115,7 +115,7 @@
 		</section>
 		<div class="bh-card bh-card--tint body mt-3 flex gap-3">
 			<span class="shrink-0 pt-0.5"><Icon name="camera" size={22} /></span>
-			<span>Send a photo of a nutrition label to the assistant on the Today screen and it saves the food here for you.</span>
+			<span>Send a photo of a nutrition label to Bao on the Today screen and it saves the food here for you.</span>
 		</div>
 	{/if}
 </div>
