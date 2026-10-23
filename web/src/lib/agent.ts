@@ -19,11 +19,11 @@ export const TOOL_LABEL: Record<string, string> = {
 };
 
 /** POST a message to the assistant and yield its server-sent events. */
-export async function* sendTurn(date: string, text: string, photo: Blob | null): AsyncGenerator<AgentEvent> {
+export async function* sendTurn(date: string, text: string, photos: Blob[]): AsyncGenerator<AgentEvent> {
 	const form = new FormData();
 	form.set('date', date);
 	form.set('text', text);
-	if (photo) form.set('photo', photo, 'photo.jpg');
+	for (const photo of photos) form.append('photos', photo, 'photo.jpg');
 	const res = await fetch('/api/agent/turns', {
 		method: 'POST',
 		body: form,

@@ -41,6 +41,7 @@ class NewEntry(_Model):
     carb_g: float | None = Field(default=None, ge=0)
     fat_g: float | None = Field(default=None, ge=0)
     note: str | None = None
+    photo: int | None = Field(default=None, ge=1)
 
 
 class LogEntries(_Model):
@@ -182,6 +183,10 @@ TOOLS: list[dict[str, Any]] = sorted(
                                 "food_id": {"type": "integer"},
                                 **_portion_props,
                                 **_custom_props,
+                                "photo": {
+                                    "type": "integer",
+                                    "description": "Which attached photo the item is from (1 = first), when the message has several.",
+                                },
                             },
                             "required": ["meal"],
                             "additionalProperties": False,
@@ -299,7 +304,7 @@ class ToolContext:
     user: User
     log_date: date
     changes: log_svc.ChangeLog
-    photo_id: int | None = None
+    photo_ids: list[int] = field(default_factory=list)
     days_touched: set[date] = field(default_factory=set)
 
 
@@ -314,6 +319,13 @@ def _day(value: str | None, ctx: ToolContext) -> date:
         return log_svc.parse_day(value)
     except log_svc.LogError as exc:
         raise ToolError(str(exc)) from exc
+
+
+def _photo_id(ctx: ToolContext, number: int | None) -> int | None:
+    """The photo an entry came from: the one it names, or the only one sent."""
+    if number is not None and number <= len(ctx.photo_ids):
+        return ctx.photo_ids[number - 1]
+    return ctx.photo_ids[0] if len(ctx.photo_ids) == 1 else None
 
 
 def _nutrients(item: NewEntry | EntryUpdate) -> dict[str, float | None] | None:
@@ -366,7 +378,7 @@ def log_entries(ctx: ToolContext, args: LogEntries) -> str:
                 name=item.name,
                 nutrients=_nutrients(item),
                 note=item.note,
-                photo_id=ctx.photo_id,
+                photo_id=_photo_id(ctx, item.photo),
                 origin="agent",
                 changes=ctx.changes,
             )

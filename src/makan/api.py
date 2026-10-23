@@ -35,6 +35,7 @@ from makan.photos import PhotoError, save_photo
 router = APIRouter(prefix="/api")
 
 MAX_UPLOAD_BYTES = 15 * 1024 * 1024
+MAX_PHOTOS = 6
 
 
 def _day(value: str) -> date:
@@ -478,21 +479,24 @@ def _sse(event: dict[str, Any]) -> str:
 async def agent_turn(
     date_: str = Form(alias="date"),
     text: str = Form(""),
-    photo: UploadFile | None = File(None),
+    photos: list[UploadFile] | None = File(None),
     user: User = Depends(current_user),
     db: Session = Depends(get_db),
 ):
     day = _day(date_)
-    photo_id = None
-    if photo is not None and photo.filename:
-        data = await photo.read()
+    uploads = [p for p in photos or [] if p.filename]
+    if len(uploads) > MAX_PHOTOS:
+        raise HTTPException(400, f"Send at most {MAX_PHOTOS} photos at a time")
+    photo_ids = []
+    for upload in uploads:
+        data = await upload.read()
         if len(data) > MAX_UPLOAD_BYTES:
             raise HTTPException(413, "Photo too large")
         try:
-            photo_id = save_photo(db, user.id, data).id
+            photo_ids.append(save_photo(db, user.id, data).id)
         except PhotoError as exc:
             raise _bad_request(exc) from exc
-    if not text.strip() and photo_id is None:
+    if not text.strip() and not photo_ids:
         raise HTTPException(400, "Say something or attach a photo")
     db.commit()
     user_id = user.id
@@ -502,7 +506,7 @@ async def agent_turn(
             user_id=user_id,
             log_date=day,
             text=text,
-            photo_id=photo_id,
+            photo_ids=photo_ids,
             config=AgentConfig.from_settings(),
         ):
             yield _sse(event)

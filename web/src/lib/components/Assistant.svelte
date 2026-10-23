@@ -27,7 +27,7 @@
 
 	interface Pending {
 		text: string;
-		photoUrl: string | null;
+		photoUrls: string[];
 		reply: string;
 		tool: string | null;
 		error: string | null;
@@ -35,18 +35,22 @@
 
 	let open = $state(false);
 	let text = $state('');
-	let photo = $state<Blob | null>(null);
-	let photoUrl = $state<string | null>(null);
+	// Same limit as the server (MAX_PHOTOS in api.py).
+	const MAX_PHOTOS = 6;
+	let photos = $state<{ blob: Blob; url: string }[]>([]);
 	let turns = $state<Turn[]>([]);
 	let pending = $state<Pending | null>(null);
 	let sending = $state(false);
 	let fileInput: HTMLInputElement | undefined = $state();
+	let cameraInput: HTMLInputElement | undefined = $state();
+	// Which composer (docked or in the sheet) has its photo menu open; both can be on screen at once.
+	let photoMenu = $state<boolean | null>(null);
 	let end: HTMLDivElement | undefined = $state();
 	let loadedDate = '';
 
 	// Bao, makan's host in Burrow, is the face of the assistant.
 	const title = $derived(`Bao · ${dayLabel(date, session.me?.today ?? date)}`);
-	const canSend = $derived(!sending && (text.trim().length > 0 || photo != null));
+	const canSend = $derived(!sending && (text.trim().length > 0 || photos.length > 0));
 
 	$effect(() => {
 		if (date !== loadedDate) {
@@ -95,35 +99,52 @@
 		if (el) el.scrollTop = el.scrollHeight;
 	}
 
-	async function pickPhoto(e: Event) {
-		const file = (e.currentTarget as HTMLInputElement).files?.[0];
-		if (!file) return;
-		const blob = await prepareImage(file);
-		if (photoUrl) URL.revokeObjectURL(photoUrl);
-		photo = blob;
-		photoUrl = URL.createObjectURL(blob);
-		if (fileInput) fileInput.value = '';
+	async function pickPhotos(e: Event) {
+		const input = e.currentTarget as HTMLInputElement;
+		const files = [...(input.files ?? [])];
+		input.value = '';
+		const room = MAX_PHOTOS - photos.length;
+		if (files.length > room) toasts.error(`Up to ${MAX_PHOTOS} photos in one message`);
+		for (const file of files.slice(0, Math.max(room, 0))) {
+			const blob = await prepareImage(file);
+			photos.push({ blob, url: URL.createObjectURL(blob) });
+		}
 	}
 
-	function clearPhoto() {
-		photo = null;
-		photoUrl = null;
+	// Phones get a choice of camera or library; elsewhere `capture` is ignored, so go straight to the file picker.
+	function attachPhoto(docked: boolean) {
+		if (matchMedia('(pointer: coarse)').matches) photoMenu = photoMenu === docked ? null : docked;
+		else fileInput?.click();
+	}
+
+	function choosePhoto(input: HTMLInputElement | undefined) {
+		photoMenu = null;
+		input?.click();
+	}
+
+	function closePhotoMenu(e: Event) {
+		if (photoMenu == null) return;
+		if (e instanceof KeyboardEvent ? e.key === 'Escape' : !(e.target as Element).closest?.('[data-photo-menu]')) photoMenu = null;
+	}
+
+	function removePhoto(i: number) {
+		URL.revokeObjectURL(photos[i].url);
+		photos.splice(i, 1);
 	}
 
 	async function send() {
 		if (!canSend) return;
 		const d = date;
 		const message = text.trim();
-		const image = photo;
-		pending = { text: message, photoUrl, reply: '', tool: null, error: null };
+		const images = photos.map((p) => p.blob);
+		pending = { text: message, photoUrls: photos.map((p) => p.url), reply: '', tool: null, error: null };
 		text = '';
-		photo = null;
-		photoUrl = null;
+		photos = [];
 		sending = true;
 		open = true;
 		pin();
 		try {
-			for await (const ev of sendTurn(d, message, image)) {
+			for await (const ev of sendTurn(d, message, images)) {
 				if (!pending) break;
 				if (ev.type === 'text') {
 					pending.reply += ev.delta;
@@ -203,9 +224,27 @@
 			send();
 		}}
 	>
-		<button type="button" class="bh-btn bh-btn--ghost bh-btn--icon shrink-0 min-h-11 w-11" aria-label="Attach a photo" onclick={() => fileInput?.click()}>
-			<Icon name="camera" size={22} />
-		</button>
+		<div class="relative shrink-0" data-photo-menu>
+			<button
+				type="button"
+				class="bh-btn bh-btn--ghost bh-btn--icon min-h-11 w-11"
+				aria-label="Attach a photo"
+				aria-expanded={photoMenu === docked}
+				onclick={() => attachPhoto(docked)}
+			>
+				<Icon name="camera" size={22} />
+			</button>
+			{#if photoMenu === docked}
+				<div class="absolute bottom-full left-0 z-10 mb-2 flex w-48 flex-col rounded-[var(--radius-sm)] border-2 border-outline bg-surface p-1 shadow-[var(--shadow-lift)]">
+					<button type="button" class="bh-btn bh-btn--ghost min-h-11 justify-start gap-2 px-3" onclick={() => choosePhoto(cameraInput)}>
+						<Icon name="camera" size={20} />Take a photo
+					</button>
+					<button type="button" class="bh-btn bh-btn--ghost min-h-11 justify-start gap-2 px-3" onclick={() => choosePhoto(fileInput)}>
+						<Icon name="image" size={20} />Choose a photo
+					</button>
+				</div>
+			{/if}
+		</div>
 		<textarea
 			use:autosize
 			bind:value={text}
@@ -236,24 +275,43 @@
 {/snippet}
 
 {#snippet attached()}
-	{#if photoUrl}
-		<div class="pointer-events-auto mb-2 flex items-center gap-2">
-			<div class="relative">
-				<img src={photoUrl} alt="Attached" class="h-16 w-16 rounded-[var(--radius-sm)] border-2 border-outline object-cover" />
-				<button
-					class="absolute -top-2 -right-2 grid h-7 w-7 place-items-center rounded-full border-2 border-outline bg-surface text-ink"
-					aria-label="Remove photo"
-					onclick={clearPhoto}
-				>
-					<Icon name="close" size={14} />
-				</button>
-			</div>
+	{#if photos.length}
+		<div class="pointer-events-auto mb-2 flex flex-wrap items-center gap-3 pt-2">
+			{#each photos as p, i (p.url)}
+				<div class="relative">
+					<img src={p.url} alt="Attached" class="h-16 w-16 rounded-[var(--radius-sm)] border-2 border-outline object-cover" />
+					<button
+						class="absolute -top-2 -right-2 grid h-7 w-7 place-items-center rounded-full border-2 border-outline bg-surface text-ink"
+						aria-label="Remove photo"
+						onclick={() => removePhoto(i)}
+					>
+						<Icon name="close" size={14} />
+					</button>
+				</div>
+			{/each}
 			<span class="small rounded-full bg-surface px-3 py-1 text-ink-muted">Add a note, or send as is</span>
 		</div>
 	{/if}
 {/snippet}
 
-<input bind:this={fileInput} type="file" accept="image/*" class="hidden" onchange={pickPhoto} />
+{#snippet sentPhotos(urls: string[])}
+	{#if urls.length}
+		<div class="flex flex-wrap justify-end gap-1">
+			{#each urls as url (url)}
+				<img
+					src={url}
+					alt="Sent"
+					class="rounded-[20px] border-2 border-outline object-cover {urls.length > 1 ? 'h-28 w-28' : 'max-h-48'}"
+					onload={onImageLoad}
+				/>
+			{/each}
+		</div>
+	{/if}
+{/snippet}
+
+<svelte:window onpointerdown={closePhotoMenu} onkeydown={closePhotoMenu} />
+<input bind:this={fileInput} type="file" accept="image/*" multiple class="hidden" onchange={pickPhotos} />
+<input bind:this={cameraInput} type="file" accept="image/*" capture="environment" class="hidden" onchange={pickPhotos} />
 
 {#if inline}
 	<div>
@@ -288,11 +346,9 @@
 		{/if}
 		{#each turns as turn (turn.id)}
 			<div class="space-y-2">
-				{#if turn.user_text || turn.photo_id}
+				{#if turn.user_text || turn.photo_ids.length}
 					<div class="ml-auto flex max-w-[85%] flex-col items-end gap-1">
-						{#if turn.photo_id}
-							<img src="/api/photos/{turn.photo_id}" alt="Sent" class="max-h-48 rounded-[20px] border-2 border-outline object-cover" onload={onImageLoad} />
-						{/if}
+						{@render sentPhotos(turn.photo_ids.map((id) => `/api/photos/${id}`))}
 						{#if turn.user_text}
 							<div class="mk-bubble mk-bubble--me">{turn.user_text}</div>
 						{/if}
@@ -331,9 +387,7 @@
 		{#if pending}
 			<div class="space-y-2">
 				<div class="ml-auto flex max-w-[85%] flex-col items-end gap-1">
-					{#if pending.photoUrl}
-						<img src={pending.photoUrl} alt="Sent" class="max-h-48 rounded-[20px] border-2 border-outline object-cover" onload={onImageLoad} />
-					{/if}
+					{@render sentPhotos(pending.photoUrls)}
 					{#if pending.text}
 						<div class="mk-bubble mk-bubble--me">{pending.text}</div>
 					{/if}

@@ -59,6 +59,8 @@ update_entries or delete_entries. Never log a second copy of something already l
 entry with your best estimate and "(est.)" at the end of the name.
 - Meal photo: identify each component, judge portion sizes from the plate or bowl, then search \
 and log as above.
+- Several photos in one message are numbered in order. Set photo on each logged item to the one \
+it came from.
 - Nutrition label photo: save it as an Ours food with save_food. Prefer the per-100 g column; if \
 the label only has per-serving values, pass basis "per_serving" with serving_grams. Add the \
 servings the household uses (e.g. "tub" with its net weight) and aliases for the generic words it \
