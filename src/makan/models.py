@@ -161,10 +161,9 @@ class SavedMeal(Base):
 
 
 class Thread(Base):
-    """The assistant conversation for one user and one log date."""
+    """One assistant conversation: from opening Bao to closing it, about one log date."""
 
     __tablename__ = "threads"
-    __table_args__ = (UniqueConstraint("user_id", "date"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)

@@ -1,7 +1,7 @@
 import type { Turn } from './types.ts';
 
 export type AgentEvent =
-	| { type: 'turn'; turn_id: number }
+	| { type: 'turn'; turn_id: number; thread_id: number }
 	| { type: 'text'; delta: string }
 	| { type: 'tool'; name: string }
 	| { type: 'changed'; dates: string[] }
@@ -18,11 +18,17 @@ export const TOOL_LABEL: Record<string, string> = {
 	delete_food: 'Deleting food'
 };
 
-/** POST a message to the assistant and yield its server-sent events. */
-export async function* sendTurn(date: string, text: string, photos: Blob[]): AsyncGenerator<AgentEvent> {
+/** POST a message to the assistant and yield its server-sent events. No `threadId` starts a new conversation. */
+export async function* sendTurn(
+	date: string,
+	text: string,
+	photos: Blob[],
+	threadId: number | null
+): AsyncGenerator<AgentEvent> {
 	const form = new FormData();
 	form.set('date', date);
 	form.set('text', text);
+	if (threadId != null) form.set('thread_id', String(threadId));
 	for (const photo of photos) form.append('photos', photo, 'photo.jpg');
 	const res = await fetch('/api/agent/turns', {
 		method: 'POST',

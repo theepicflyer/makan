@@ -29,6 +29,9 @@ log = logging.getLogger(__name__)
 # Models that accept server-side refusal fallbacks (`fallbacks: "default"`).
 FALLBACK_MODELS = {"claude-opus-5-5", "claude-sonnet-5-5", "claude-opus-5"}
 FALLBACK_BETA = "server-side-fallback-2026-07-01"
+# A thinking block is bound to the system prompt, tools and messages it was made with. When a deploy
+# changes the prompt or tools mid-thread, drop the stale blocks instead of failing the request.
+BINDING_BETA = "thinking-binding-controls-2026-08-01"
 
 
 @dataclass(frozen=True)
@@ -89,8 +92,15 @@ def _hydrate(
     return out
 
 
-def _get_thread(db: Session, user: User, day: date, model: str) -> Thread:
-    thread = db.scalar(select(Thread).where(Thread.user_id == user.id, Thread.date == day))
+def _get_thread(db: Session, user: User, day: date, model: str, thread_id: int | None) -> Thread:
+    """Continue the user's thread `thread_id` for `day`, or start a new one."""
+    thread = None
+    if thread_id is not None:
+        thread = db.scalar(
+            select(Thread).where(
+                Thread.id == thread_id, Thread.user_id == user.id, Thread.date == day
+            )
+        )
     if thread is None:
         thread = Thread(user_id=user.id, date=day, model=model)
         db.add(thread)
@@ -161,6 +171,7 @@ async def run_turn(
     log_date: date,
     text: str,
     photo_ids: list[int] | None = None,
+    thread_id: int | None = None,
     config: AgentConfig | None = None,
     client: anthropic.AsyncAnthropic | None = None,
     now: datetime | None = None,
@@ -174,7 +185,7 @@ async def run_turn(
     try:
         user = db.get(User, user_id)
         assert user is not None
-        thread = _get_thread(db, user, log_date, config.model)
+        thread = _get_thread(db, user, log_date, config.model, thread_id)
         prior = list(
             db.scalars(
                 select(Turn)
@@ -210,7 +221,7 @@ async def run_turn(
         )
         db.add(turn)
         db.commit()
-        yield {"type": "turn", "turn_id": turn.id}
+        yield {"type": "turn", "turn_id": turn.id, "thread_id": thread.id}
 
         history: list[dict[str, Any]] = [m for t in prior for m in t.messages]
         photo_cache: dict[int, str] = {}
@@ -227,10 +238,13 @@ async def run_turn(
             "model": config.model,
             "max_tokens": config.max_tokens,
             "tools": TOOLS,
-            "thinking": {"type": "adaptive"},
+            "thinking": {
+                "type": "adaptive",
+                "block_binding": {"prefix_mismatch_behavior": "drop_block"},
+            },
             "output_config": {"effort": config.effort},
         }
-        betas: list[str] = []
+        betas: list[str] = [BINDING_BETA]
         if config.cache:
             system[0]["cache_control"] = _cache_control(config)
             params["cache_control"] = _cache_control(config)
@@ -249,6 +263,8 @@ async def run_turn(
                         yield {"type": "text", "delta": event.text}
                 final = await stream.get_final_message()
             pricing.add_usage(usage, final.usage)
+            for t in getattr(final, "input_transformations", None) or []:
+                log.info("thread %s: dropped %s (%s)", thread.id, t.path, t.reason)
             model_used = final.model or config.model
             assistant_content = [b.to_dict(mode="json") for b in final.content]
             turn_messages.append({"role": "assistant", "content": assistant_content})
