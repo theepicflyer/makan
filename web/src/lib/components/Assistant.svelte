@@ -41,6 +41,9 @@
 	let pending = $state<Pending | null>(null);
 	let sending = $state(false);
 	let fileInput: HTMLInputElement | undefined = $state();
+	let cameraInput: HTMLInputElement | undefined = $state();
+	// Which composer (docked or in the sheet) has its photo menu open; both can be on screen at once.
+	let photoMenu = $state<boolean | null>(null);
 	let end: HTMLDivElement | undefined = $state();
 	let loadedDate = '';
 
@@ -102,7 +105,23 @@
 		if (photoUrl) URL.revokeObjectURL(photoUrl);
 		photo = blob;
 		photoUrl = URL.createObjectURL(blob);
-		if (fileInput) fileInput.value = '';
+		(e.currentTarget as HTMLInputElement).value = '';
+	}
+
+	// Phones get a choice of camera or library; elsewhere `capture` is ignored, so go straight to the file picker.
+	function attachPhoto(docked: boolean) {
+		if (matchMedia('(pointer: coarse)').matches) photoMenu = photoMenu === docked ? null : docked;
+		else fileInput?.click();
+	}
+
+	function choosePhoto(input: HTMLInputElement | undefined) {
+		photoMenu = null;
+		input?.click();
+	}
+
+	function closePhotoMenu(e: Event) {
+		if (photoMenu == null) return;
+		if (e instanceof KeyboardEvent ? e.key === 'Escape' : !(e.target as Element).closest?.('[data-photo-menu]')) photoMenu = null;
 	}
 
 	function clearPhoto() {
@@ -203,9 +222,27 @@
 			send();
 		}}
 	>
-		<button type="button" class="bh-btn bh-btn--ghost bh-btn--icon shrink-0 min-h-11 w-11" aria-label="Attach a photo" onclick={() => fileInput?.click()}>
-			<Icon name="camera" size={22} />
-		</button>
+		<div class="relative shrink-0" data-photo-menu>
+			<button
+				type="button"
+				class="bh-btn bh-btn--ghost bh-btn--icon min-h-11 w-11"
+				aria-label="Attach a photo"
+				aria-expanded={photoMenu === docked}
+				onclick={() => attachPhoto(docked)}
+			>
+				<Icon name="camera" size={22} />
+			</button>
+			{#if photoMenu === docked}
+				<div class="absolute bottom-full left-0 z-10 mb-2 flex w-48 flex-col rounded-[var(--radius-sm)] border-2 border-outline bg-surface p-1 shadow-[var(--shadow-lift)]">
+					<button type="button" class="bh-btn bh-btn--ghost min-h-11 justify-start gap-2 px-3" onclick={() => choosePhoto(cameraInput)}>
+						<Icon name="camera" size={20} />Take a photo
+					</button>
+					<button type="button" class="bh-btn bh-btn--ghost min-h-11 justify-start gap-2 px-3" onclick={() => choosePhoto(fileInput)}>
+						<Icon name="image" size={20} />Choose a photo
+					</button>
+				</div>
+			{/if}
+		</div>
 		<textarea
 			use:autosize
 			bind:value={text}
@@ -253,7 +290,9 @@
 	{/if}
 {/snippet}
 
+<svelte:window onpointerdown={closePhotoMenu} onkeydown={closePhotoMenu} />
 <input bind:this={fileInput} type="file" accept="image/*" class="hidden" onchange={pickPhoto} />
+<input bind:this={cameraInput} type="file" accept="image/*" capture="environment" class="hidden" onchange={pickPhoto} />
 
 {#if inline}
 	<div>

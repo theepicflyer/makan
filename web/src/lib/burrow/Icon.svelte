@@ -13,7 +13,8 @@
 		star: 'M12 3.5 L14.6 8.8 L20.5 9.7 L16.2 13.8 L17.2 19.6 L12 16.9 L6.8 19.6 L7.8 13.8 L3.5 9.7 L9.4 8.8 Z',
 		trash: 'M5 7 H19 M10 4 H14 M7 7 L8 20 H16 L17 7',
 		'sign-out': 'M14 4 H19 V20 H14 M10 8 L6 12 L10 16 M6 12 H15',
-		bell: 'M6 16.5 V11 A6 6 0 0 1 18 11 V16.5 L19.5 18.5 H4.5 Z M10 21 H14'
+		bell: 'M6 16.5 V11 A6 6 0 0 1 18 11 V16.5 L19.5 18.5 H4.5 Z M10 21 H14',
+		image: 'M4 5 H20 V19 H4 Z M4 16 L9 11 L14 16 M13 15 L15.5 12.5 L20 17 M15.5 7.5 A1.5 1.5 0 1 0 15.5 10.5 A1.5 1.5 0 1 0 15.5 7.5 Z'
 	};
 	const PATHS: Record<string, string> = { ...ICONS, ...EXTRA };
 	export type IconName = keyof typeof ICONS | keyof typeof EXTRA;
