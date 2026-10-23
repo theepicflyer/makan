@@ -177,6 +177,14 @@ CASES: list[Case] = [
         total_kcal=(500, 1400),
     ),
     Case(
+        "estimate_dish_with_near_miss",
+        ["text", "estimate"],
+        [Msg("unagi fried rice for lunch")],
+        expect=[Item(r"unagi|eel", "lunch")],
+        strict_count=False,
+        total_kcal=(650, 1200),
+    ),
+    Case(
         "two_days_one_message",
         ["text", "dates"],
         [Msg("yesterday dinner was hokkien mee. today lunch was yong tau foo soup, 7 pieces")],
