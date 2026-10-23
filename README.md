@@ -44,7 +44,7 @@ You need Docker with Compose, a domain behind Caddy (or another TLS proxy), a Po
 
    Restrict it to a user group that holds just the two of you. Copy the client ID and secret.
 2. Run `cp .env.example .env` and fill it in. You can leave `SESSION_SECRET` empty: makan generates one on first start and keeps it in the data volume.
-3. Start it with `docker compose up -d --build`. The first start loads the food database, which takes a few seconds.
+3. Start it with `docker compose up -d`. This pulls `ghcr.io/theepicflyer/makan:latest`; set `MAKAN_TAG=1.2.0` in `.env` to pin a release instead. The first start loads the food database, which takes a few seconds.
 4. Add a Caddy site:
 
    ```
@@ -55,7 +55,7 @@ You need Docker with Compose, a domain behind Caddy (or another TLS proxy), a Po
 
 5. Open the site, sign in with your passkey, and set your daily targets in Settings. On a phone, use "Add to Home Screen" to install it, open it from there, and turn on the daily reminder in Settings if you want one.
 
-All state is in the `makan-data` volume: the SQLite database, meal photos, the OAuth store behind the MCP connector, and the key that signs reminders (lose it and each phone has to turn reminders on again). Back up that volume. To update, run `git pull && docker compose up -d --build`.
+All state is in the `makan-data` volume: the SQLite database, meal photos, the OAuth store behind the MCP connector, and the key that signs reminders (lose it and each phone has to turn reminders on again). Back up that volume. To update, set `MAKAN_TAG` to the new release (or leave it on `latest`) and run `docker compose pull && docker compose up -d`. Release notes list any manual steps under **Deploy actions**. To run your own changes, build from source with `docker compose up -d --build`.
 
 ### Connect the analyst (claude.ai)
 
@@ -88,7 +88,7 @@ Contains information from Singapore Food Insights Database (SG FoodID) accessed 
 uv sync
 DEV_LOGIN=true uv run uvicorn makan.main:app --reload --port 8000   # API + built web app
 cd web && npm install && npm run dev                                  # Vite dev server, proxies to :8000
-uv run pytest                                                         # backend tests
+uv run pytest                                                         # backend tests (CI runs these and the check below on every PR)
 cd web && npm run check && npm run build                              # type-check and build the web app
 ```
 
