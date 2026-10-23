@@ -29,6 +29,9 @@ log = logging.getLogger(__name__)
 # Models that accept server-side refusal fallbacks (`fallbacks: "default"`).
 FALLBACK_MODELS = {"claude-opus-5-5", "claude-sonnet-5-5", "claude-opus-5"}
 FALLBACK_BETA = "server-side-fallback-2026-07-01"
+# A thinking block is bound to the system prompt, tools and messages it was made with. When a deploy
+# changes the prompt or tools mid-thread, drop the stale blocks instead of failing the request.
+BINDING_BETA = "thinking-binding-controls-2026-08-01"
 
 
 @dataclass(frozen=True)
@@ -235,10 +238,13 @@ async def run_turn(
             "model": config.model,
             "max_tokens": config.max_tokens,
             "tools": TOOLS,
-            "thinking": {"type": "adaptive"},
+            "thinking": {
+                "type": "adaptive",
+                "block_binding": {"prefix_mismatch_behavior": "drop_block"},
+            },
             "output_config": {"effort": config.effort},
         }
-        betas: list[str] = []
+        betas: list[str] = [BINDING_BETA]
         if config.cache:
             system[0]["cache_control"] = _cache_control(config)
             params["cache_control"] = _cache_control(config)
@@ -257,6 +263,8 @@ async def run_turn(
                         yield {"type": "text", "delta": event.text}
                 final = await stream.get_final_message()
             pricing.add_usage(usage, final.usage)
+            for t in getattr(final, "input_transformations", None) or []:
+                log.info("thread %s: dropped %s (%s)", thread.id, t.path, t.reason)
             model_used = final.model or config.model
             assistant_content = [b.to_dict(mode="json") for b in final.content]
             turn_messages.append({"role": "assistant", "content": assistant_content})

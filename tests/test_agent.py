@@ -290,3 +290,12 @@ async def test_saved_food_change_shows_kcal_per_default_serving(db, user_id):
     assert change["serving"] == "glass"
     assert change["kcal"] == pytest.approx(116)
     assert change["aliases"] == ["test soy milk"]
+
+
+async def test_stale_thinking_is_dropped_not_rejected(db, user_id):
+    # A deploy that changes the system prompt or tools must not break a thread started before it.
+    client = FakeClient([_msg([BetaTextBlock(type="text", text="Hi.")], "end_turn")])
+    await _run(client, user_id, "hello")
+    request = client.requests[0]
+    assert request["thinking"]["block_binding"] == {"prefix_mismatch_behavior": "drop_block"}
+    assert "thinking-binding-controls-2026-08-01" in request["betas"]

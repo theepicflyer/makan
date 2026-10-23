@@ -35,6 +35,7 @@ Evals cost real money (Haiku is ~$0.001/case, Opus ~$0.02/case). Run a subset wi
 
 - **The system prompt is frozen text.** Never interpolate dates, user names or data into `SYSTEM_PROMPT`; per-turn context goes into the user message (`build_context`). Tools are sorted by name. Both keep the cached prefix byte-identical across users and turns.
 - **History is append-only.** A turn's API messages are stored exactly as returned (`block.to_dict()`) and replayed unchanged. Editing or dropping earlier blocks breaks prompt caching and invalidates thinking blocks (new accounts get a 400 on edited history). Only `status == "ok"` turns are replayed.
+- **Stale thinking is dropped, not rejected.** A thinking block is bound to the system prompt, tools and earlier messages it was made with, so a release that changes the prompt or tools would 400 every thread started before it. Requests send `thinking.block_binding.prefix_mismatch_behavior: "drop_block"` (beta `thinking-binding-controls-2026-08-01`); dropped blocks are logged. History edits are still forbidden: dropping loses the reasoning and the cache.
 - **Thinking is adaptive and effort is the only dial.** Opus 5.5 rejects disabled thinking and forced `tool_choice`. Opus/Sonnet requests send `fallbacks: "default"` (beta `server-side-fallback-2026-07-01`); Haiku has no server-side fallback, so don't send it.
 - Check `usage.cache_read_input_tokens` after any change to prompt assembly; `tests/test_agent.py` asserts the cache breakpoints and the history prefix.
 
