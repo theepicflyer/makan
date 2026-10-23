@@ -65,7 +65,7 @@ In claude.ai, go to Settings → Connectors → Add custom connector and enter `
 
 The assistant uses `claude-haiku-5-5` at `low` effort by default (`AGENT_MODEL`, `AGENT_EFFORT`). Prompt caching is on. The system prompt and tools are cached across both users, and each conversation's history is cached from one turn to the next. Settings shows this month's assistant spend.
 
-`evals/` checks the assistant against 43 cases: text dumps in Singlish, household-food defaults, follow-up edits, edits to past days, nutrition labels, and real meal photos. Each case is graded on the database it leaves behind. In the latest run, Haiku at low effort passed 97% of them for about $0.0006 per message, which comes to well under a dollar a month for two people. A typical message updates the log in about 3 seconds, and a follow-up edit in about 1.5. [evals/README.md](evals/README.md) has the full results and how to rerun them.
+`evals/` checks the assistant against 44 cases: text dumps in Singlish, household-food defaults, follow-up edits, edits to past days, nutrition labels, and real meal photos. Each case is graded on the database it leaves behind. In the latest run, Haiku at low effort passed 97% of them for about $0.0006 per message, which comes to well under a dollar a month for two people. A typical message updates the log in about 3 seconds, and a follow-up edit in about 1.5. [evals/README.md](evals/README.md) has the full results and how to rerun them.
 
 ## Food data
 
