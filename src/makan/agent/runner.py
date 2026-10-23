@@ -114,11 +114,23 @@ def turn_changes(db: Session, turn_id: int) -> list[dict[str, Any]]:
     return out
 
 
+def turn_photo_ids(turn: Turn) -> list[int]:
+    """The photos sent with a turn, read from its stored user message (turn.photo_id is only the first)."""
+    content = turn.messages[0]["content"] if turn.messages else []
+    return [
+        b["source"]["photo_id"]
+        for b in content
+        if isinstance(b, dict)
+        and b.get("type") == "image"
+        and b["source"].get("type") == "photo_ref"
+    ]
+
+
 def serialize_turn(db: Session, turn: Turn) -> dict[str, Any]:
     return {
         "id": turn.id,
         "user_text": turn.user_text,
-        "photo_id": turn.photo_id,
+        "photo_ids": turn_photo_ids(turn),
         "reply_text": turn.reply_text,
         "status": turn.status,
         "undone": turn.undone_at is not None,
@@ -133,7 +145,7 @@ async def run_turn(
     user_id: int,
     log_date: date,
     text: str,
-    photo_id: int | None = None,
+    photo_ids: list[int] | None = None,
     config: AgentConfig | None = None,
     client: anthropic.AsyncAnthropic | None = None,
     now: datetime | None = None,
@@ -142,6 +154,7 @@ async def run_turn(
     config = config or AgentConfig.from_settings()
     client = client or anthropic.AsyncAnthropic(api_key=get_settings().anthropic_api_key)
     now = now or get_settings().now()
+    photo_ids = photo_ids or []
     db = new_session()
     try:
         user = db.get(User, user_id)
@@ -166,7 +179,9 @@ async def run_turn(
         )
 
         content: list[dict[str, Any]] = []
-        if photo_id is not None:
+        for number, photo_id in enumerate(photo_ids, 1):
+            if len(photo_ids) > 1:
+                content.append({"type": "text", "text": f"Photo {number}:"})
             content.append({"type": "image", "source": {"type": "photo_ref", "photo_id": photo_id}})
         content.append(
             {"type": "text", "text": f"{context}\n\n{text.strip() or '(photo only, no message)'}"}
@@ -174,7 +189,7 @@ async def run_turn(
         turn = Turn(
             thread_id=thread.id,
             user_text=text,
-            photo_id=photo_id,
+            photo_id=photo_ids[0] if photo_ids else None,
             messages=[{"role": "user", "content": content}],
             status="running",
         )
@@ -187,7 +202,7 @@ async def run_turn(
         usage = pricing.empty_usage()
         turn_messages = list(turn.messages)
         changes = log_svc.ChangeLog(db, turn.id)
-        ctx = ToolContext(db=db, user=user, log_date=log_date, changes=changes, photo_id=photo_id)
+        ctx = ToolContext(db=db, user=user, log_date=log_date, changes=changes, photo_ids=photo_ids)
         reply_parts: list[str] = []
         status = "ok"
         model_used = config.model

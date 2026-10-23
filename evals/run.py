@@ -317,17 +317,17 @@ async def run_case(
         timings: list[dict] = []
         first: dict | None = None
         for index, msg in enumerate(case.msgs):
-            photo_id = None
+            photo_ids = []
             if msg.photo:
                 with session_scope() as db:
-                    photo_id = save_photo(db, user_id, (PHOTOS / msg.photo).read_bytes()).id
+                    photo_ids.append(save_photo(db, user_id, (PHOTOS / msg.photo).read_bytes()).id)
             timing: dict = {"turn": index}
             turn_start = time.monotonic()
             async for event in run_turn(
                 user_id=user_id,
                 log_date=log_date,
                 text=msg.text,
-                photo_id=photo_id,
+                photo_ids=photo_ids,
                 config=config,
                 client=client,
                 now=now,

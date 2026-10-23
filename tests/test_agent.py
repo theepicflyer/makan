@@ -1,13 +1,16 @@
+import io
 from datetime import date, datetime
 
 import pytest
 from anthropic.types.beta import BetaMessage, BetaTextBlock, BetaToolUseBlock, BetaUsage
+from PIL import Image
 from sqlalchemy import select
 
 from makan.agent.runner import AgentConfig, run_turn, undo_turn
 from makan.auth import upsert_user
 from makan.db import session_scope
 from makan.models import Entry, Turn
+from makan.photos import save_photo
 from tests.conftest import food_id
 
 DAY = date(2026, 3, 3)
@@ -66,13 +69,14 @@ class FakeClient:
         return _Stream(self.responses.pop(0))
 
 
-async def _run(client, user_id, text):
+async def _run(client, user_id, text, photo_ids=None):
     events = [
         e
         async for e in run_turn(
             user_id=user_id,
             log_date=DAY,
             text=text,
+            photo_ids=photo_ids,
             config=AgentConfig("claude-haiku-5-5", "low"),
             client=client,
             now=NOW,
@@ -190,3 +194,43 @@ async def test_tool_errors_go_back_to_the_model(db, user_id):
     await _run(client, user_id, "something")
     result = client.requests[1]["messages"][-1]["content"][0]
     assert result["is_error"] is True and "meal" in result["content"]
+
+
+async def test_several_photos_are_numbered_and_linked_to_entries(db, user_id):
+    def jpeg():
+        buf = io.BytesIO()
+        Image.new("RGB", (8, 8)).save(buf, "JPEG")
+        return buf.getvalue()
+
+    with session_scope() as s:
+        photo_ids = [save_photo(s, user_id, jpeg()).id for _ in range(2)]
+    laksa = food_id(db, "Laksa")
+    client = FakeClient(
+        [
+            _msg(
+                [
+                    BetaToolUseBlock(
+                        id="tu_4",
+                        type="tool_use",
+                        name="log_entries",
+                        input={
+                            "entries": [
+                                {"meal": "lunch", "food_id": laksa, "photo": 2},
+                                {"meal": "lunch", "name": "Teh (est.)", "kcal": 80},
+                            ]
+                        },
+                    )
+                ],
+                "tool_use",
+            ),
+            _msg([BetaTextBlock(type="text", text="Logged.")], "end_turn"),
+        ]
+    )
+    events = await _run(client, user_id, "lunch", photo_ids)
+    content = client.requests[0]["messages"][-1]["content"]
+    assert [b["type"] for b in content] == ["text", "image", "text", "image", "text"]
+    assert content[2]["text"] == "Photo 2:"
+    assert events[-1]["turn"]["photo_ids"] == photo_ids
+    with session_scope() as s:
+        entries = s.scalars(select(Entry).where(Entry.user_id == user_id).order_by(Entry.id)).all()
+        assert [e.photo_id for e in entries[-2:]] == [photo_ids[1], None]

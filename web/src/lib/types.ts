@@ -138,7 +138,7 @@ export interface TurnChange {
 export interface Turn {
 	id: number;
 	user_text: string;
-	photo_id: number | null;
+	photo_ids: number[];
 	reply_text: string;
 	status: string;
 	undone: boolean;
