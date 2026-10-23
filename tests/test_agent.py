@@ -234,3 +234,33 @@ async def test_several_photos_are_numbered_and_linked_to_entries(db, user_id):
     with session_scope() as s:
         entries = s.scalars(select(Entry).where(Entry.user_id == user_id).order_by(Entry.id)).all()
         assert [e.photo_id for e in entries[-2:]] == [photo_ids[1], None]
+
+
+async def test_saved_food_change_shows_kcal_per_default_serving(db, user_id):
+    client = FakeClient(
+        [
+            _msg(
+                [
+                    BetaToolUseBlock(
+                        id="tu_f",
+                        type="tool_use",
+                        name="save_food",
+                        input={
+                            "name": "Test Soy Milk",
+                            "nutrients": {"basis": "per_100g", "kcal": 58},
+                            "servings": [{"label": "glass", "grams": 200, "default": True}],
+                            "aliases": ["test soy milk"],
+                        },
+                    )
+                ],
+                "tool_use",
+            ),
+            _msg([BetaTextBlock(type="text", text="Saved.")], "end_turn"),
+        ]
+    )
+    events = await _run(client, user_id, "save this milk")
+    [change] = events[-1]["turn"]["changes"]
+    assert change["table"] == "foods" and change["action"] == "create"
+    assert change["serving"] == "glass"
+    assert change["kcal"] == pytest.approx(116)
+    assert change["aliases"] == ["test soy milk"]

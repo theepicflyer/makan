@@ -132,7 +132,11 @@ export interface TurnChange {
 	action: 'create' | 'update' | 'delete';
 	row_id: number;
 	name: string | null;
+	/** Entries: the entry's calories. Foods: per `serving`. */
 	kcal: number | null;
+	/** Foods only: the default serving's label, else "100 g". */
+	serving?: string;
+	aliases?: string[];
 }
 
 export interface Turn {
