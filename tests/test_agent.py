@@ -69,14 +69,15 @@ class FakeClient:
         return _Stream(self.responses.pop(0))
 
 
-async def _run(client, user_id, text, photo_ids=None):
+async def _run(client, user_id, text, photo_ids=None, thread_id=None, day=DAY):
     events = [
         e
         async for e in run_turn(
             user_id=user_id,
-            log_date=DAY,
+            log_date=day,
             text=text,
             photo_ids=photo_ids,
+            thread_id=thread_id,
             config=AgentConfig("claude-haiku-5-5", "low"),
             client=client,
             now=NOW,
@@ -121,7 +122,7 @@ async def test_turn_logs_and_replays_history(db, user_id):
     assert [t["name"] for t in first["tools"]] == sorted(t["name"] for t in first["tools"])
     assert "<context>" in first["messages"][0]["content"][-1]["text"]
 
-    await _run(client, user_id, "how many calories?")
+    await _run(client, user_id, "how many calories?", thread_id=events[0]["thread_id"])
     # The second turn replays the first turn byte-for-byte as a prefix.
     previous = client.requests[1]["messages"]
     assert client.requests[2]["messages"][: len(previous)] == previous
@@ -130,6 +131,31 @@ async def test_turn_logs_and_replays_history(db, user_id):
         assert [e.name for e in entries] == ["Kopi C"]
         turn = s.scalars(select(Turn).order_by(Turn.id)).first()
         assert turn.usage["cache_read"] == 200 and turn.cost_usd > 0
+
+
+def _reply(text):
+    return _msg([BetaTextBlock(type="text", text=text)], "end_turn")
+
+
+async def test_each_bao_session_is_a_new_thread(db, user_id, client):
+    with session_scope() as s:
+        other_id = upsert_user(s, sub="dev:other", email=None, name="Other").id
+    fake = FakeClient([_reply(str(i)) for i in range(5)])
+
+    first = (await _run(fake, user_id, "hi"))[0]["thread_id"]
+    same = (await _run(fake, user_id, "and?", thread_id=first))[0]["thread_id"]
+    assert same == first
+    assert len(fake.requests[1]["messages"]) == 3
+
+    fresh = (await _run(fake, user_id, "hello again"))[0]["thread_id"]
+    assert fresh != first
+    assert len(fake.requests[2]["messages"]) == 1
+
+    # A thread id only continues the caller's own thread for the same log date.
+    other_day = (await _run(fake, user_id, "x", thread_id=first, day=date(2026, 3, 4)))[0]
+    other_user = (await _run(fake, other_id, "x", thread_id=first))[0]
+    assert {other_day["thread_id"], other_user["thread_id"]}.isdisjoint({first, fresh})
+    assert len(fake.requests[3]["messages"]) == len(fake.requests[4]["messages"]) == 1
 
 
 async def test_undo_removes_agent_entries(db, user_id):

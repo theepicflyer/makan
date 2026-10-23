@@ -89,8 +89,15 @@ def _hydrate(
     return out
 
 
-def _get_thread(db: Session, user: User, day: date, model: str) -> Thread:
-    thread = db.scalar(select(Thread).where(Thread.user_id == user.id, Thread.date == day))
+def _get_thread(db: Session, user: User, day: date, model: str, thread_id: int | None) -> Thread:
+    """Continue the user's thread `thread_id` for `day`, or start a new one."""
+    thread = None
+    if thread_id is not None:
+        thread = db.scalar(
+            select(Thread).where(
+                Thread.id == thread_id, Thread.user_id == user.id, Thread.date == day
+            )
+        )
     if thread is None:
         thread = Thread(user_id=user.id, date=day, model=model)
         db.add(thread)
@@ -161,6 +168,7 @@ async def run_turn(
     log_date: date,
     text: str,
     photo_ids: list[int] | None = None,
+    thread_id: int | None = None,
     config: AgentConfig | None = None,
     client: anthropic.AsyncAnthropic | None = None,
     now: datetime | None = None,
@@ -174,7 +182,7 @@ async def run_turn(
     try:
         user = db.get(User, user_id)
         assert user is not None
-        thread = _get_thread(db, user, log_date, config.model)
+        thread = _get_thread(db, user, log_date, config.model, thread_id)
         prior = list(
             db.scalars(
                 select(Turn)
@@ -210,7 +218,7 @@ async def run_turn(
         )
         db.add(turn)
         db.commit()
-        yield {"type": "turn", "turn_id": turn.id}
+        yield {"type": "turn", "turn_id": turn.id, "thread_id": thread.id}
 
         history: list[dict[str, Any]] = [m for t in prior for m in t.messages]
         photo_cache: dict[int, str] = {}

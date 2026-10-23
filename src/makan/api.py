@@ -479,6 +479,7 @@ def _sse(event: dict[str, Any]) -> str:
 async def agent_turn(
     date_: str = Form(alias="date"),
     text: str = Form(""),
+    thread_id: int | None = Form(None),
     photos: list[UploadFile] | None = File(None),
     user: User = Depends(current_user),
     db: Session = Depends(get_db),
@@ -507,6 +508,7 @@ async def agent_turn(
             log_date=day,
             text=text,
             photo_ids=photo_ids,
+            thread_id=thread_id,
             config=AgentConfig.from_settings(),
         ):
             yield _sse(event)
@@ -516,16 +518,6 @@ async def agent_turn(
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
-
-
-@router.get("/agent/threads/{day}")
-def agent_thread(day: str, user: User = Depends(current_user), db: Session = Depends(get_db)):
-    d = _day(day)
-    thread = db.scalar(select(Thread).where(Thread.user_id == user.id, Thread.date == d))
-    if thread is None:
-        return {"turns": []}
-    turns = db.scalars(select(Turn).where(Turn.thread_id == thread.id).order_by(Turn.id))
-    return {"turns": [serialize_turn(db, t) for t in turns]}
 
 
 @router.post("/agent/turns/{turn_id}/undo")

@@ -316,6 +316,7 @@ async def run_case(
         reply = ""
         timings: list[dict] = []
         first: dict | None = None
+        thread_id: int | None = None
         for index, msg in enumerate(case.msgs):
             photo_ids = []
             if msg.photo:
@@ -328,11 +329,14 @@ async def run_case(
                 log_date=log_date,
                 text=msg.text,
                 photo_ids=photo_ids,
+                thread_id=thread_id,
                 config=config,
                 client=client,
                 now=now,
             ):
                 elapsed = round(time.monotonic() - turn_start, 2)
+                if event["type"] == "turn":
+                    thread_id = event["thread_id"]
                 if event["type"] == "changed":
                     timing.setdefault("changed_s", elapsed)
                 if event["type"] == "text":

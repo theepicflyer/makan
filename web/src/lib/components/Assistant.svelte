@@ -7,7 +7,7 @@
 	import Peek from '../burrow/Peek.svelte';
 	import type { Mood } from '../burrow/art.js';
 	import type { Turn, TurnChange } from '../types.ts';
-	import { get, post } from '../api.ts';
+	import { post } from '../api.ts';
 	import { sendTurn, TOOL_LABEL } from '../agent.ts';
 	import { prepareImage } from '../photo.ts';
 	import { parseReply, type Span } from '../reply.ts';
@@ -47,18 +47,32 @@
 	// Which composer (docked or in the sheet) has its photo menu open; both can be on screen at once.
 	let photoMenu = $state<boolean | null>(null);
 	let end: HTMLDivElement | undefined = $state();
-	let loadedDate = '';
+	// Each time Bao opens is a new conversation; the server returns its id with the first turn.
+	let threadId: number | null = null;
+	let conversation = 0;
+	let shownDate = '';
 
 	// Bao, makan's host in Burrow, is the face of the assistant.
 	const title = $derived(`Bao · ${dayLabel(date, session.me?.today ?? date)}`);
 	const canSend = $derived(!sending && (text.trim().length > 0 || photos.length > 0));
 
+	function reset() {
+		conversation++;
+		threadId = null;
+		turns = [];
+		pending = null;
+	}
+
 	$effect(() => {
-		if (date !== loadedDate) {
-			loadedDate = date;
-			pending = null;
-			loadThread(date);
+		if (date !== shownDate) {
+			shownDate = date;
+			reset();
 		}
+	});
+
+	// Closing Bao ends the conversation, but a reply still streaming finishes first.
+	$effect(() => {
+		if (!open && !sending) reset();
 	});
 
 	// Photos load after the first scroll and push the end down; keep pinning to the bottom briefly.
@@ -74,15 +88,6 @@
 	$effect(() => {
 		if (open) pin();
 	});
-
-	async function loadThread(d: string) {
-		try {
-			const res = await get<{ turns: Turn[] }>(`/api/agent/threads/${d}`);
-			if (d === date) turns = res.turns;
-		} catch {
-			turns = [];
-		}
-	}
 
 	function scroller(): HTMLElement | null {
 		return end?.closest<HTMLElement>('.overflow-y-auto') ?? null;
@@ -136,6 +141,7 @@
 	async function send() {
 		if (!canSend) return;
 		const d = date;
+		const conv = conversation;
 		const message = text.trim();
 		const images = photos.map((p) => p.blob);
 		pending = { text: message, photoUrls: photos.map((p) => p.url), reply: '', tool: null, error: null };
@@ -145,9 +151,11 @@
 		open = true;
 		pin();
 		try {
-			for await (const ev of sendTurn(d, message, images)) {
-				if (!pending) break;
-				if (ev.type === 'text') {
+			for await (const ev of sendTurn(d, message, images, threadId)) {
+				if (conv !== conversation || !pending) break;
+				if (ev.type === 'turn') {
+					threadId = ev.thread_id;
+				} else if (ev.type === 'text') {
 					pending.reply += ev.delta;
 					pending.tool = null;
 					scrollDown(false);
@@ -156,7 +164,7 @@
 				} else if (ev.type === 'changed') {
 					onchanged();
 				} else if (ev.type === 'done') {
-					if (d === date) turns = [...turns, ev.turn];
+					turns = [...turns, ev.turn];
 					pending = null;
 					onchanged();
 					pin();
