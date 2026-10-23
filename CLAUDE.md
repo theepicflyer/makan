@@ -45,8 +45,29 @@ Evals cost real money (Haiku is ~$0.001/case, Opus ~$0.02/case). Run a subset wi
 - The FastMCP OAuth store lives in `FASTMCP_HOME` (`/data/fastmcp` in Docker). Losing it makes the claude.ai connector show as connected with no tools.
 - One Pocket ID client serves both flows; it needs both callback URLs (`/auth/web/callback` and `/auth/callback`).
 
+## Releases and deploy
+
+Images go to `ghcr.io/theepicflyer/makan`. Two workflows plus a reusable build:
+
+- `ci.yml`: `pytest` and the web app's `npm run check` on every PR; also called by `release.yml`.
+- `release.yml`: on every push to `main`, runs the tests, then `.github/scripts/plan-release.sh` looks at the PRs that push merged. If any carries a `version/*` label it bumps from the latest GitHub release, pushes `:X.Y.Z` + `:latest`, then creates the release **last** (so a release never points at a missing image). No label: it pushes `:nightly` only. `workflow_dispatch` builds a one-off `:<tag>` from any ref.
+- `build-push.yml`: the one place the Docker build lives (amd64). The image's `org.opencontainers.image.revision` label is the commit it was built from.
+
+### Shipping a change
+
+A release is how work reaches production: the production server polls for new releases, has each one security-reviewed by an agent, and deploys it. So:
+
+- **One PR per piece of work.** If it is too big for one PR, stack PRs with `gh stack` (`gh extension install github/gh-stack`; `gh stack init`, `gh stack add`, `gh stack submit`) and merge the stack together.
+- **Exactly one `version/*` label per release**, on the single PR or on the **top** PR of a stack. Leave the lower PRs of a stack unlabeled; one push merging the stack makes one release. If several PRs in one push are labeled, the highest level wins.
+  - `version/patch`: fix or chore.
+  - `version/minor`: new feature, backward-compatible.
+  - `version/major`: breaking change.
+  - no label: docs/CI-only or not worth a release (ships `:nightly`, which production ignores).
+- **Manual steps go under `## Deploy actions` in the PR description**: a new or changed env var, a Pocket ID change, data to fix, anything the server can't do by just pulling the image and restarting (Alembic migrations run on start). The release job copies these sections into the release notes, and the deployer holds any release whose notes contain that heading until a human does the steps. Omit the heading entirely when there is nothing to do; don't write "None".
+- Don't hand-create releases or tags; the workflow does it.
+
 ## Data
 
 `data/reference/` is a committed snapshot (`scripts/fetch_sgfoodid.py`, `scripts/fetch_usda.py`). SG FoodID nutrients are per 100 g of the edible part and drinks treat 1 ml as 1 g. Its licence requires the attribution notice shown on the Settings page (text in `manifest.json`). `aliases.json` maps hawker shorthand to reference foods; a name that no longer exists logs a warning at load.
 
-Keep README.md, this file and evals/README.md current when behaviour changes.
+Keep README.md, this file and evals/README.md current when behaviour changes. The repo is public: no real names, emails, hostnames, meals or photos in commits; use `example.com` and made-up data.

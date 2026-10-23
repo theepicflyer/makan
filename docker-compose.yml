@@ -1,5 +1,8 @@
 services:
   makan:
+    # Production pulls the released image pinned by MAKAN_TAG in .env; locally,
+    # `docker compose up -d --build` builds from source instead.
+    image: ghcr.io/theepicflyer/makan:${MAKAN_TAG:-latest}
     build: .
     restart: unless-stopped
     env_file: .env
