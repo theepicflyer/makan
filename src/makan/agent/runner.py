@@ -102,16 +102,31 @@ def turn_changes(db: Session, turn_id: int) -> list[dict[str, Any]]:
     out = []
     for ch in db.scalars(select(Change).where(Change.turn_id == turn_id).order_by(Change.id)):
         snap = ch.after or ch.before or {}
-        out.append(
-            {
-                "table": ch.table,
-                "action": ch.action,
-                "row_id": ch.row_id,
-                "name": snap.get("name"),
-                "kcal": snap.get("kcal"),
-            }
-        )
+        change = {
+            "table": ch.table,
+            "action": ch.action,
+            "row_id": ch.row_id,
+            "name": snap.get("name"),
+            "kcal": snap.get("kcal"),
+        }
+        if ch.table == "foods":
+            change.update(_food_change(snap))
+        out.append(change)
     return out
+
+
+def _food_change(snap: dict[str, Any]) -> dict[str, Any]:
+    """A food's calories per its default serving (else per 100 g) and its aliases, for the change card."""
+    servings = snap.get("servings") or []
+    serving = next((s for s in servings if s.get("default")), None)
+    kcal = snap.get("kcal")
+    if serving is None:
+        return {"serving": "100 g", "kcal": kcal, "aliases": snap.get("aliases") or []}
+    return {
+        "serving": serving["label"],
+        "kcal": None if kcal is None else kcal * serving["grams"] / 100,
+        "aliases": snap.get("aliases") or [],
+    }
 
 
 def turn_photo_ids(turn: Turn) -> list[int]:

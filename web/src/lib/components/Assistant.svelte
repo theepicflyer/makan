@@ -10,6 +10,7 @@
 	import { get, post } from '../api.ts';
 	import { sendTurn, TOOL_LABEL } from '../agent.ts';
 	import { prepareImage } from '../photo.ts';
+	import { parseReply, type Span } from '../reply.ts';
 	import { dayLabel, kcal } from '../format.ts';
 	import { session, toasts } from '../state.svelte.ts';
 	import { tick } from 'svelte';
@@ -208,11 +209,41 @@
 		return turn.changes.length && !turn.undone ? 'joy' : 'happy';
 	}
 
-	function changeLabel(c: TurnChange): string {
-		if (c.table === 'foods') {
-			return { create: 'New food', update: 'Updated food', delete: 'Deleted food' }[c.action];
+	function foodLabel(c: TurnChange): string {
+		return { create: 'New food', update: 'Updated', delete: 'Deleted' }[c.action];
+	}
+
+	// Removed entries are struck through; a changed one is named only when the card also adds some.
+	function marksChanged(changes: TurnChange[]): boolean {
+		return changes.some((c) => c.table === 'entries' && c.action === 'create');
+	}
+
+	// A card with more than one kind of food change labels each food row; otherwise the heading says it.
+	function mixedFoods(changes: TurnChange[]): boolean {
+		return new Set(changes.filter((c) => c.table === 'foods').map((c) => c.action)).size > 1;
+	}
+
+	// The card's heading: "Saved 3 foods", "Logged 4 · Removed 1".
+	function changesTitle(changes: TurnChange[]): string {
+		const verbs: Record<string, [string, string]> = {
+			'foods create': ['Saved', ' food'],
+			'foods update': ['Updated', ' food'],
+			'foods delete': ['Deleted', ' food'],
+			'entries create': ['Logged', ''],
+			'entries update': ['Changed', ''],
+			'entries delete': ['Removed', '']
+		};
+		const counts = new Map<string, number>();
+		for (const c of changes) {
+			const key = `${c.table} ${c.action}`;
+			counts.set(key, (counts.get(key) ?? 0) + 1);
 		}
-		return { create: 'Added', update: 'Changed', delete: 'Removed' }[c.action];
+		return [...counts]
+			.map(([key, n]) => {
+				const [verb, noun] = verbs[key];
+				return `${verb} ${n}${noun}${noun && n !== 1 ? 's' : ''}`;
+			})
+			.join(' · ');
 	}
 </script>
 
@@ -294,6 +325,24 @@
 	{/if}
 {/snippet}
 
+{#snippet spans(line: Span[])}
+	{#each line as s, i (i)}{#if s.bold}<strong class="font-semibold">{s.text}</strong>{:else}{s.text}{/if}{/each}
+{/snippet}
+
+{#snippet replyText(text: string)}
+	<div class="space-y-2 whitespace-normal">
+		{#each parseReply(text) as block, i (i)}
+			{#if block.kind === 'ul'}
+				<ul class="list-disc space-y-1 pl-5">
+					{#each block.items as item, j (j)}<li>{@render spans(item)}</li>{/each}
+				</ul>
+			{:else}
+				<p>{#each block.lines as line, j (j)}{#if j}<br />{/if}{@render spans(line)}{/each}</p>
+			{/if}
+		{/each}
+	</div>
+{/snippet}
+
 {#snippet sentPhotos(urls: string[])}
 	{#if urls.length}
 		<div class="flex flex-wrap justify-end gap-1">
@@ -357,28 +406,44 @@
 				<div>
 					<div class="flex max-w-[92%] items-end gap-2">
 						<Mascot character="bao" mood={replyMood(turn)} size={40} />
-						<div class="mk-bubble mk-bubble--them min-w-0">{turn.reply_text || (turn.status === 'error' ? 'Something went wrong. Try sending it again.' : '…')}</div>
+						<div class="mk-bubble mk-bubble--them min-w-0">
+							{#if turn.reply_text}{@render replyText(turn.reply_text)}{:else}{turn.status === 'error' ? 'Something went wrong. Try sending it again.' : '…'}{/if}
+						</div>
 					</div>
 					{#if turn.changes.length}
-						<div class="mt-1.5 ml-12 rounded-[var(--radius-md)] border-2 border-line px-3 py-2 {turn.undone ? 'opacity-60' : ''}">
-							<ul class="small space-y-1">
+						<div class="mt-1.5 ml-12 rounded-[var(--radius-md)] border-2 border-line px-3 py-1.5 {turn.undone ? 'opacity-60' : ''}">
+							<div class="flex items-center justify-between gap-2">
+								<span class="small font-semibold text-ink-muted">{changesTitle(turn.changes)}</span>
+								{#if turn.undone}
+									<span class="small py-2 text-ink-muted">Undone</span>
+								{:else}
+									<button class="bh-btn bh-btn--ghost bh-btn--sm -mr-2" onclick={() => undo(turn)}>Undo</button>
+								{/if}
+							</div>
+							<ul class="small divide-y divide-line {turn.undone ? 'line-through' : ''}">
 								{#each turn.changes as c, i (i)}
-									<li class="flex gap-2 {turn.undone ? 'line-through' : ''}">
-										<span class="w-16 shrink-0 text-ink-muted">{changeLabel(c)}</span>
-										<span class="min-w-0 flex-1 truncate">{c.name ?? '–'}</span>
-										{#if c.table === 'entries' && c.kcal != null}
+									{@const removed = c.action === 'delete'}
+									<li class="flex items-start gap-2 py-1.5 {removed ? 'text-ink-muted line-through' : ''}">
+										{#if c.table === 'foods'}
+											{@const detail = [mixedFoods(turn.changes) ? foodLabel(c) : '', c.serving ? `per ${c.serving}` : ''].filter(Boolean).join(' · ')}
+											<div class="min-w-0 flex-1">
+												{#if removed || turn.undone}
+													<span class="font-semibold">{c.name ?? '–'}</span>
+												{:else}
+													<a href="/foods/{c.row_id}" class="font-semibold text-ink underline decoration-line underline-offset-2">{c.name ?? '–'}</a>
+												{/if}
+												{#if detail}<p class="text-ink-muted">{detail}</p>{/if}
+												{#if c.aliases?.length}<p class="text-ink-muted">Answers to {c.aliases.map((a) => `“${a}”`).join(', ')}</p>{/if}
+											</div>
+										{:else}
+											<span class="min-w-0 flex-1 truncate">{#if c.action === 'update' && marksChanged(turn.changes)}<span class="text-ink-muted">Changed </span>{/if}{c.name ?? '–'}</span>
+										{/if}
+										{#if c.kcal != null}
 											<span class="bh-num shrink-0 font-semibold"><NutrientIcon kind="energy" labelled />{kcal(c.kcal)}</span>
 										{/if}
 									</li>
 								{/each}
 							</ul>
-							<div class="mt-1 flex justify-end">
-								{#if turn.undone}
-									<span class="small py-2 text-ink-muted">Undone</span>
-								{:else}
-									<button class="bh-btn bh-btn--ghost bh-btn--sm" onclick={() => undo(turn)}>Undo</button>
-								{/if}
-							</div>
 						</div>
 					{/if}
 				</div>
@@ -399,7 +464,7 @@
 					{:else}
 						<Mascot character="bao" mood="busy" size={40} />
 						<div class="mk-bubble mk-bubble--them min-w-0">
-							{#if pending.reply}{pending.reply}{/if}
+							{#if pending.reply}{@render replyText(pending.reply)}{/if}
 							{#if pending.tool || !pending.reply}
 								<span class="flex items-center gap-2 text-ink-muted">
 									<Loader kind="crumbs" />
