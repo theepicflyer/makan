@@ -163,6 +163,13 @@ CASES: list[Case] = [
         forbid=[r"(?i)hard"],
     ),
     Case(
+        "estimate_from_similar_food",
+        ["text", "estimate"],
+        [Msg("2 onsen eggs for breakfast")],
+        expect=[Item(r"(?i)onsen", "breakfast", kcal=(110, 200))],
+        forbid=[r"(?i)tart|fu ?yong|sambal"],
+    ),
+    Case(
         "western_breakfast",
         ["text", "dump"],
         [Msg("breakfast: 2 eggs, toast with butter and a black coffee")],
