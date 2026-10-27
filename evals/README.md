@@ -43,6 +43,17 @@ The first round, before the prompt changes in this branch, passed 77 to 85% on H
 - Put follow-ups in the same meal as the item they follow.
 - Create a new household food for a new product instead of overwriting the old one.
 
+### Photo portions (2026-10-27)
+
+The prompt now has Bao work out each photo component's grams before it picks a food: size from the plate, bowl, cutlery and piece counts, plus what the photo hides (rice under toppings, oil, gravy). A linked food takes the grams seen instead of its default serving, and a database set counts as the same food only when the photo shows the same components. Haiku 5.5 at low effort, all 27 photo cases, 2 reps each, before and after:
+
+| | pass | meal total, mean error vs reference | entries with grams |
+|---|---|---|---|
+| before | 51/54 | 13.9% | 65% |
+| after | 53/54 | 11.9% | 75% |
+
+Cost and time per message didn't change. The change mostly helped plates the database has as a set with different components. A nasi lemak with curry-leaf chicken was logged as the database's chicken wing set (998 and 1249 kcal against a reference of 1550) and is now split into rice and an estimate for the chicken (1491 and 1275). Every linked food in the after run carries grams; the entries without grams are all estimates. With two reps per case, these differences are within noise for any single case. The text, label and edit cases all still pass.
+
 ## Running
 
 ```bash

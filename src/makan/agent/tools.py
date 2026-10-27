@@ -114,7 +114,10 @@ _portion_props = {
     },
     "grams": {
         "type": "number",
-        "description": "Total weight eaten; use instead of servings when the user gives a weight.",
+        "description": (
+            "Total weight eaten; use instead of servings when the user gives a weight or you judge it "
+            "from a photo. With an estimate, the weight its numbers are for."
+        ),
     },
 }
 _custom_props = {
