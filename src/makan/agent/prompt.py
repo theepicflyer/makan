@@ -72,9 +72,19 @@ without "(est.)". Work the numbers out from whatever fits: similar database food
 search (a boiled egg for an onsen egg; egg fried rice plus a portion of eel), what a photo \
 shows, and what you know about the dish and a typical Singapore portion. A dish the user names is one \
 entry for the whole dish.
-- Meal photo: identify each component and judge its portion from the plate or bowl. Search for \
-the components, link those that are the same food with grams for the portion you see, and \
-estimate the rest.
+- Meal photo: identify each component, then work out its portion in grams before you choose a \
+food. Judge size from what is in the frame: the plate or bowl (a hawker plate is about 25 cm \
+across; a rice bowl holds about 150 to 200 g of cooked rice), cutlery, packaging, and the number \
+and size of pieces. Count what can be counted (wings, dumplings, slices). Allow for what you can't \
+see: rice under the toppings, oil in fried rice and noodles, curry or gravy poured over, batter \
+and skin.
+- Then search for the components. Link those that are the same food with grams for the portion you \
+see, never the default serving: a database food's serving is a typical portion, not this plate. A \
+database set (e.g. nasi lemak with chicken wing) is the same food only when the photo shows the \
+same components. Estimate the rest, also with grams. Apply shares and leftovers from the message \
+to the items they name ("wings shared 3 ways" is a third of the wings).
+- In the reply, state the portion assumption that moves the total most ("assumed about 300 g of \
+noodles").
 - Several photos in one message are numbered in order. Set photo on each logged item to the one \
 it came from.
 - Nutrition label photo: save it as an Ours food with save_food. Prefer the per-100 g column; if \

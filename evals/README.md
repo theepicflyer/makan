@@ -2,12 +2,12 @@
 
 These evals check the makan assistant on the jobs it does every day. Each case starts from a fresh copy of the food database, seeds whatever household foods and log entries the case needs, and sends one or two messages through the real agent loop (`makan.agent.runner.run_turn`) against the live API. It is then graded on what ended up in the database: the right foods, meals, dates and portions; household foods used, or left alone, as asked; no duplicate entries. Grading never reads the reply text, except in the one case that asks a question.
 
-There are 46 cases (`cases.py`):
+There are 57 cases (`cases.py`):
 
 - Text (23): end-of-day dumps in hawker shorthand and Singlish ("teh c siew dai", "milo peng", "supper ice kachang"), counts and weights, two days in one message, household defaults ("a bowl of yogurt" means the household yogurt; "Fage greek yogurt" doesn't), teaching a portion, follow-up corrections, moving and deleting entries, editing yesterday, copying yesterday's breakfast, a dish the database lacks ("unagi fried rice" must count the eel, not log plain egg fried rice; "onsen eggs" must be estimated under that name, not logged as another egg dish), a qualifier the search must keep ("soft boiled" eggs, not hard-boiled), and a question that must not change anything.
 - Labels (3): a CP chicken rib bag whose label rows are printed out of line with their values, a FairPrice oat milk carton saved and logged in one message, and a switch to a second oat milk, which has to take over the "oat milk" alias without overwriting the first.
 - Add, then edit (10): the first message logs something and the second changes it. The cases fix one portion out of several items, swap steamed for roasted chicken rice, set the meal afterwards, remove one item, move the entry to yesterday, switch teh c to siew dai, drop the you tiao from a bak kut teh photo, halve the rice on a nasi lemak photo, and change the serving on a just-saved label. One more checks that "and another kopi c at 3pm" adds a second entry instead of editing the first. An edit has to change the entry that already exists; deleting it and logging it again fails.
-- Meal photos (10): your own photos (`evals/photos/`, gitignored), including bak kut teh, dry prawn mee, nasi lemak with wings, nasi padang, wanton mee, curry rice, risotto, tacos and onigiri. The reference calorie total for each one is Claude's estimate (Opus 5.5, in Claude Code) from looking at the photo, with a tolerance of roughly ±30%. Meal photos are graded on their main components and the day total, not on how many entries they were split into.
+- Meal photos (21): your own photos (`evals/photos/`, gitignored), including bak kut teh, dry prawn mee, nasi lemak with wings, nasi padang, wanton mee, curry rice, risotto, tacos and onigiri. Eleven more are mixed plates with several parts, many of which have no matching database food: three-roast rice, economy bee hoon, a Sri Lankan rice and curry plate, nabeyaki udon with tempura, zha jiang mian with sides, pineapple fried rice with kangkong, curry cutlet rice, a buffet plate, home-cooked instant noodles with fishcake, and two nasi lemak. Some messages add a share or an exclusion ("the wings were shared 3 ways", "shared this, I had half", "the bowl wasn't mine"). The reference calorie total for each one is Claude's estimate (Opus 5.5, in Claude Code) from looking at the photo, with a tolerance of roughly ±30%. Meal photos are graded on their main components and the day total, not on how many entries they were split into.
 
 ## Results (2026-10-21)
 
@@ -42,6 +42,17 @@ The first round, before the prompt changes in this branch, passed 77 to 85% on H
 - Log the most likely reading and state the assumption instead of asking which items were eaten.
 - Put follow-ups in the same meal as the item they follow.
 - Create a new household food for a new product instead of overwriting the old one.
+
+### Photo portions (2026-10-27)
+
+The prompt now has Bao work out each photo component's grams before it picks a food: size from the plate, bowl, cutlery and piece counts, plus what the photo hides (rice under toppings, oil, gravy). A linked food takes the grams seen instead of its default serving, and a database set counts as the same food only when the photo shows the same components. Haiku 5.5 at low effort, all 27 photo cases, 2 reps each, before and after:
+
+| | pass | meal total, mean error vs reference | entries with grams |
+|---|---|---|---|
+| before | 51/54 | 13.9% | 65% |
+| after | 53/54 | 11.9% | 75% |
+
+Cost and time per message didn't change. The change mostly helped plates the database has as a set with different components. A nasi lemak with curry-leaf chicken was logged as the database's chicken wing set (998 and 1249 kcal against a reference of 1550) and is now split into rice and an estimate for the chicken (1491 and 1275). Every linked food in the after run carries grams; the entries without grams are all estimates. With two reps per case, these differences are within noise for any single case. The text, label and edit cases all still pass.
 
 ## Running
 
