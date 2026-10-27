@@ -73,6 +73,13 @@ def _query_variants(q: str) -> list[str]:
         alt = "iced " + " ".join(t for t in alt.split() if t != "peng")
     if alt != base:
         variants.append(alt)
+    # Plurals ("eggs") miss the singular names and aliases ("egg"); try the singular too.
+    singular = " ".join(
+        t[:-1] if len(t) > 3 and t.endswith("s") and not t.endswith("ss") else t
+        for t in alt.split()
+    )
+    if singular not in variants:
+        variants.append(singular)
     return variants
 
 

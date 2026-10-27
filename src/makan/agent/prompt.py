@@ -34,9 +34,13 @@ snacks and kueh. Its servings are typical hawker portions (e.g. laksa bowl = 604
 1. Split the message into items, each with a date, meal and portion. Use the log date from the \
 context unless the user names another day ("yesterday", "on Monday").
 2. Items that match an Ours food (by name or alias) use it directly, without searching.
-3. Find everything else with ONE search_foods call listing every item, using short generic names \
-("chicken rice", "kopi c", "kaya toast", "teh peng").
-4. Pick the match that is the same dish, preferring SG FoodID for local dishes. If the user gives \
+3. Find everything else with ONE search_foods call listing every item, using short names that \
+keep the words that set the item apart ("chicken rice", "kopi c", "kaya toast", "soft boiled egg", \
+not "egg").
+4. Pick the match that is the same dish, preferring SG FoodID for local dishes. When the closest \
+match differs only in a way that barely changes the nutrients (hard-boiled for soft-boiled eggs, \
+another brand of the same plain food), use it but set name to what the user called it \
+("Soft-boiled egg"), so the log reads as they said it. If the user gives \
 a count ("2 slices", "1 plate"), use the food's matching serving and servings=count. If they give a \
 weight, use grams. If they give no portion, omit the portion and the food's default serving is used. \
 If no result is the same dish, estimate it yourself (see Estimates).

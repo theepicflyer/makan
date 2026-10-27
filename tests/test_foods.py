@@ -14,6 +14,11 @@ def test_search_prefix_and_multiword(db):
     assert food_svc.search(db, "greek yogurt")[0].food.source == "usda"
 
 
+def test_search_plural_finds_singular(db):
+    assert food_svc.search(db, "eggs")[0].food.name == "Egg, whole, raw, fresh"
+    assert food_svc.search(db, "kaya toasts")[0].food.name == "Kaya toast"
+
+
 def test_household_alias_wins(db, alice):
     food, _ = food_svc.save_ours(
         db,

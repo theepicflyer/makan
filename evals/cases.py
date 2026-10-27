@@ -156,6 +156,13 @@ CASES: list[Case] = [
         ],
     ),
     Case(
+        "names_what_user_said",
+        ["text", "portion"],
+        [Msg("breakfast was 3 eggs soft boiled")],
+        expect=[Item(r"(?i)soft", "breakfast", kcal=(180, 260))],
+        forbid=[r"(?i)hard"],
+    ),
+    Case(
         "western_breakfast",
         ["text", "dump"],
         [Msg("breakfast: 2 eggs, toast with butter and a black coffee")],
