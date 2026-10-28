@@ -52,14 +52,7 @@ def build_auth() -> OIDCProxy | None:
         # Registrations go through /register so they are inspectable records in the store.
         enable_cimd=False,
         # A DCR proxy that accepts any redirect URI is an open redirector.
-        allowed_client_redirect_uris=[
-            "https://claude.ai/api/mcp/auth_callback",
-            "https://claude.com/api/mcp/auth_callback",
-            # Meta Muse has no CIMD, so it registers here too.
-            "https://agent.meta.ai/api/hatch/oauth/callback",
-            "http://localhost:*",
-            "http://127.0.0.1:*",
-        ],
+        allowed_client_redirect_uris=s.dcr_redirect_uris,
     )
 
 
