@@ -56,7 +56,7 @@ def build_auth() -> OIDCProxy | None:
             "https://claude.ai/api/mcp/auth_callback",
             "https://claude.com/api/mcp/auth_callback",
             # Meta Muse has no CIMD, so it registers here too.
-            "https://agent.meta.ai/api/oauth/oauth/callback",
+            "https://agent.meta.ai/api/hatch/oauth/callback",
             "http://localhost:*",
             "http://127.0.0.1:*",
         ],
