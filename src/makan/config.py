@@ -9,6 +9,14 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
+DEFAULT_DCR_REDIRECT_URIS = (
+    "https://claude.ai/api/mcp/auth_callback "
+    "https://claude.com/api/mcp/auth_callback "
+    "https://agent.meta.ai/api/hatch/oauth/callback "
+    "http://localhost:* http://127.0.0.1:*"
+)
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
@@ -27,6 +35,9 @@ class Settings(BaseSettings):
     oidc_client_secret: str | None = None
     # Optional allowlist on top of Pocket ID's group restriction.
     allowed_emails: str = ""
+    # Space-separated callbacks an MCP client may register through DCR; a trailing ":*" matches any
+    # port and path. Empty means the default below.
+    mcp_dcr_allowed_redirect_uris: str = ""
 
     # Local development only: shows a user picker instead of OIDC.
     dev_login: bool = False
@@ -78,6 +89,10 @@ class Settings(BaseSettings):
     @property
     def allowed_email_set(self) -> set[str]:
         return {e.strip().lower() for e in self.allowed_emails.split(",") if e.strip()}
+
+    @property
+    def dcr_redirect_uris(self) -> list[str]:
+        return (self.mcp_dcr_allowed_redirect_uris or DEFAULT_DCR_REDIRECT_URIS).split()
 
 
 @lru_cache

@@ -97,3 +97,16 @@ def test_session_secret_is_generated_and_kept(tmp_path):
         Settings(data_dir=tmp_path, session_secret="explicit").resolved_session_secret()
         == "explicit"
     )
+
+
+def test_dcr_redirect_uris_default_and_override(tmp_path):
+    from makan.config import Settings
+
+    default = Settings(data_dir=tmp_path).dcr_redirect_uris
+    assert "https://claude.ai/api/mcp/auth_callback" in default
+    assert "https://agent.meta.ai/api/hatch/oauth/callback" in default
+    custom = Settings(
+        data_dir=tmp_path,
+        mcp_dcr_allowed_redirect_uris="https://a.example.com/cb  http://localhost:*",
+    )
+    assert custom.dcr_redirect_uris == ["https://a.example.com/cb", "http://localhost:*"]
