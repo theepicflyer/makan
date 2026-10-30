@@ -18,6 +18,7 @@
 	import { addDays, dayLabel, daySubtitle, dayTitle } from '#lib/format.ts';
 	import { MEALS, MEAL_LABEL, type Day, type Entry, type Meal } from '#lib/types.ts';
 	import { session, toasts, wide } from '#lib/state.svelte.ts';
+	import { fly } from '#lib/motion.ts';
 
 	const date = $derived(page.params.date ?? '');
 	const today = $derived(session.me?.today ?? date);
@@ -33,6 +34,8 @@
 	let saveOpen = $state(false);
 	let saveName = $state('');
 	let dateInput: HTMLInputElement | undefined = $state();
+	// which way the last day change went, so the new day slides in from that side
+	let dir = $state(1);
 	let seq = 0;
 
 	async function load(d: string) {
@@ -40,6 +43,7 @@
 		try {
 			const res = await get<Day>(`/api/days/${d}`);
 			if (mine === seq) {
+				if (day && res.date !== day.date) dir = res.date > day.date ? 1 : -1;
 				day = res;
 				loadError = null;
 			}
@@ -169,23 +173,36 @@
 			<!-- desktop: the day at a glance and Bao on the left, the meals on the right -->
 			<div class="grid grid-cols-[minmax(0,19rem)_minmax(0,1fr)] items-start gap-8 pt-6 pb-6 xl:grid-cols-[minmax(0,23rem)_minmax(0,1fr)] xl:gap-10 transition-opacity {day.date !== date ? 'opacity-50' : ''}">
 				<div class="grid gap-8 [@media(min-height:780px)]:sticky [@media(min-height:780px)]:top-6">
-					<DaySummary totals={day.totals} targets={day.targets} />
-					{@render macros(day)}
+					{#key day.date}
+						<div class="grid gap-8" in:fly={{ x: dir * 32, duration: 320 }}>
+							<DaySummary totals={day.totals} targets={day.targets} />
+							{@render macros(day)}
+						</div>
+					{/key}
 					<Assistant {date} onchanged={refresh} inline />
 				</div>
 				<!-- Bao's crumbs wind down behind the meals, strongest up to the next one -->
-				<TrailPath kind="crumbs" from={0.5} to={0.3} seed={1} class="grid gap-9">
-					{@render meals(day)}
-				</TrailPath>
+				{#key day.date}
+					<div in:fly={{ x: dir * 32, duration: 320 }}>
+						<TrailPath kind="crumbs" from={0.5} to={0.3} seed={1} class="grid gap-9">
+							{@render meals(day)}
+						</TrailPath>
+					</div>
+				{/key}
 			</div>
 		{:else if day}
 			<div class="transition-opacity {day.date !== date ? 'opacity-50' : ''}">
-				<DaySummary totals={day.totals} targets={day.targets} />
-				<!-- Bao's crumbs wind down from the sunflower behind the cards, strongest up to the next meal -->
-				<TrailPath kind="crumbs" from={0.5} to={0.3} seed={1} class="grid gap-9 pt-9">
-					{@render macros(day)}
-					{@render meals(day)}
-				</TrailPath>
+				<!-- another day slides in from the side it came from, and everything on it grows in again -->
+				{#key day.date}
+					<div in:fly={{ x: dir * 32, duration: 320 }}>
+						<DaySummary totals={day.totals} targets={day.targets} />
+						<!-- Bao's crumbs wind down from the sunflower behind the cards, strongest up to the next meal -->
+						<TrailPath kind="crumbs" from={0.5} to={0.3} seed={1} class="grid gap-9 pt-9">
+							{@render macros(day)}
+							{@render meals(day)}
+						</TrailPath>
+					</div>
+				{/key}
 				<!-- room for the docked composer and Bao over it -->
 				<div class="h-16"></div>
 			</div>

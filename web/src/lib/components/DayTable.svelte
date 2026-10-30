@@ -5,6 +5,7 @@
 	import type { HistoryDay, NutrientKey, Targets } from '../types.ts';
 	import { dayLabel, grams, kcal } from '../format.ts';
 	import { loggedAverage } from '../history.ts';
+	import { flip } from '../motion.ts';
 
 	/* Every day of the range with all its totals, sortable by any column. Days with nothing logged sort last. */
 	let { days, targets, today }: { days: HistoryDay[]; targets: Targets; today: string } = $props();
@@ -97,7 +98,7 @@
 						<th scope="col" aria-sort={sortKey === c.key ? (desc ? 'descending' : 'ascending') : undefined}>
 							<button class="mk-sort" aria-pressed={sortKey === c.key} onclick={() => sortBy(c.key)}>
 								{#if symbol}<NutrientIcon kind={symbol} size={14} />{/if}{c.label}{#if UNIT[c.key]}<span class="font-normal">&nbsp;{UNIT[c.key]}</span>{/if}
-								{#if sortKey === c.key}<Icon name={desc ? 'arrow-down' : 'arrow-up'} size={14} />{/if}
+								{#if sortKey === c.key}<span class="mk-sort__arrow {desc ? '' : 'is-up'}"><Icon name="arrow-down" size={14} /></span>{/if}
 							</button>
 						</th>
 					{/each}
@@ -108,6 +109,7 @@
 					<!-- the whole row opens the day; its link is the way in for the keyboard -->
 					<!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
 					<tr
+						animate:flip={{ duration: 320 }}
 						class="cursor-pointer"
 						onclick={(e) => {
 							if (!(e.target as Element).closest('a')) goto(`/day/${d.date}`);

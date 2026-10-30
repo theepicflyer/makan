@@ -6,6 +6,7 @@
 	import MacroDays from '#lib/components/MacroDays.svelte';
 	import MacroAmounts from '#lib/components/MacroAmounts.svelte';
 	import MacrosCard from '#lib/components/MacrosCard.svelte';
+	import Count from '#lib/components/Count.svelte';
 	import NutrientIcon, { type Nutrient } from '#lib/components/NutrientIcon.svelte';
 	import WeekdayCard from '#lib/components/WeekdayCard.svelte';
 	import Habitat from '#lib/burrow/Habitat.svelte';
@@ -78,10 +79,10 @@
 
 <svelte:head><title>History · makan</title></svelte:head>
 
-{#snippet tile(label: string, value: string, of?: string, note?: string, nutrient?: Nutrient)}
+{#snippet tile(label: string, value: number | null, of?: string, note?: string, nutrient?: Nutrient)}
 	<div>
 		<div class="label text-ink-muted">{#if nutrient}<NutrientIcon kind={nutrient} size={14} />{/if}{label}</div>
-		<div class="card-title bh-num mt-1">{value}{#if of}<span class="small text-ink-muted">{` / ${of}`}</span>{/if}</div>
+		<div class="card-title bh-num mt-1"><Count {value} format={kcal} />{#if of}<span class="small text-ink-muted">{` / ${of}`}</span>{/if}</div>
 		{#if note}<div class="small text-ink-muted">{note}</div>{/if}
 	</div>
 {/snippet}
@@ -130,14 +131,14 @@
 		{#if total > 0}
 			<div class="flex h-5 gap-[2px] overflow-hidden rounded-[var(--radius-pill)] border-2 border-outline bg-surface" aria-hidden="true">
 				{#each parts as p (p.label)}
-					<span style="flex: {p.kcal} 0 0; background: {p.color}"></span>
+					<span class="mk-split" style="--grow: {p.kcal}; background: {p.color}"></span>
 				{/each}
 			</div>
 			<div class="mt-3 grid grid-cols-3 gap-2">
 				{#each parts as p (p.label)}
 					<div>
 						<div class="label"><NutrientIcon kind={p.kind} size={14} />{p.label}</div>
-						<div class="body-strong bh-num mt-0.5">{Math.round((p.kcal / total) * 100)}%</div>
+						<div class="body-strong bh-num mt-0.5"><Count value={(p.kcal / total) * 100} />%</div>
 						{#if targetTotal > 0}<div class="small bh-num text-ink-muted">target {Math.round((p.target / targetTotal) * 100)}%</div>{/if}
 					</div>
 				{/each}
@@ -182,19 +183,19 @@
 		<div class="transition-opacity {loading ? 'opacity-50' : ''}">
 			<TrailPath kind="footprints" from={0.3} to={0.5} seed={2} class="grid grid-cols-12 gap-9 py-9">
 				<section class="bh-card col-span-12 grid grid-cols-4 gap-6" aria-label="Summary">
-					{@render tile('Average calories', logged.length ? kcal(avg('kcal')) : '–', undefined, 'kcal a day, logged days', 'energy')}
+					{@render tile('Average calories', logged.length ? avg('kcal') : null, undefined, 'kcal a day, logged days', 'energy')}
 					{#if avgDelta != null}
 						{@render tile(
 							'Against your target',
-							kcal(Math.abs(avgDelta)),
+							Math.abs(avgDelta),
 							undefined,
 							`kcal a day ${Math.round(avgDelta) > 0 ? 'over' : 'under'} ${kcal(data.targets.kcal)}`
 						)}
 					{:else}
-						{@render tile('Against your target', '–', undefined, data.targets.kcal ? 'nothing logged yet' : 'no target set')}
+						{@render tile('Against your target', null, undefined, data.targets.kcal ? 'nothing logged yet' : 'no target set')}
 					{/if}
-					{@render tile('Days logged', `${logged.length}`, `${range}`)}
-					{@render tile('At or under target', onTarget != null ? `${onTarget}` : '–', onTarget != null ? `${logged.length}` : undefined, 'logged days')}
+					{@render tile('Days logged', logged.length, `${range}`)}
+					{@render tile('At or under target', onTarget, onTarget != null ? `${logged.length}` : undefined, 'logged days')}
 				</section>
 				<!-- charts beside the averages from 1280px; between 1024 and 1280 they stack and the averages pair up.
 				     min-w-0: a chart measuring itself mustn't widen its column. -->
@@ -215,15 +216,15 @@
 			<!-- Gali's footprints wind down behind the cards and into the tunnel -->
 			<TrailPath kind="footprints" from={0.62} toPx={32} seed={2} class="grid gap-9 py-9">
 				<section class="bh-card grid grid-cols-3 gap-3" aria-label="Summary">
-					{@render tile('Avg kcal', logged.length ? kcal(avg('kcal')) : '–', undefined, 'logged days', 'energy')}
-					{@render tile('Days logged', `${logged.length}`, `${range}`)}
-					{@render tile('At or under', onTarget != null ? `${onTarget}` : '–', onTarget != null ? `${logged.length}` : undefined, 'target')}
+					{@render tile('Avg kcal', logged.length ? avg('kcal') : null, undefined, 'logged days', 'energy')}
+					{@render tile('Days logged', logged.length, `${range}`)}
+					{@render tile('At or under', onTarget, onTarget != null ? `${logged.length}` : undefined, 'target')}
 				</section>
 				{@render calories(180)}
 				{@render macros()}
 			</TrailPath>
 
-			<!-- Gali's tunnel: a chamber per day, newest first, footprints between them -->
+			<!-- Gali's tunnel: a chamber per day, newest first, footprints between them; each rises in as it scrolls into view -->
 			<div class="bh-tunnel">
 				{#each newestFirst as d, i (d.date)}
 					{@const when = parseDate(d.date)}

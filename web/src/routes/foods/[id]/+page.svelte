@@ -126,7 +126,7 @@
 			<button class="bh-btn bh-btn--primary ml-auto min-w-32" onclick={save} disabled={busy}>Save food</button>
 		</div>
 	{:else if food}
-		<div class="space-y-4">
+		<div class="mk-stagger space-y-4">
 			<div class="small text-ink-muted">
 				<div class="flex items-center gap-2"><SourceBadge source={food.source} /><span>{food.source_label}</span></div>
 				{#if food.category}<div class="mt-1">{food.category}</div>{/if}
@@ -135,7 +135,7 @@
 			<section class="bh-card py-2" aria-labelledby="per100-title">
 				<h2 id="per100-title" class="bh-card__title pt-2 pb-1">Per 100 g</h2>
 				<table class="body w-full">
-					<tbody>
+					<tbody class="mk-stagger">
 						{#each ROWS as r (r.key)}
 							{@const symbol = NUTRIENT_OF[r.key]}
 							<tr class="border-b border-line last:border-0">

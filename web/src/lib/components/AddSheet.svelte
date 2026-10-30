@@ -11,6 +11,7 @@
 	import { del, get, post } from '../api.ts';
 	import { initialPortion, kcal, portionPayload, portionText, servingKcal } from '../format.ts';
 	import { toasts } from '../state.svelte.ts';
+	import { flip, fly } from '../motion.ts';
 
 	let {
 		open = $bindable(false),
@@ -182,8 +183,9 @@
 {/snippet}
 
 <Sheet bind:open title={picked ? picked.name : `Add to ${MEAL_LABEL[meal].toLowerCase()}`} tall>
+	<!-- a picked food slides in from the right, and back out to the list on the left -->
 	{#if picked}
-		<div class="space-y-4 pt-1">
+		<div class="space-y-4 pt-1" in:fly={{ x: 32, duration: 260 }}>
 			<button class="bh-btn bh-btn--ghost bh-btn--sm -ml-3" onclick={() => (picked = null)}>
 				<Icon name="chevron-left" size={18} />Back to results
 			</button>
@@ -197,7 +199,7 @@
 			<PortionPicker food={picked} bind:value={portion} />
 		</div>
 	{:else}
-		<div class="sticky top-0 z-10 -mx-5 bg-surface px-5 pb-3">
+		<div class="sticky top-0 z-10 -mx-5 bg-surface px-5 pb-3" in:fly={{ x: -32, duration: 260 }}>
 			<label class="bh-field">
 				<span class="sr-only">Search foods</span>
 				<span class="bh-field__box">
@@ -221,9 +223,9 @@
 			{:else if !results.length}
 				<EmptyState character="gali" mood="worried" size={88} title="No matches" body="Try a shorter word, or describe it to Bao instead." />
 			{:else}
-				<ul class="mk-rows">
+				<ul class="mk-rows mk-stagger">
 					{#each results as food (food.id)}
-						<li>
+						<li animate:flip>
 							<button class="bh-row mk-row-btn" onclick={() => choose(food)}>
 								<span class="bh-row__text">
 									<span class="bh-row__title">{food.name}</span>
@@ -236,7 +238,7 @@
 				</ul>
 			{/if}
 		{:else if quick}
-			<div class="space-y-5">
+			<div class="mk-stagger space-y-5">
 				{#if quick.yesterday}
 					<section>
 						<h3 class="mk-section-label">Same as yesterday</h3>

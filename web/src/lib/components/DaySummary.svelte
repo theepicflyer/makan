@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Ring from '../burrow/Ring.svelte';
+	import Count from './Count.svelte';
 	import type { Nutrients, Targets } from '../types.ts';
 	import { kcal } from '../format.ts';
 
@@ -15,16 +16,16 @@
 <div class="grid justify-items-center pt-3">
 	<Ring value={eaten} max={target} label="Calories">
 		{#if remaining != null}
-			<span class="mk-hero">{kcal(Math.abs(remaining))}</span>
+			<span class="mk-hero"><Count value={Math.abs(remaining)} format={kcal} /></span>
 			<span class="small">{over ? 'kcal over' : 'kcal left'}</span>
 		{:else}
-			<span class="mk-hero">{kcal(eaten)}</span>
+			<span class="mk-hero"><Count value={eaten} format={kcal} /></span>
 			<span class="small">kcal eaten</span>
 		{/if}
 	</Ring>
 	<p class="small mt-2 text-center text-ink-muted">
 		{#if target != null}
-			<span class="bh-num">{kcal(eaten)} of {kcal(target)}</span> kcal eaten
+			<span class="bh-num"><Count value={eaten} format={kcal} /> of {kcal(target)}</span> kcal eaten
 		{:else}
 			<a class="mk-link" href="/settings">Set a daily target</a>
 		{/if}

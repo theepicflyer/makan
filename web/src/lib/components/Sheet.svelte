@@ -2,6 +2,7 @@
 	import type { Snippet } from 'svelte';
 	import { onDestroy, tick } from 'svelte';
 	import Icon from '../burrow/Icon.svelte';
+	import { fade, sheet } from '../motion.ts';
 
 	let {
 		open = $bindable(false),
@@ -48,13 +49,14 @@
 
 {#if open}
 	<div class="fixed inset-0 z-40 flex items-end justify-center sm:items-center" role="presentation">
-		<button class="mk-scrim absolute inset-0" aria-label="Close" tabindex="-1" onclick={close}></button>
+		<button class="mk-scrim absolute inset-0" aria-label="Close" tabindex="-1" onclick={close} transition:fade={{ duration: 200 }}></button>
 		<div
 			bind:this={panel}
 			role="dialog"
 			aria-modal="true"
 			aria-label={title}
 			tabindex="-1"
+			transition:sheet
 			class="mk-sheet relative flex w-full max-w-lg flex-col outline-none {tall ? 'h-[92dvh] sm:h-[85dvh]' : 'max-h-[92dvh] sm:max-h-[85dvh]'}"
 		>
 			<div class="mk-handle absolute top-2 left-1/2 -translate-x-1/2 sm:hidden"></div>

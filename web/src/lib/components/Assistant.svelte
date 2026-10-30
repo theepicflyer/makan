@@ -14,6 +14,7 @@
 	import { dayLabel, kcal } from '../format.ts';
 	import { session, toasts } from '../state.svelte.ts';
 	import { tick } from 'svelte';
+	import { fly, scale } from '../motion.ts';
 
 	let {
 		date,
@@ -274,7 +275,10 @@
 				<Icon name="camera" size={22} />
 			</button>
 			{#if photoMenu === docked}
-				<div class="absolute bottom-full left-0 z-10 mb-2 flex w-48 flex-col rounded-[var(--radius-sm)] border-2 border-outline bg-surface p-1 shadow-[var(--shadow-lift)]">
+				<div
+					class="absolute bottom-full left-0 z-10 mb-2 flex w-48 origin-bottom-left flex-col rounded-[var(--radius-sm)] border-2 border-outline bg-surface p-1 shadow-[var(--shadow-lift)]"
+					transition:scale={{ start: 0.85, duration: 160 }}
+				>
 					<button type="button" class="bh-btn bh-btn--ghost min-h-11 justify-start gap-2 px-3" onclick={() => choosePhoto(cameraInput)}>
 						<Icon name="camera" size={20} />Take a photo
 					</button>
@@ -317,7 +321,7 @@
 	{#if photos.length}
 		<div class="pointer-events-auto mb-2 flex flex-wrap items-center gap-3 pt-2">
 			{#each photos as p, i (p.url)}
-				<div class="relative">
+				<div class="mk-pop-in relative" out:scale={{ start: 0.6, duration: 150 }}>
 					<img src={p.url} alt="Attached" class="h-16 w-16 rounded-[var(--radius-sm)] border-2 border-outline object-cover" />
 					<button
 						class="absolute -top-2 -right-2 grid h-7 w-7 place-items-center rounded-full border-2 border-outline bg-surface text-ink"
@@ -419,7 +423,7 @@
 						</div>
 					</div>
 					{#if turn.changes.length}
-						<div class="mt-1.5 ml-12 rounded-[var(--radius-md)] border-2 border-line px-3 py-1.5 {turn.undone ? 'opacity-60' : ''}">
+						<div class="mk-rise-in mt-1.5 ml-12 rounded-[var(--radius-md)] border-2 border-line px-3 py-1.5 transition-opacity {turn.undone ? 'opacity-60' : ''}">
 							<div class="flex items-center justify-between gap-2">
 								<span class="small font-semibold text-ink-muted">{changesTitle(turn.changes)}</span>
 								{#if turn.undone}
@@ -458,7 +462,8 @@
 			</div>
 		{/each}
 		{#if pending}
-			<div class="space-y-2">
+			<!-- the message just sent rises into the chat -->
+			<div class="space-y-2" in:fly={{ y: 16, duration: 260 }}>
 				<div class="ml-auto flex max-w-[85%] flex-col items-end gap-1">
 					{@render sentPhotos(pending.photoUrls)}
 					{#if pending.text}

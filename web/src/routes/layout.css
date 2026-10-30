@@ -409,7 +409,6 @@ textarea {
 		background: var(--surface);
 		border-radius: var(--radius-lg) var(--radius-lg) 0 0;
 		box-shadow: var(--shadow-lift);
-		animation: mk-sheet-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 	}
 
 	@media (min-width: 640px) {
@@ -470,22 +469,513 @@ textarea {
 		}
 	}
 
-	@media (prefers-reduced-motion: reduce) {
-		.mk-sheet {
-			animation: none;
-		}
-	}
-
-	@keyframes mk-sheet-in {
-		from {
-			transform: translateY(32px);
-			opacity: 0.6;
-		}
-	}
-
 	@keyframes mk-pulse {
 		50% {
 			opacity: 0.55;
+		}
+	}
+}
+
+/* Motion. A screen's cards rise in one after another, bars grow, the sunflower opens, meters fill and numbers
+   count up (Count.svelte); things move when they change, and the habitats have a little life in them. Svelte
+   transitions for things added and removed later are in lib/motion.ts, screen changes are view transitions
+   (+layout.svelte). Everything that moves sits behind no-preference: reduced motion gets none of it. */
+@layer components {
+	/* Widths through custom properties, so the motion below can start them at zero. */
+	.bh-meter__fill {
+		width: var(--w);
+	}
+
+	.bh-meter__cap {
+		left: var(--w);
+	}
+
+	/* History's split of calories between the macros */
+	.mk-split {
+		flex: var(--grow) 0 0;
+	}
+
+	/* The nav's current pill, one blob that slides between items (slidingPill in lib/motion.ts). */
+	.has-blob {
+		position: relative;
+	}
+
+	.has-blob > a {
+		position: relative; /* over the blob */
+	}
+
+	.has-blob .is-active .bh-nav__pill {
+		background: none;
+	}
+
+	.mk-pill-blob {
+		position: absolute;
+		top: 0;
+		left: 0;
+		border-radius: var(--radius-pill);
+		background: var(--accent-soft);
+		pointer-events: none;
+	}
+
+	/* Bao ducks behind the nav on day screens, where it sits over the composer instead. */
+	.mk-peek--away .bh-peek__animal {
+		translate: 0 70%;
+		opacity: 0;
+	}
+
+	.mk-peek--away .bh-peek__paws {
+		opacity: 0;
+	}
+
+	.mk-sort__arrow {
+		display: inline-flex;
+	}
+
+	.mk-sort__arrow.is-up {
+		rotate: 180deg;
+	}
+
+	@media (prefers-reduced-motion: no-preference) {
+		/* Screens: the old one lifts away and the new one rises in; the navs stay put while their pill slides. */
+		::view-transition-old(root) {
+			animation: mk-leave 0.16s ease-in both;
+		}
+
+		::view-transition-new(root) {
+			animation: mk-enter 0.34s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+		}
+
+		.mk-dock {
+			view-transition-name: mk-dock;
+		}
+
+		.mk-rail {
+			view-transition-name: mk-rail;
+		}
+
+		::view-transition-old(mk-dock),
+		::view-transition-old(mk-rail) {
+			display: none;
+		}
+
+		::view-transition-new(mk-dock),
+		::view-transition-new(mk-rail) {
+			animation: none;
+		}
+
+		/* Cards rise in one after another while a trail is fresh, and a card added later rises in by itself.
+		   Lists marked mk-stagger rise in row by row, and so does a row added later. */
+		.mk-trailpath > :not(.mk-trailpath__art),
+		.mk-stagger > *,
+		.mk-rise-in {
+			animation: mk-rise 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+		}
+
+		.mk-trailpath.is-fresh > :nth-child(3) {
+			animation-delay: 70ms;
+		}
+
+		.mk-trailpath.is-fresh > :nth-child(4) {
+			animation-delay: 140ms;
+		}
+
+		.mk-trailpath.is-fresh > :nth-child(5) {
+			animation-delay: 210ms;
+		}
+
+		.mk-trailpath.is-fresh > :nth-child(6) {
+			animation-delay: 280ms;
+		}
+
+		.mk-trailpath.is-fresh > :nth-child(7) {
+			animation-delay: 350ms;
+		}
+
+		.mk-trailpath.is-fresh > :nth-child(n + 8) {
+			animation-delay: 420ms;
+		}
+
+		.mk-stagger > :nth-child(2) {
+			animation-delay: 40ms;
+		}
+
+		.mk-stagger > :nth-child(3) {
+			animation-delay: 80ms;
+		}
+
+		.mk-stagger > :nth-child(4) {
+			animation-delay: 120ms;
+		}
+
+		.mk-stagger > :nth-child(5) {
+			animation-delay: 160ms;
+		}
+
+		.mk-stagger > :nth-child(6) {
+			animation-delay: 200ms;
+		}
+
+		.mk-stagger > :nth-child(7) {
+			animation-delay: 240ms;
+		}
+
+		.mk-stagger > :nth-child(8) {
+			animation-delay: 280ms;
+		}
+
+		.mk-stagger > :nth-child(n + 9) {
+			animation-delay: 320ms;
+		}
+
+		.mk-pop-in {
+			animation: mk-pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+		}
+
+		/* Gali's tunnel: each day's chamber rises in as it scrolls into view. */
+		@supports (animation-timeline: view()) {
+			.bh-tunnel__row {
+				animation: mk-rise linear backwards;
+				animation-timeline: view();
+				animation-range: entry 0% entry 70%;
+			}
+		}
+
+		/* Habitats: clouds drift, grass sways, water ripples, the sun glows, and the resident breathes
+		   (and hops whenever its mood changes, since that redraws it). */
+		.hb-cloud {
+			animation: mk-drift 26s ease-in-out infinite alternate;
+		}
+
+		.hb-cloud:nth-of-type(2n) {
+			animation-duration: 33s;
+			animation-direction: alternate-reverse;
+		}
+
+		.hb-tuft {
+			transform-box: fill-box;
+			transform-origin: 50% 100%;
+			animation: mk-sway 3.4s ease-in-out infinite alternate;
+		}
+
+		.hb-tuft:nth-of-type(2n) {
+			animation-duration: 2.7s;
+			animation-direction: alternate-reverse;
+		}
+
+		.hb-ripple {
+			animation: mk-ripple 2.8s ease-in-out infinite alternate;
+		}
+
+		.hb-sun {
+			transform-box: fill-box;
+			transform-origin: center;
+			animation: mk-glow 4s ease-in-out infinite alternate;
+		}
+
+		.bh-habitat__resident .bh-mascot {
+			transform-origin: 50% 100%;
+			animation: mk-breathe 3.6s ease-in-out 0.8s infinite;
+		}
+
+		:is(.bh-habitat__resident, .bh-peek__animal) .bh-mascot:not(.bh-mascot--bounce) svg {
+			transform-origin: 50% 100%;
+			animation: mk-hop 0.55s cubic-bezier(0.34, 1.56, 0.64, 1);
+		}
+
+		/* Peeking animals climb up over their edge, then put their paws on it; they duck back down the same way. */
+		.bh-peek__animal {
+			animation: mk-peek-up 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.15s backwards;
+			transition:
+				translate 0.45s cubic-bezier(0.34, 1.56, 0.64, 1),
+				opacity 0.3s ease;
+		}
+
+		.bh-peek__paws {
+			animation: mk-fade 0.3s ease 0.5s backwards;
+			transition: opacity 0.25s ease;
+		}
+
+		/* The sunflower opens, then its petals light up one by one round to the share eaten. */
+		.bh-ring--sunflower svg {
+			animation: mk-bloom 0.9s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+		}
+
+		.bh-petal {
+			transition: fill 0.3s ease calc(250ms + var(--i) * 28ms);
+		}
+
+		@starting-style {
+			.bh-petal.is-on {
+				fill: var(--sunny-soft);
+			}
+		}
+
+		/* Meters fill from empty, the sunflower at the end rolling along. */
+		.bh-meter__cap svg {
+			rotate: calc(var(--p) * 1.5turn);
+			transition: rotate 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+		}
+
+		@starting-style {
+			.bh-meter__fill,
+			.meter-split {
+				width: 0;
+			}
+
+			.bh-meter__cap {
+				left: 0;
+			}
+
+			.bh-meter__cap svg {
+				rotate: 0turn;
+			}
+		}
+
+		.mk-split {
+			transition: flex-grow 0.7s cubic-bezier(0.34, 1.56, 0.64, 1);
+		}
+
+		@starting-style {
+			.mk-split {
+				flex-grow: 0;
+			}
+		}
+
+		/* Charts: bars grow up from the baseline left to right, the target and trend draw across. */
+		.mk-bar {
+			transform-box: fill-box;
+			transform-origin: 50% 100%;
+			animation: mk-grow 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+			animation-delay: calc(var(--at) * 400ms);
+			transition:
+				opacity 0.15s ease,
+				d 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+		}
+
+		.mk-bar-dot {
+			animation: mk-fade 0.4s ease backwards;
+			animation-delay: calc(200ms + var(--at) * 400ms);
+		}
+
+		.mk-draw {
+			animation: mk-wipe 0.9s cubic-bezier(0.4, 0, 0.2, 1) 0.35s backwards;
+		}
+
+		.mk-tip {
+			transition: left 0.15s ease-out;
+		}
+
+		/* The nav: the pill slides over, and the icon it lands on gives a wiggle. */
+		.mk-pill-blob {
+			transition:
+				translate 0.42s cubic-bezier(0.34, 1.56, 0.64, 1),
+				width 0.3s ease,
+				height 0.3s ease;
+		}
+
+		.bh-nav__item,
+		.mk-rail__item {
+			transition:
+				color 0.2s ease,
+				background-color 0.15s ease;
+		}
+
+		.is-active > .bh-nav__pill .bh-icon {
+			animation: mk-wiggle 0.5s ease 0.1s;
+		}
+
+		/* Buttons lift a touch under a mouse and still press down into their shadow. */
+		.bh-btn {
+			transition:
+				transform 0.08s ease,
+				box-shadow 0.08s ease,
+				opacity 0.15s ease,
+				background-color 0.15s ease,
+				color 0.15s ease;
+		}
+
+		@media (hover: hover) {
+			:is(.bh-btn--primary, .bh-btn--secondary):not(:disabled):hover:not(:active) {
+				transform: translateY(-1px);
+			}
+		}
+
+		/* Chips squeeze when pressed and their check pops in. */
+		.bh-chip {
+			transition:
+				background-color 0.15s ease,
+				border-color 0.15s ease,
+				box-shadow 0.15s ease,
+				transform 0.1s ease;
+		}
+
+		.bh-chip:active {
+			transform: scale(0.96);
+		}
+
+		.bh-chip.is-selected > .bh-icon {
+			animation: mk-pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+		}
+
+		.mk-row-btn,
+		.mk-table td,
+		.mk-sort,
+		.mk-link,
+		.bh-field__box,
+		.mk-composer {
+			transition:
+				background-color 0.15s ease,
+				color 0.15s ease,
+				border-color 0.15s ease,
+				box-shadow 0.15s ease;
+		}
+
+		.mk-row-btn:active:not(:disabled) {
+			scale: 0.99;
+		}
+
+		.mk-sort__arrow {
+			transition: rotate 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+		}
+
+		/* Empty states: the animal or trace pops up and the trace bobs. */
+		.bh-empty > :first-child {
+			animation: mk-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
+		}
+
+		.bh-empty > .bh-trace {
+			animation:
+				mk-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) backwards,
+				mk-bob 3s ease-in-out 0.5s infinite alternate;
+		}
+	}
+
+	@keyframes mk-leave {
+		to {
+			opacity: 0;
+			transform: translateY(-6px);
+		}
+	}
+
+	@keyframes mk-enter {
+		from {
+			opacity: 0;
+			transform: translateY(12px);
+		}
+	}
+
+	@keyframes mk-rise {
+		from {
+			opacity: 0;
+			transform: translateY(18px) scale(0.98);
+		}
+	}
+
+	@keyframes mk-pop {
+		from {
+			opacity: 0;
+			transform: scale(0.6);
+		}
+	}
+
+	@keyframes mk-fade {
+		from {
+			opacity: 0;
+		}
+	}
+
+	@keyframes mk-drift {
+		from {
+			translate: -14px 0;
+		}
+		to {
+			translate: 18px 0;
+		}
+	}
+
+	@keyframes mk-sway {
+		from {
+			rotate: -8deg;
+		}
+		to {
+			rotate: 8deg;
+		}
+	}
+
+	@keyframes mk-ripple {
+		from {
+			translate: -4px 0;
+		}
+		to {
+			translate: 4px 0;
+		}
+	}
+
+	@keyframes mk-glow {
+		to {
+			scale: 1.08;
+		}
+	}
+
+	@keyframes mk-breathe {
+		50% {
+			scale: 1.015 1.035;
+		}
+	}
+
+	@keyframes mk-hop {
+		30% {
+			transform: translateY(-7px) scale(0.96, 1.05);
+		}
+		60% {
+			transform: translateY(0) scale(1.04, 0.96);
+		}
+	}
+
+	@keyframes mk-peek-up {
+		from {
+			translate: 0 60%;
+		}
+	}
+
+	@keyframes mk-bloom {
+		from {
+			opacity: 0;
+			scale: 0.4;
+			rotate: -90deg;
+		}
+	}
+
+	@keyframes mk-grow {
+		from {
+			transform: scaleY(0);
+		}
+	}
+
+	@keyframes mk-wipe {
+		from {
+			clip-path: inset(-10px 100% -10px -10px);
+		}
+		to {
+			clip-path: inset(-10px -10px -10px -10px);
+		}
+	}
+
+	@keyframes mk-wiggle {
+		25% {
+			rotate: -14deg;
+		}
+		50% {
+			rotate: 10deg;
+		}
+		75% {
+			rotate: -4deg;
+		}
+	}
+
+	@keyframes mk-bob {
+		to {
+			translate: 0 -4px;
 		}
 	}
 }

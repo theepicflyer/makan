@@ -4,7 +4,7 @@
 	import '@fontsource/figtree/latin-600.css';
 	import './layout.css';
 	import { page } from '$app/state';
-	import { goto } from '$app/navigation';
+	import { goto, onNavigate } from '$app/navigation';
 	import BottomNav from '#lib/components/BottomNav.svelte';
 	import SideNav from '#lib/components/SideNav.svelte';
 	import Toasts from '#lib/components/Toasts.svelte';
@@ -15,6 +15,19 @@
 	let { children } = $props();
 	let ready = $state(false);
 	const isLogin = $derived(page.url.pathname.startsWith('/login'));
+
+	// Screens cross over with a view transition (layout.css says how). One day to another is the same
+	// screen, so it skips this and the day slides over by itself.
+	onNavigate((navigation) => {
+		if (!document.startViewTransition || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+		if (navigation.from?.route.id === navigation.to?.route.id) return;
+		return new Promise((resolve) => {
+			document.startViewTransition(async () => {
+				resolve();
+				await navigation.complete;
+			});
+		});
+	});
 
 	onMount(async () => {
 		// a tapped reminder asks the open app to show its day (see the service worker)

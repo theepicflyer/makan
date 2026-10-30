@@ -1,12 +1,14 @@
 <script lang="ts">
 	import EntryRow from './EntryRow.svelte';
 	import NutrientIcon from './NutrientIcon.svelte';
+	import Count from './Count.svelte';
 	import Icon from '../burrow/Icon.svelte';
 	import Trace from '../burrow/Trace.svelte';
 	import type { Entry, Meal, Nutrients } from '../types.ts';
 	import { MEAL_LABEL } from '../types.ts';
 	import { kcal } from '../format.ts';
 	import { wide } from '../state.svelte.ts';
+	import { fade, flip } from '../motion.ts';
 
 	let {
 		meal,
@@ -36,11 +38,12 @@
 		<section class="bh-card bh-card--nibbled" aria-label={label}>
 			<header class="bh-card__head mk-nibble-head mb-1 justify-start">
 				<h2 class="bh-card__title">{label}</h2>
-				<span class="small bh-num text-ink-muted"><NutrientIcon kind="energy" />{kcal(subtotal.kcal)} kcal</span>
+				<span class="small bh-num text-ink-muted"><NutrientIcon kind="energy" /><Count value={subtotal.kcal} format={kcal} /> kcal</span>
 			</header>
-			<ul class="mk-rows">
+			<!-- a new entry rises into place (layout.css), the others make room; a removed one fades -->
+			<ul class="mk-rows mk-stagger">
 				{#each entries as entry (entry.id)}
-					<li><EntryRow {entry} onclick={() => onedit(entry)} /></li>
+					<li animate:flip out:fade={{ duration: 150 }}><EntryRow {entry} onclick={() => onedit(entry)} /></li>
 				{/each}
 			</ul>
 			<div class="mk-card-actions">

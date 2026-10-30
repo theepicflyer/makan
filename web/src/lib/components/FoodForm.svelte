@@ -3,6 +3,7 @@
 	import Icon from '../burrow/Icon.svelte';
 	import { NUTRIENT_OF } from './NutrientIcon.svelte';
 	import type { FoodDraft, NutrientKey } from '../types.ts';
+	import { flip, scale } from '../motion.ts';
 
 	let { draft = $bindable() }: { draft: FoodDraft } = $props();
 
@@ -74,7 +75,7 @@
 		{#if draft.aliases.length}
 			<div class="mk-choice mb-2">
 				{#each draft.aliases as alias (alias)}
-					<span class="bh-chip is-selected pr-1">
+					<span class="bh-chip is-selected mk-pop-in pr-1" animate:flip out:scale={{ duration: 150, start: 0.6 }}>
 						{alias}
 						<button
 							class="grid h-7 w-7 place-items-center rounded-full hover:bg-surface"
