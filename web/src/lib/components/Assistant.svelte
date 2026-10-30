@@ -382,7 +382,7 @@
 		</Peek>
 	</div>
 {:else if !open}
-	<div class="pointer-events-none fixed inset-x-0 z-20 px-4" style="bottom: calc(env(safe-area-inset-bottom) + var(--nav-gap) + var(--nav-h) + 10px)">
+	<div class="pointer-events-none fixed left-0 z-20 px-4" style="right: var(--fold-right); bottom: calc(env(safe-area-inset-bottom) + var(--nav-gap) + var(--nav-h) + 10px)">
 		<div class="mx-auto max-w-lg">
 			{@render attached()}
 			<!-- Bao listens over the composer, nibbling while working on a message -->

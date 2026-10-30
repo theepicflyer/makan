@@ -9,7 +9,7 @@
 	import { get } from '#lib/api.ts';
 	import { servingKcal } from '#lib/format.ts';
 	import type { Food } from '#lib/types.ts';
-	import { toasts, wide } from '#lib/state.svelte.ts';
+	import { columns, toasts } from '#lib/state.svelte.ts';
 	import { flip } from '#lib/motion.ts';
 	import { onMount } from 'svelte';
 
@@ -125,8 +125,8 @@
 {/snippet}
 
 <div class="mk-page">
-	{#if wide.current}
-		<!-- desktop: the household's foods beside the search, crumbs winding behind both -->
+	{#if columns.current}
+		<!-- unfolded and desktop: the household's foods beside the search, crumbs winding behind both -->
 		<TrailPath kind="crumbs" from={0.5} to={0.75} seed={3} class="grid grid-cols-2 items-start gap-9 pt-9 pb-4">
 			<div class="grid gap-9">
 				{@render household()}

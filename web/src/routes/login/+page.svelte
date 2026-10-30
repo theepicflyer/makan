@@ -31,7 +31,8 @@
 
 <svelte:head><title>Sign in · makan</title></svelte:head>
 
-<main class="mk-stagger mx-auto flex min-h-dvh max-w-md flex-col justify-center px-4 pt-[env(safe-area-inset-top)] pb-[max(24px,env(safe-area-inset-bottom))]">
+<!-- half-folded, it keeps to the left of the fold -->
+<main class="mk-stagger mx-auto flex min-h-dvh max-w-md flex-col justify-center px-4 pt-[env(safe-area-inset-top)] pb-[max(24px,env(safe-area-inset-bottom))] book:mx-0 book:max-w-[env(viewport-segment-right_0_0)]">
 	<!-- the whole household: Kacang's oak, Gali's burrow, Bao's sunflowers, Kayu's river -->
 	<World />
 	<h1 class="mt-6 font-[family-name:var(--font-display)] text-[40px] leading-[44px] font-semibold">makan</h1>

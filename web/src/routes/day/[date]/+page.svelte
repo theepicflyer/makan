@@ -17,7 +17,7 @@
 	import { get, post } from '#lib/api.ts';
 	import { addDays, dayLabel, daySubtitle, dayTitle } from '#lib/format.ts';
 	import { MEALS, MEAL_LABEL, type Day, type Entry, type Meal } from '#lib/types.ts';
-	import { session, toasts, wide } from '#lib/state.svelte.ts';
+	import { columns, session, toasts, wide } from '#lib/state.svelte.ts';
 	import { fly } from '#lib/motion.ts';
 
 	const date = $derived(page.params.date ?? '');
@@ -169,9 +169,10 @@
 	<div class="mk-page">
 		{#if loadError && !day}
 			<p class="py-10 text-center font-semibold text-tomato-text">Couldn't load this day: {loadError}</p>
-		{:else if day && wide.current}
-			<!-- desktop: the day at a glance and Bao on the left, the meals on the right -->
-			<div class="grid grid-cols-[minmax(0,19rem)_minmax(0,1fr)] items-start gap-8 pt-6 pb-6 xl:grid-cols-[minmax(0,23rem)_minmax(0,1fr)] xl:gap-10 transition-opacity {day.date !== date ? 'opacity-50' : ''}">
+		{:else if day && columns.current}
+			<!-- unfolded and desktop: the day at a glance (and on desktop Bao) on the left, the meals on the right;
+			     halves until the rail comes in, so a fold runs between them, with room under them for the docked composer -->
+			<div class="grid grid-cols-2 items-start gap-8 pt-6 pb-16 lg:grid-cols-[minmax(0,19rem)_minmax(0,1fr)] lg:pb-6 xl:grid-cols-[minmax(0,23rem)_minmax(0,1fr)] xl:gap-10 transition-opacity {day.date !== date ? 'opacity-50' : ''}">
 				<div class="grid gap-8 [@media(min-height:780px)]:sticky [@media(min-height:780px)]:top-6">
 					{#key day.date}
 						<div class="grid gap-8" in:fly={{ x: dir * 32, duration: 320 }}>
@@ -179,7 +180,7 @@
 							{@render macros(day)}
 						</div>
 					{/key}
-					<Assistant {date} onchanged={refresh} inline />
+					{#if wide.current}<Assistant {date} onchanged={refresh} inline />{/if}
 				</div>
 				<!-- Bao's crumbs wind down behind the meals, strongest up to the next one -->
 				{#key day.date}

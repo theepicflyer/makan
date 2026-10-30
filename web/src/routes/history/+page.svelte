@@ -18,7 +18,7 @@
 	import { addDays, dayLabel, kcal, parseDate } from '#lib/format.ts';
 	import { loggedAverage, rollingKcal, spanLabel } from '#lib/history.ts';
 	import type { History, HistoryDay } from '#lib/types.ts';
-	import { session, wide } from '#lib/state.svelte.ts';
+	import { book, columns, session } from '#lib/state.svelte.ts';
 
 	type Range = 14 | 30 | 90;
 	const RANGES: Range[] = [14, 30, 90];
@@ -93,9 +93,9 @@
 			<header class="bh-card__head mb-1 px-1">
 				<h2 id="chart-title" class="bh-card__title">Daily calories</h2>
 			</header>
-			<KcalChart {days} target={data.targets.kcal} {today} {trend} {height} onpick={wide.current ? openDay : undefined} />
+			<KcalChart {days} target={data.targets.kcal} {today} {trend} {height} onpick={columns.current ? openDay : undefined} />
 			<p class="small px-1 pb-1 text-ink-muted">
-				Dots mark days with nothing logged.{#if wide.current}&nbsp;Select a bar to open that day.{/if}
+				Dots mark days with nothing logged.{#if columns.current}&nbsp;Select a bar to open that day.{/if}
 			</p>
 		</section>
 	{/if}
@@ -155,8 +155,8 @@
 </Habitat>
 
 <div class="mk-page">
-	<!-- one row of controls scoping everything below: how many days, and which ones -->
-	<div class="flex flex-wrap items-center gap-x-4 gap-y-3 pt-4 lg:pt-6">
+	<!-- one row of controls scoping everything below: how many days, and which ones (one each side of a fold) -->
+	<div class="flex flex-wrap items-center gap-x-4 gap-y-3 pt-4 book:grid book:grid-cols-2 book:gap-x-9 lg:pt-6">
 		<div class="mk-choice" role="radiogroup" aria-label="Range">
 			{#each RANGES as r (r)}
 				<button role="radio" aria-checked={range === r} class="bh-chip {range === r ? 'is-selected' : ''}" onclick={() => (range = r)}>
@@ -178,8 +178,8 @@
 		</div>
 	</div>
 
-	{#if data && wide.current}
-		<!-- desktop: the whole range at once, Gali's footprints winding behind the cards down to the table of days -->
+	{#if data && columns.current && !book.current}
+		<!-- unfolded and desktop: the whole range at once, Gali's footprints winding behind the cards down to the table of days -->
 		<div class="transition-opacity {loading ? 'opacity-50' : ''}">
 			<TrailPath kind="footprints" from={0.3} to={0.5} seed={2} class="grid grid-cols-12 gap-9 py-9">
 				<section class="bh-card col-span-12 grid grid-cols-4 gap-6" aria-label="Summary">
@@ -197,7 +197,7 @@
 					{@render tile('Days logged', logged.length, `${range}`)}
 					{@render tile('At or under target', onTarget, onTarget != null ? `${logged.length}` : undefined, 'logged days')}
 				</section>
-				<!-- charts beside the averages from 1280px; between 1024 and 1280 they stack and the averages pair up.
+				<!-- charts beside the averages from 1280px; narrower, they stack and the averages pair up.
 				     min-w-0: a chart measuring itself mustn't widen its column. -->
 				<div class="col-span-12 grid min-w-0 grid-cols-1 xl:col-span-8">{@render calories(280)}</div>
 				<div class="col-span-12 grid min-w-0 grid-cols-2 gap-9 xl:col-span-4 xl:grid-cols-1">
@@ -212,7 +212,8 @@
 			</TrailPath>
 		</div>
 	{:else if data}
-		<div class="transition-opacity {loading ? 'opacity-50' : ''}">
+		<!-- phones; and half-folded, the cards on one side of the fold and the tunnel on the other -->
+		<div class="transition-opacity book:grid book:grid-cols-2 book:items-start book:gap-x-9 {loading ? 'opacity-50' : ''}">
 			<!-- Gali's footprints wind down behind the cards and into the tunnel -->
 			<TrailPath kind="footprints" from={0.62} toPx={32} seed={2} class="grid gap-9 py-9">
 				<section class="bh-card grid grid-cols-3 gap-3" aria-label="Summary">
@@ -225,7 +226,7 @@
 			</TrailPath>
 
 			<!-- Gali's tunnel: a chamber per day, newest first, footprints between them; each rises in as it scrolls into view -->
-			<div class="bh-tunnel">
+			<div class="bh-tunnel book:mt-9">
 				{#each newestFirst as d, i (d.date)}
 					{@const when = parseDate(d.date)}
 					<TunnelRow

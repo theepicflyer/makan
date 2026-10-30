@@ -8,7 +8,7 @@
 	import { clock } from '#lib/format.ts';
 	import { pushSupport, refresh, sendTest, turnOff, turnOn, type PushSupport } from '#lib/push.ts';
 	import type { Me, Usage } from '#lib/types.ts';
-	import { session, toasts, wide } from '#lib/state.svelte.ts';
+	import { columns, session, toasts } from '#lib/state.svelte.ts';
 	import { onMount } from 'svelte';
 
 	type Manifest = Record<string, Record<string, unknown>>;
@@ -239,8 +239,8 @@
 {/snippet}
 
 <div class="mk-page">
-	{#if wide.current}
-		<!-- desktop: you on the left, the app on the right, Kayu's chips winding behind both -->
+	{#if columns.current}
+		<!-- unfolded and desktop: you on the left, the app on the right, Kayu's chips winding behind both -->
 		<TrailPath kind="chips" from={0.5} to={0.25} seed={4} class="grid grid-cols-2 items-start gap-9 pt-9">
 			<div class="grid gap-9">
 				{@render targetsCard()}

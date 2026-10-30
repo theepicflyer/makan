@@ -23,8 +23,14 @@ class Session {
 
 export const session = new Session();
 
-/** Desktop and laptop widths, where screens lay out in columns beside the side rail (Tailwind's lg). */
+/** Wide enough for screens to lay out in columns (Tailwind's sm): unfolded foldables, tablets and desktops. */
+export const columns = new MediaQuery('min-width: 640px', false);
+
+/** Desktop and laptop widths, where the side rail replaces the bottom nav and Today's composer moves into its left column (Tailwind's lg). */
 export const wide = new MediaQuery('min-width: 1024px', false);
+
+/** A half-folded screen in book posture: two viewport segments side by side (Tailwind's `book:`). */
+export const book = new MediaQuery('horizontal-viewport-segments: 2', false);
 
 export interface Toast {
 	id: number;

@@ -12,8 +12,8 @@
 </script>
 
 <div
-	class="pointer-events-none fixed right-0 z-50 grid px-4"
-	style="left: {onLogin ? '0px' : 'var(--rail-w)'}; bottom: calc(env(safe-area-inset-bottom) + {onLogin ? '16px' : `var(--dock-h) + ${onDay ? 'var(--composer-h) + 16px' : '16px'}`})"
+	class="pointer-events-none fixed z-50 grid px-4"
+	style="left: {onLogin ? '0px' : 'var(--rail-w)'}; right: var(--fold-right); bottom: calc(env(safe-area-inset-bottom) + {onLogin ? '16px' : `var(--dock-h) + ${onDay ? 'var(--composer-h) + 16px' : '16px'}`})"
 	aria-live="polite"
 >
 	{#each shown as toast (toast.id)}

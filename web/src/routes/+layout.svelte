@@ -54,8 +54,8 @@
 	<div class="lg:flex">
 		<SideNav />
 		<!-- phones: one column with room underneath for the floating nav and Bao peeking over it;
-		     desktop: a wider column beside the rail -->
-		<div class="mx-auto min-h-dvh w-full max-w-lg min-w-0 pb-[calc(env(safe-area-inset-bottom)+var(--dock-h)+64px)] lg:max-w-6xl lg:px-8 lg:pt-6">
+		     unfolded foldables and tablets: the full width, for the screens' columns; desktop: a wider column beside the rail -->
+		<div class="mx-auto min-h-dvh w-full max-w-lg min-w-0 pb-[calc(env(safe-area-inset-bottom)+var(--dock-h)+64px)] sm:max-w-none lg:max-w-6xl lg:px-8 lg:pt-6">
 			{@render children()}
 		</div>
 	</div>

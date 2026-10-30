@@ -104,8 +104,8 @@
 
 <svelte:head><title>{isNew ? 'New food' : (food?.name ?? 'Food')} · makan</title></svelte:head>
 
-<!-- a form and a label: they read best narrow, so desktop doesn't stretch them -->
-<div class="mk-page mk-top lg:max-w-3xl">
+<!-- a form and a label: they read best narrow, so wider screens don't stretch them, and half-folded they keep to the left of the fold -->
+<div class="mk-page mk-top sm:max-w-3xl book:max-w-[env(viewport-segment-right_0_0)]">
 	<header class="pt-5 pb-4">
 		<Breadcrumbs items={[{ label: 'Foods', href: '/foods' }, { label: isNew ? 'New food' : (food?.name ?? 'Food') }]} />
 		<h1 class="page-title mt-2">{isNew ? 'New household food' : (food?.name ?? '')}</h1>

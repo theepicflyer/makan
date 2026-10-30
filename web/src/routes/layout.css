@@ -4,6 +4,10 @@
 @import '../lib/burrow/tokens.css' layer(base);
 @import '../lib/burrow/burrow.css' layer(components);
 
+/* A half-folded screen in book posture: the fold runs top to bottom, splitting the viewport into
+   a left and a right segment (the Viewport Segments API, Chrome 138+). */
+@custom-variant book (@media (horizontal-viewport-segments: 2));
+
 @theme inline {
 	--color-paper: var(--paper);
 	--color-surface: var(--surface);
@@ -31,10 +35,22 @@
 	--nav-h: 70px;
 	--nav-gap: 12px;
 	/* What fixed things clear: on phones the floating nav (and the composer on day screens);
-	   on desktop the side rail, with nothing along the bottom. */
+	   on desktop the side rail, with nothing along the bottom; on a half-folded screen the far side of the fold. */
 	--dock-h: calc(var(--nav-gap) + var(--nav-h));
 	--composer-h: 88px;
 	--rail-w: 0px;
+	--fold-right: 0px;
+	--fold-bottom: 0px;
+	/* how tall a sheet may be */
+	--sheet-h: 92dvh;
+}
+
+/* Unfolded foldables and tablets: Tailwind's sm and `columns` in state.svelte.ts. Screens lay out in columns
+   under the same docked nav and composer as phones; sheets become dialogs. */
+@media (min-width: 640px) {
+	:root {
+		--sheet-h: 85dvh;
+	}
 }
 
 /* Desktop and laptop: matches Tailwind's lg and `wide` in state.svelte.ts. */
@@ -49,6 +65,23 @@
 @media (min-width: 1280px) {
 	:root {
 		--rail-w: 248px;
+	}
+}
+
+/* Book posture: pages already split into two equal columns either side of the fold, and the nav,
+   composer, toasts and sheets keep to the left-hand segment. */
+@media (horizontal-viewport-segments: 2) {
+	:root {
+		--fold-right: calc(100vw - env(viewport-segment-right 0 0));
+	}
+}
+
+/* Tabletop: the fold runs across. The nav, composer and toasts already sit in the bottom half; sheets
+   move up to the top half, clear of the keyboard. */
+@media (vertical-viewport-segments: 2) {
+	:root {
+		--fold-bottom: calc(100dvh - env(viewport-segment-bottom 0 0));
+		--sheet-h: calc(env(viewport-segment-height 0 0) - 2 * var(--space-3));
 	}
 }
 
@@ -414,6 +447,19 @@ textarea {
 	@media (min-width: 640px) {
 		.mk-sheet {
 			border-radius: var(--radius-lg);
+		}
+	}
+
+	/* Half-folded: a sheet keeps to one side of the fold (see --fold-right and --fold-bottom). */
+	@media (horizontal-viewport-segments: 2) {
+		.mk-sheet {
+			margin: 0 calc(var(--fold-right) + var(--space-4)) 0 var(--space-4);
+		}
+	}
+
+	@media (vertical-viewport-segments: 2) {
+		.mk-sheet {
+			margin-bottom: var(--fold-bottom);
 		}
 	}
 

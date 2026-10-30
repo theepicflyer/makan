@@ -57,7 +57,7 @@
 			aria-label={title}
 			tabindex="-1"
 			transition:sheet
-			class="mk-sheet relative flex w-full max-w-lg flex-col outline-none {tall ? 'h-[92dvh] sm:h-[85dvh]' : 'max-h-[92dvh] sm:max-h-[85dvh]'}"
+			class="mk-sheet relative flex w-full max-w-lg flex-col outline-none {tall ? 'h-(--sheet-h)' : 'max-h-(--sheet-h)'}"
 		>
 			<div class="mk-handle absolute top-2 left-1/2 -translate-x-1/2 sm:hidden"></div>
 			<div class="flex items-center gap-2 px-5 pt-5 pb-3">
