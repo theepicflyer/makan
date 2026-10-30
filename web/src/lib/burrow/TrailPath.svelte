@@ -81,7 +81,8 @@
 	});
 </script>
 
-<div bind:this={box} class="mk-trailpath {cls}" bind:clientWidth={width} bind:clientHeight={height}>
+<!-- while fresh, the cards rise in one after another (layout.css); one added later just rises -->
+<div bind:this={box} class="mk-trailpath {fresh ? 'is-fresh' : ''} {cls}" bind:clientWidth={width} bind:clientHeight={height}>
 	<div class="mk-trailpath__art bh-trail {fresh ? 'bh-trail--animate' : ''}" aria-hidden="true">{@html svg}</div>
 	{@render children()}
 </div>

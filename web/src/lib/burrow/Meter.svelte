@@ -1,6 +1,7 @@
 <script lang="ts">
 	import Trace from './Trace.svelte';
 	import NutrientIcon, { type Nutrient } from '../components/NutrientIcon.svelte';
+	import Count from '../components/Count.svelte';
 	import type { TraceName } from './art.js';
 
 	let {
@@ -37,7 +38,7 @@
 	<div class="bh-meter__top">
 		<span class="bh-meter__label">{#if nutrient}<NutrientIcon kind={nutrient} size={14} />{/if}{label}</span>
 		<span class="bh-meter__value"
-			>{Math.round(value)}{target ? ` / ${Math.round(target)}` : ''} {unit}{#if over && target}<span class={overIsGood ? 'meter-over-good' : 'bh-meter__over'}>
+			><Count {value} />{target ? ` / ${Math.round(target)}` : ''} {unit}{#if over && target}<span class={overIsGood ? 'meter-over-good' : 'bh-meter__over'}>
 					· {Math.round(value - target)} {unit} over</span
 				>{:else if !target}<span> · no target</span>{/if}</span
 		>
@@ -52,19 +53,20 @@
 			aria-valuenow={Math.round(value)}
 		>
 			{#if over}
-				<div class="meter-split" style="width: {pct * 100}%">
-					<div class="bh-meter__fill" style="width: {(targetPct / pct) * 100}%; background: var(--{color})"></div>
+				<div class="meter-split" style="--w: {pct * 100}%">
+					<div class="bh-meter__fill" style="--w: {(targetPct / pct) * 100}%; background: var(--{color})"></div>
 					<div class="bh-meter__fill meter-overflow" style="background: var(--{overIsGood ? color : 'tomato'})"></div>
 				</div>
 			{:else}
-				<div class="bh-meter__fill" style="width: {pct * 100}%; background: var(--{color})"></div>
+				<div class="bh-meter__fill" style="--w: {pct * 100}%; background: var(--{color})"></div>
 			{/if}
 		</div>
 		{#if over}
 			<span class="meter-target" style="left: {targetPct * 100}%" aria-hidden="true"></span>
 		{/if}
 		{#if cap && target}
-			<Trace name={cap} size={24} class="bh-meter__cap" style="left: {pct * 100}%" />
+			<!-- the sunflower rolls along to the end of the fill -->
+			<Trace name={cap} size={24} class="bh-meter__cap" style="--w: {pct * 100}%; --p: {pct}" />
 		{/if}
 	</div>
 </div>
@@ -72,7 +74,9 @@
 <style>
 	.meter-split {
 		display: flex;
+		width: var(--w);
 		height: 100%;
+		transition: width 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
 	}
 	.meter-split > :global(.bh-meter__fill:first-child) {
 		flex: none;

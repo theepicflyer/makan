@@ -14,6 +14,7 @@
 
 <script lang="ts">
 	import type { Snippet } from 'svelte';
+	import { fade } from '../motion.ts';
 
 	/* Sticker bars from one baseline, with an optional dashed target and a trend line. One tab stop:
 	   arrow keys move between bars, Enter picks one. Pointer hover or tap shows the tooltip. */
@@ -114,6 +115,9 @@
 		return d;
 	});
 
+	// where each bar sits along the chart, 0 to 1: they grow in left to right over the same time however many there are
+	const at = (i: number) => (bars.length > 1 ? i / (bars.length - 1) : 0);
+
 	const current = $derived(active != null && active < bars.length ? active : null);
 	const tipX = $derived(current != null ? cx(current) : 0);
 
@@ -154,6 +158,8 @@
 		{#each bars as b, i (b.key)}
 			{#if b.value != null && b.value > 0}
 				<path
+					class="mk-bar"
+					style="--at: {at(i)}"
 					d={barPath(cx(i) - barW / 2, y(b.value), barW, y(0))}
 					fill={b.accent ? 'var(--accent)' : color}
 					stroke={outlined ? 'var(--outline)' : 'none'}
@@ -162,7 +168,7 @@
 					opacity={current == null || current === i ? 1 : 0.4}
 				/>
 			{:else if b.value == null}
-				<circle cx={cx(i)} cy={y(0) - 5} r={Math.max(1.2, Math.min(2.5, band / 3))} fill="var(--ink-muted)" />
+				<circle class="mk-bar-dot" style="--at: {at(i)}" cx={cx(i)} cy={y(0) - 5} r={Math.max(1.2, Math.min(2.5, band / 3))} fill="var(--ink-muted)" />
 			{/if}
 			{#if axis && shown[i]}
 				<text x={cx(i)} y={height - 8} text-anchor="middle" font-size="11" fill={b.accent ? 'var(--ink)' : 'var(--ink-muted)'} font-weight={b.accent ? 600 : 400}
@@ -172,8 +178,9 @@
 		{/each}
 		{#if target}
 			<!-- a surface halo keeps the target line readable where it crosses bars -->
-			<line x1={PAD.left} x2={width - PAD.right} y1={y(target)} y2={y(target)} stroke="var(--surface)" stroke-width="5" pointer-events="none" />
+			<line class="mk-draw" x1={PAD.left} x2={width - PAD.right} y1={y(target)} y2={y(target)} stroke="var(--surface)" stroke-width="5" pointer-events="none" />
 			<line
+				class="mk-draw"
 				x1={PAD.left}
 				x2={width - PAD.right}
 				y1={y(target)}
@@ -186,8 +193,8 @@
 			/>
 		{/if}
 		{#if linePath}
-			<path d={linePath} fill="none" stroke="var(--surface)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" pointer-events="none" />
-			<path d={linePath} fill="none" stroke="var(--sky-text)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none" />
+			<path class="mk-draw" d={linePath} fill="none" stroke="var(--surface)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" pointer-events="none" />
+			<path class="mk-draw" d={linePath} fill="none" stroke="var(--sky-text)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" pointer-events="none" />
 		{/if}
 		{#if current != null && tip}
 			<line x1={tipX} x2={tipX} y1={PAD.top} y2={y(0)} stroke="var(--ink-muted)" stroke-width="1" pointer-events="none" />
@@ -220,8 +227,9 @@
 	<span class="sr-only" aria-live="polite">{current != null ? bars[current].aria : ''}</span>
 	{#if current != null && tip}
 		<div
-			class="small pointer-events-none absolute top-0 z-10 w-44 -translate-x-1/2 rounded-[var(--radius-md)] border-2 border-outline bg-surface px-3 py-2 shadow-[var(--shadow-lift)]"
+			class="mk-tip small pointer-events-none absolute top-0 z-10 w-44 -translate-x-1/2 rounded-[var(--radius-md)] border-2 border-outline bg-surface px-3 py-2 shadow-[var(--shadow-lift)]"
 			style="left: {Math.min(Math.max(tipX, 88), width - 88)}px"
+			transition:fade={{ duration: 120 }}
 		>
 			{@render tip(current)}
 		</div>

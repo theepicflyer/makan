@@ -9,7 +9,8 @@
 	import { get } from '#lib/api.ts';
 	import { servingKcal } from '#lib/format.ts';
 	import type { Food } from '#lib/types.ts';
-	import { toasts, wide } from '#lib/state.svelte.ts';
+	import { columns, toasts } from '#lib/state.svelte.ts';
+	import { flip } from '#lib/motion.ts';
 	import { onMount } from 'svelte';
 
 	let ours = $state<Food[] | null>(null);
@@ -51,17 +52,15 @@
 <svelte:head><title>Foods · makan</title></svelte:head>
 
 {#snippet foodRow(food: Food)}
-	<li>
-		<a href="/foods/{food.id}" class="bh-row mk-row-btn">
-			<span class="bh-row__text">
-				<span class="bh-row__title">{food.name}</span>
-				<span class="bh-row__sub truncate">
-					{food.brand ? `${food.brand} · ` : ''}<NutrientIcon kind="energy" />{servingKcal(food)}{food.aliases.length ? ` · “${food.aliases.join('”, “')}”` : ''}
-				</span>
+	<a href="/foods/{food.id}" class="bh-row mk-row-btn">
+		<span class="bh-row__text">
+			<span class="bh-row__title">{food.name}</span>
+			<span class="bh-row__sub truncate">
+				{food.brand ? `${food.brand} · ` : ''}<NutrientIcon kind="energy" />{servingKcal(food)}{food.aliases.length ? ` · “${food.aliases.join('”, “')}”` : ''}
 			</span>
-			<SourceBadge source={food.source} />
-		</a>
-	</li>
+		</span>
+		<SourceBadge source={food.source} />
+	</a>
 {/snippet}
 
 <!-- Bao's pantry: the household's own foods, and every reference food to search -->
@@ -88,8 +87,9 @@
 		{:else if !results.length}
 			<EmptyState trace="hole" title="No matches" body="Gali dug everywhere. Try a shorter word." />
 		{:else}
-			<ul class="mk-rows">
-				{#each results as food (food.id)}{@render foodRow(food)}{/each}
+			<!-- new matches rise in as you type; ones that stay slide to their new place -->
+			<ul class="mk-rows mk-stagger">
+				{#each results as food (food.id)}<li animate:flip>{@render foodRow(food)}</li>{/each}
 			</ul>
 		{/if}
 	</section>
@@ -110,8 +110,8 @@
 				body="Add the things you buy and eat often. Their aliases make them the default, so “a bowl of yogurt” means your yogurt."
 			/>
 		{:else}
-			<ul class="mk-rows">
-				{#each ours as food (food.id)}{@render foodRow(food)}{/each}
+			<ul class="mk-rows mk-stagger">
+				{#each ours as food (food.id)}<li>{@render foodRow(food)}</li>{/each}
 			</ul>
 		{/if}
 	</section>
@@ -125,8 +125,8 @@
 {/snippet}
 
 <div class="mk-page">
-	{#if wide.current}
-		<!-- desktop: the household's foods beside the search, crumbs winding behind both -->
+	{#if columns.current}
+		<!-- unfolded and desktop: the household's foods beside the search, crumbs winding behind both -->
 		<TrailPath kind="crumbs" from={0.5} to={0.75} seed={3} class="grid grid-cols-2 items-start gap-9 pt-9 pb-4">
 			<div class="grid gap-9">
 				{@render household()}

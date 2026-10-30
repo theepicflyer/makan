@@ -17,7 +17,8 @@
 	import { get, post } from '#lib/api.ts';
 	import { addDays, dayLabel, daySubtitle, dayTitle } from '#lib/format.ts';
 	import { MEALS, MEAL_LABEL, type Day, type Entry, type Meal } from '#lib/types.ts';
-	import { session, toasts, wide } from '#lib/state.svelte.ts';
+	import { columns, session, toasts, wide } from '#lib/state.svelte.ts';
+	import { fly } from '#lib/motion.ts';
 
 	const date = $derived(page.params.date ?? '');
 	const today = $derived(session.me?.today ?? date);
@@ -33,6 +34,8 @@
 	let saveOpen = $state(false);
 	let saveName = $state('');
 	let dateInput: HTMLInputElement | undefined = $state();
+	// which way the last day change went, so the new day slides in from that side
+	let dir = $state(1);
 	let seq = 0;
 
 	async function load(d: string) {
@@ -40,6 +43,7 @@
 		try {
 			const res = await get<Day>(`/api/days/${d}`);
 			if (mine === seq) {
+				if (day && res.date !== day.date) dir = res.date > day.date ? 1 : -1;
 				day = res;
 				loadError = null;
 			}
@@ -165,27 +169,41 @@
 	<div class="mk-page">
 		{#if loadError && !day}
 			<p class="py-10 text-center font-semibold text-tomato-text">Couldn't load this day: {loadError}</p>
-		{:else if day && wide.current}
-			<!-- desktop: the day at a glance and Bao on the left, the meals on the right -->
-			<div class="grid grid-cols-[minmax(0,19rem)_minmax(0,1fr)] items-start gap-8 pt-6 pb-6 xl:grid-cols-[minmax(0,23rem)_minmax(0,1fr)] xl:gap-10 transition-opacity {day.date !== date ? 'opacity-50' : ''}">
+		{:else if day && columns.current}
+			<!-- unfolded and desktop: the day at a glance (and on desktop Bao) on the left, the meals on the right;
+			     halves until the rail comes in, so a fold runs between them, with room under them for the docked composer -->
+			<div class="grid grid-cols-2 items-start gap-8 pt-6 pb-16 lg:grid-cols-[minmax(0,19rem)_minmax(0,1fr)] lg:pb-6 xl:grid-cols-[minmax(0,23rem)_minmax(0,1fr)] xl:gap-10 transition-opacity {day.date !== date ? 'opacity-50' : ''}">
 				<div class="grid gap-8 [@media(min-height:780px)]:sticky [@media(min-height:780px)]:top-6">
-					<DaySummary totals={day.totals} targets={day.targets} />
-					{@render macros(day)}
-					<Assistant {date} onchanged={refresh} inline />
+					{#key day.date}
+						<div class="grid gap-8" in:fly={{ x: dir * 32, duration: 320 }}>
+							<DaySummary totals={day.totals} targets={day.targets} />
+							{@render macros(day)}
+						</div>
+					{/key}
+					{#if wide.current}<Assistant {date} onchanged={refresh} inline />{/if}
 				</div>
 				<!-- Bao's crumbs wind down behind the meals, strongest up to the next one -->
-				<TrailPath kind="crumbs" from={0.5} to={0.3} seed={1} class="grid gap-9">
-					{@render meals(day)}
-				</TrailPath>
+				{#key day.date}
+					<div in:fly={{ x: dir * 32, duration: 320 }}>
+						<TrailPath kind="crumbs" from={0.5} to={0.3} seed={1} class="grid gap-9">
+							{@render meals(day)}
+						</TrailPath>
+					</div>
+				{/key}
 			</div>
 		{:else if day}
 			<div class="transition-opacity {day.date !== date ? 'opacity-50' : ''}">
-				<DaySummary totals={day.totals} targets={day.targets} />
-				<!-- Bao's crumbs wind down from the sunflower behind the cards, strongest up to the next meal -->
-				<TrailPath kind="crumbs" from={0.5} to={0.3} seed={1} class="grid gap-9 pt-9">
-					{@render macros(day)}
-					{@render meals(day)}
-				</TrailPath>
+				<!-- another day slides in from the side it came from, and everything on it grows in again -->
+				{#key day.date}
+					<div in:fly={{ x: dir * 32, duration: 320 }}>
+						<DaySummary totals={day.totals} targets={day.targets} />
+						<!-- Bao's crumbs wind down from the sunflower behind the cards, strongest up to the next meal -->
+						<TrailPath kind="crumbs" from={0.5} to={0.3} seed={1} class="grid gap-9 pt-9">
+							{@render macros(day)}
+							{@render meals(day)}
+						</TrailPath>
+					</div>
+				{/key}
 				<!-- room for the docked composer and Bao over it -->
 				<div class="h-16"></div>
 			</div>

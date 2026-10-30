@@ -46,6 +46,7 @@
 				rx={size * 0.046}
 				ry={size * 0.11}
 				transform="rotate({(i * 360) / PETALS} {c} {c})"
+				style="--i: {i}"
 			/>
 		{/each}
 		<circle class="bh-seedhead" cx={c} cy={c} r={head} />
