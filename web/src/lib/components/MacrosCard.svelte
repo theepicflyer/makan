@@ -33,7 +33,7 @@
 		<p class="body text-ink-muted">{empty}</p>
 	{:else}
 		<div class="grid gap-3.5">
-			<Meter label="Protein" value={protein} max={targets.protein_g} color="protein" cap="sunflower" nutrient="protein" />
+			<Meter label="Protein" value={protein} max={targets.protein_g} color="protein" cap="sunflower" nutrient="protein" overIsGood />
 			<Meter label="Carbs" value={carbs} max={targets.carb_g} color="carbs" cap="sunflower" nutrient="carbs" />
 			<Meter label="Fat" value={fat} max={targets.fat_g} color="fat" cap="sunflower" nutrient="fat" />
 		</div>
