@@ -7,10 +7,10 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from sqlalchemy.orm import Session
 
-from makan import foods as food_svc
-from makan import log as log_svc
-from makan.agent.prompt import day_lines, entry_line, food_line
-from makan.models import NUTRIENTS, User
+from bao import foods as food_svc
+from bao import log as log_svc
+from bao.agent.prompt import day_lines, entry_line, food_line
+from bao.models import NUTRIENTS, User
 
 MealName = Literal["breakfast", "lunch", "dinner", "snacks"]
 

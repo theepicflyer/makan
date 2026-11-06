@@ -5,8 +5,8 @@ import uuid
 from PIL import Image, ImageOps
 from sqlalchemy.orm import Session
 
-from makan.config import get_settings
-from makan.models import Photo
+from bao.config import get_settings
+from bao.models import Photo
 
 # Claude downsizes anything larger, so storing more only costs disk and upload time.
 MAX_EDGE = 1568

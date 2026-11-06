@@ -1,8 +1,8 @@
 services:
-  makan:
-    # Production pulls the released image pinned by MAKAN_TAG in .env; locally,
+  bao:
+    # Production pulls the released image pinned by BAO_TAG in .env; locally,
     # `docker compose up -d --build` builds from source instead.
-    image: ghcr.io/theepicflyer/makan:${MAKAN_TAG:-latest}
+    image: ghcr.io/theepicflyer/bao:${BAO_TAG:-latest}
     build: .
     restart: unless-stopped
     env_file: .env
@@ -10,6 +10,7 @@ services:
       - "8000:8000"
     # Everything that must survive a rebuild lives here: the SQLite database, meal photos,
     # and FastMCP's OAuth client store (claude.ai's connector registration).
+    # The volume keeps its name from when the app was called makan, so existing data carries over.
     volumes:
       - makan-data:/data
 

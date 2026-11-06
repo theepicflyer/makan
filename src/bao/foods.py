@@ -14,7 +14,7 @@ from typing import Any
 from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
-from makan.models import NUTRIENTS, Entry, Food, Meta
+from bao.models import NUTRIENTS, Entry, Food, Meta
 
 log = logging.getLogger(__name__)
 

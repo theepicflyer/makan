@@ -4,7 +4,7 @@ from alembic import command
 from alembic.config import Config
 from sqlalchemy.engine import Engine
 
-from makan.db import get_engine
+from bao.db import get_engine
 
 MIGRATIONS_DIR = Path(__file__).parent / "migrations"
 

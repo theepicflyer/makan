@@ -10,11 +10,11 @@ from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from sqlalchemy import select
 
-from makan import reminders
-from makan.auth import upsert_user
-from makan.config import get_settings
-from makan.db import session_scope
-from makan.models import Entry, PushSubscription, User
+from bao import reminders
+from bao.auth import upsert_user
+from bao.config import get_settings
+from bao.db import session_scope
+from bao.models import Entry, PushSubscription, User
 
 TZ = get_settings().tz
 

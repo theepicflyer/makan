@@ -33,7 +33,7 @@ export async function* sendTurn(
 	const res = await fetch('/api/agent/turns', {
 		method: 'POST',
 		body: form,
-		headers: { 'X-Makan': '1' },
+		headers: { 'X-Bao': '1' },
 		credentials: 'same-origin'
 	});
 	if (!res.ok || !res.body) {

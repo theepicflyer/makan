@@ -53,7 +53,7 @@
 	let conversation = 0;
 	let shownDate = '';
 
-	// Bao, makan's host in Burrow, is the face of the assistant.
+	// Bao, the app's host in Burrow, is the face of the assistant.
 	const title = $derived(`Bao · ${dayLabel(date, session.me?.today ?? date)}`);
 	const canSend = $derived(!sending && (text.trim().length > 0 || photos.length > 0));
 

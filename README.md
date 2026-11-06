@@ -1,4 +1,4 @@
-# makan
+# Bao
 
 A self-hosted calorie and macro tracker for a two-person household in Singapore. You log food by meal, either by searching and tapping, or by telling Bao, the assistant, what you ate ("breakfast kopi c and kaya toast, lunch chicken rice…") or sending it a photo. It runs as one Docker container behind your reverse proxy, signs in through Pocket ID, and installs on a phone as a PWA.
 
@@ -24,7 +24,7 @@ Both people search the same food database but see only their own log, targets an
 
 Quick adds cover pinned items, frequent and recent foods, saved meals and "same as yesterday".
 
-Each of you can turn on a daily reminder in Settings and pick its time. It arrives as a phone notification, and only on days when breakfast, lunch or dinner isn't logged yet. It says which meals are missing, and tapping it opens that day. On an iPhone this needs iOS 16.4 or later and makan added to the Home Screen; on Android it works in Chrome.
+Each of you can turn on a daily reminder in Settings and pick its time. It arrives as a phone notification, and only on days when breakfast, lunch or dinner isn't logged yet. It says which meals are missing, and tapping it opens that day. On an iPhone this needs iOS 16.4 or later and Bao added to the Home Screen; on Android it works in Chrome.
 
 The assistant (Claude) turns a text dump or meal photos (up to six per message, taken in the app or picked from the library) into entries, applies them straight away, and fixes them when you reply ("actually 2", "that was lunch"). It can also edit past days and read a nutrition label into an Ours food. Each of its replies has an undo.
 
@@ -38,28 +38,28 @@ A read-only MCP endpoint at `/mcp` lets another Claude agent, such as a fitness 
 
 You need Docker with Compose, a domain behind Caddy (or another TLS proxy), a Pocket ID instance and an Anthropic API key.
 
-1. In Pocket ID, create an OIDC client named `makan` with both callback URLs:
-   - `https://makan.example.com/auth/web/callback` (browser sign-in)
-   - `https://makan.example.com/auth/callback` (the MCP connector's OAuth)
+1. In Pocket ID, create an OIDC client named `bao` with both callback URLs:
+   - `https://bao.example.com/auth/web/callback` (browser sign-in)
+   - `https://bao.example.com/auth/callback` (the MCP connector's OAuth)
 
    Restrict it to a user group that holds just the two of you. Copy the client ID and secret.
-2. Run `cp .env.example .env` and fill it in. You can leave `SESSION_SECRET` empty: makan generates one on first start and keeps it in the data volume.
-3. Start it with `docker compose up -d`. This pulls `ghcr.io/theepicflyer/makan:latest`; set `MAKAN_TAG=1.2.0` in `.env` to pin a release instead. The first start loads the food database, which takes a few seconds.
+2. Run `cp .env.example .env` and fill it in. You can leave `SESSION_SECRET` empty: Bao generates one on first start and keeps it in the data volume.
+3. Start it with `docker compose up -d`. This pulls `ghcr.io/theepicflyer/bao:latest`; set `BAO_TAG=1.2.0` in `.env` to pin a release instead. The first start loads the food database, which takes a few seconds.
 4. Add a Caddy site:
 
    ```
-   makan.example.com {
+   bao.example.com {
        reverse_proxy <host>:8000
    }
    ```
 
 5. Open the site, sign in with your passkey, and set your daily targets in Settings. On a phone, use "Add to Home Screen" to install it, open it from there, and turn on the daily reminder in Settings if you want one.
 
-All state is in the `makan-data` volume: the SQLite database, meal photos, the OAuth store behind the MCP connector, and the key that signs reminders (lose it and each phone has to turn reminders on again). Back up that volume. To update, set `MAKAN_TAG` to the new release (or leave it on `latest`) and run `docker compose pull && docker compose up -d`. Release notes list any manual steps under **Deploy actions**. To run your own changes, build from source with `docker compose up -d --build`.
+All state is in the `makan-data` volume (named from when the app was called makan): the SQLite database, meal photos, the OAuth store behind the MCP connector, and the key that signs reminders (lose it and each phone has to turn reminders on again). Back up that volume. To update, set `BAO_TAG` to the new release (or leave it on `latest`) and run `docker compose pull && docker compose up -d`. Release notes list any manual steps under **Deploy actions**. To run your own changes, build from source with `docker compose up -d --build`.
 
 ### Connect the analyst (claude.ai)
 
-In claude.ai, go to Settings → Connectors → Add custom connector and enter `https://makan.example.com/mcp`. Sign in to makan in a browser at least once before you connect, because the connector only reads an existing account. The tools are `get_profile`, `get_daily_totals`, `get_food_log`, `search_foods` and `list_household_foods`. All of them are read-only.
+In claude.ai, go to Settings → Connectors → Add custom connector and enter `https://bao.example.com/mcp`. Sign in to Bao in a browser at least once before you connect, because the connector only reads an existing account. The tools are `get_profile`, `get_daily_totals`, `get_food_log`, `search_foods` and `list_household_foods`. All of them are read-only.
 
 ## The assistant and its cost
 
@@ -86,7 +86,7 @@ Contains information from Singapore Food Insights Database (SG FoodID) accessed 
 
 ```bash
 uv sync
-DEV_LOGIN=true uv run uvicorn makan.main:app --reload --port 8000   # API + built web app
+DEV_LOGIN=true uv run uvicorn bao.main:app --reload --port 8000   # API + built web app
 cd web && npm install && npm run dev                                  # Vite dev server, proxies to :8000
 uv run pytest                                                         # backend tests (CI runs these and the check below on every PR)
 cd web && npm run check && npm run build                              # type-check and build the web app
@@ -96,7 +96,7 @@ cd web && npm run check && npm run build                              # type-che
 
 Layout:
 
-- `src/makan/`: the FastAPI app (`main.py`, `api.py`, `auth.py`), the food and log logic (`foods.py`, `log.py`), the agent (`agent/`), the MCP server (`mcp_server.py`), and Alembic migrations.
+- `src/bao/`: the FastAPI app (`main.py`, `api.py`, `auth.py`), the food and log logic (`foods.py`, `log.py`), the agent (`agent/`), the MCP server (`mcp_server.py`), and Alembic migrations.
 - `web/`: the SvelteKit PWA, built to `web/build` and served by the backend. `web/src/lib/burrow/` holds the Burrow design system's tokens, styles and drawings.
 - `data/reference/`: the food snapshot. `scripts/` holds the scripts that build it.
 - `evals/`: the agent eval cases, runner and report.

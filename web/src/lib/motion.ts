@@ -3,7 +3,7 @@ import { backOut, cubicIn, cubicOut } from 'svelte/easing';
 import { prefersReducedMotion } from 'svelte/motion';
 import * as t from 'svelte/transition';
 
-/* makan's motion. Things on screen when a page opens come in with CSS (the motion section of layout.css);
+/* Bao's motion. Things on screen when a page opens come in with CSS (the motion section of layout.css);
    these Svelte transitions play when something is added, removed or swapped afterwards. Each one stands
    still when the device asks for reduced motion, which Svelte's own don't. */
 

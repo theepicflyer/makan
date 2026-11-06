@@ -143,7 +143,7 @@
 	);
 </script>
 
-<svelte:head><title>Settings · makan</title></svelte:head>
+<svelte:head><title>Settings · Bao</title></svelte:head>
 
 <Habitat kind="river" mood={busy ? 'busy' : 'happy'} class="mk-top">
 	<p class="small text-ink-muted">Signed in as {session.me?.name}</p>
@@ -174,12 +174,12 @@
 		<Field label="Remind me at" type="time" bind:value={reminderTime} onchange={saveTime} />
 		{#if support === 'install'}
 			<p class="mk-well small">
-				On iPhone, reminders need makan on your Home Screen: tap Share, then Add to Home Screen, and open makan from there.
+				On iPhone, reminders need Bao on your Home Screen: tap Share, then Add to Home Screen, and open Bao from there.
 			</p>
 		{:else if support === 'unsupported'}
 			<p class="small text-ink-muted">This browser can't show notifications.</p>
 		{:else if permission === 'denied'}
-			<p class="mk-well small">Notifications are blocked for makan. Allow them in your phone's settings, then come back here.</p>
+			<p class="mk-well small">Notifications are blocked for Bao. Allow them in your phone's settings, then come back here.</p>
 		{:else if device}
 			<div>
 				<p class="small flex items-center gap-1.5 text-ink"><Icon name="check" size={18} />On for this device</p>

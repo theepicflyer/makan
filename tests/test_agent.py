@@ -6,11 +6,11 @@ from anthropic.types.beta import BetaMessage, BetaTextBlock, BetaToolUseBlock, B
 from PIL import Image
 from sqlalchemy import select
 
-from makan.agent.runner import AgentConfig, run_turn, undo_turn
-from makan.auth import upsert_user
-from makan.db import session_scope
-from makan.models import Entry, Turn
-from makan.photos import save_photo
+from bao.agent.runner import AgentConfig, run_turn, undo_turn
+from bao.auth import upsert_user
+from bao.db import session_scope
+from bao.models import Entry, Turn
+from bao.photos import save_photo
 from tests.conftest import food_id
 
 DAY = date(2026, 3, 3)
@@ -191,7 +191,7 @@ async def test_undo_removes_agent_entries(db, user_id):
         assert s.scalars(
             select(Entry).where(Entry.user_id == user_id, Entry.meal == "snacks")
         ).all()
-        from makan.models import User
+        from bao.models import User
 
         undo_turn(s, s.get(User, user_id), turn_id)
     with session_scope() as s:

@@ -15,7 +15,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
-from makan.db import Base
+from bao.db import Base
 
 NUTRIENTS = ("kcal", "protein_g", "carb_g", "fat_g", "fibre_g", "sugar_g", "sodium_mg", "sat_fat_g")
 MEALS = ("breakfast", "lunch", "dinner", "snacks")

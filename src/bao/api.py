@@ -10,14 +10,14 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from makan import foods as food_svc
-from makan import log as log_svc
-from makan import reminders
-from makan.agent.runner import AgentConfig, run_turn, serialize_turn, undo_turn
-from makan.auth import current_user
-from makan.config import get_settings
-from makan.db import get_db
-from makan.models import (
+from bao import foods as food_svc
+from bao import log as log_svc
+from bao import reminders
+from bao.agent.runner import AgentConfig, run_turn, serialize_turn, undo_turn
+from bao.auth import current_user
+from bao.config import get_settings
+from bao.db import get_db
+from bao.models import (
     MEALS,
     NUTRIENTS,
     Entry,
@@ -30,7 +30,7 @@ from makan.models import (
     Turn,
     User,
 )
-from makan.photos import PhotoError, save_photo
+from bao.photos import PhotoError, save_photo
 
 router = APIRouter(prefix="/api")
 

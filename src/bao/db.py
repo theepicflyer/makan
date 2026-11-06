@@ -6,7 +6,7 @@ from sqlalchemy import create_engine, event
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
-from makan.config import get_settings
+from bao.config import get_settings
 
 
 class Base(DeclarativeBase):
@@ -16,7 +16,7 @@ class Base(DeclarativeBase):
 _engine: Engine | None = None
 _session_factory: sessionmaker[Session] | None = None
 # Lets the eval harness give each concurrent case its own database.
-_override: ContextVar[sessionmaker[Session] | None] = ContextVar("makan_db_override", default=None)
+_override: ContextVar[sessionmaker[Session] | None] = ContextVar("bao_db_override", default=None)
 
 
 def _on_connect(dbapi_conn, _record):

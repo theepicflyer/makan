@@ -1,6 +1,6 @@
 import pytest
 
-from makan import foods as food_svc
+from bao import foods as food_svc
 from tests.conftest import food_id
 
 

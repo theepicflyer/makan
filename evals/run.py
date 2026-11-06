@@ -1,4 +1,4 @@
-"""Run the makan agent over the eval cases and grade the resulting database state.
+"""Run the Bao agent over the eval cases and grade the resulting database state.
 
     uv run python -m evals.run --model claude-haiku-5-5 --effort low --reps 2
     uv run python -m evals.run --model claude-opus-5-5 --effort low --tags text
@@ -23,17 +23,17 @@ from pathlib import Path
 import anthropic
 from sqlalchemy import select
 
+from bao import foods as food_svc
+from bao import log as log_svc
+from bao.agent import pricing
+from bao.agent.prompt import SYSTEM_PROMPT
+from bao.agent.runner import AgentConfig, run_turn
+from bao.auth import upsert_user
+from bao.config import get_settings
+from bao.db import make_engine, session_scope, use_database
+from bao.models import Entry, Food, Thread, Turn, User
+from bao.photos import save_photo
 from evals.cases import CASES, Case, FoodCheck, Item
-from makan import foods as food_svc
-from makan import log as log_svc
-from makan.agent import pricing
-from makan.agent.prompt import SYSTEM_PROMPT
-from makan.agent.runner import AgentConfig, run_turn
-from makan.auth import upsert_user
-from makan.config import get_settings
-from makan.db import make_engine, session_scope, use_database
-from makan.models import Entry, Food, Thread, Turn, User
-from makan.photos import save_photo
 
 ROOT = Path(__file__).parent
 RESULTS = ROOT / "results"
@@ -42,7 +42,7 @@ CASE_TIMEOUT_S = 240
 
 
 def build_template(path: Path) -> None:
-    from makan.migrate import upgrade_engine
+    from bao.migrate import upgrade_engine
 
     if path.exists():
         path.unlink()

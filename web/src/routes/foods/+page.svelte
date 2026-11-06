@@ -49,7 +49,7 @@
 	}
 </script>
 
-<svelte:head><title>Foods · makan</title></svelte:head>
+<svelte:head><title>Foods · Bao</title></svelte:head>
 
 {#snippet foodRow(food: Food)}
 	<a href="/foods/{food.id}" class="bh-row mk-row-btn">

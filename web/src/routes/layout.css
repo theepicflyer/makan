@@ -29,7 +29,7 @@
 
 :root {
 	--scrim: rgba(43, 34, 64, 0.4);
-	/* energy's colour beside Burrow's protein, carbs and fat: the flame in makan's tomato */
+	/* energy's colour beside Burrow's protein, carbs and fat: the flame in Bao's tomato */
 	--energy: var(--tomato);
 	/* the floating nav: 54px items + 12px padding + 4px outline */
 	--nav-h: 70px;
@@ -130,7 +130,7 @@ textarea {
 	}
 }
 
-/* makan's own pieces, built from Burrow tokens. */
+/* Bao's own pieces, built from Burrow tokens. */
 @layer components {
 	.bh-num,
 	.tabular {

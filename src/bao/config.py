@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     reference_dir: Path = REPO_ROOT / "data" / "reference"
     static_dir: Path = REPO_ROOT / "web" / "build"
 
-    # Public URL the app is served on, e.g. https://makan.example.com
+    # Public URL the app is served on, e.g. https://bao.example.com
     public_url: str = "http://localhost:8000"
     # Signs the login cookie. Empty = generate one and keep it in the data directory.
     session_secret: str = ""
@@ -70,6 +70,7 @@ class Settings(BaseSettings):
 
     @property
     def db_path(self) -> Path:
+        # Named from when the app was called makan; kept so existing deployments find their data.
         return self.data_dir / "makan.db"
 
     @property

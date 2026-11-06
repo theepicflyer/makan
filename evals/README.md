@@ -1,6 +1,6 @@
 # Agent evals
 
-These evals check the makan assistant on the jobs it does every day. Each case starts from a fresh copy of the food database, seeds whatever household foods and log entries the case needs, and sends one or two messages through the real agent loop (`makan.agent.runner.run_turn`) against the live API. It is then graded on what ended up in the database: the right foods, meals, dates and portions; household foods used, or left alone, as asked; no duplicate entries. Grading never reads the reply text, except in the one case that asks a question.
+These evals check the Bao assistant on the jobs it does every day. Each case starts from a fresh copy of the food database, seeds whatever household foods and log entries the case needs, and sends one or two messages through the real agent loop (`bao.agent.runner.run_turn`) against the live API. It is then graded on what ended up in the database: the right foods, meals, dates and portions; household foods used, or left alone, as asked; no duplicate entries. Grading never reads the reply text, except in the one case that asks a question.
 
 There are 57 cases (`cases.py`):
 

@@ -2,7 +2,7 @@ import { immutable, assets } from '$app/manifest';
 import { version } from '$app/env';
 
 const sw = self as unknown as ServiceWorkerGlobalScope;
-const CACHE = `makan-${version}`;
+const CACHE = `bao-${version}`;
 // The backend serves the app shell at / (it has no /index.html route).
 const SHELL = '/';
 const PRECACHE = [...immutable.map((f) => f.path), ...assets.map((f) => f.path), SHELL].map((p) =>
@@ -48,7 +48,7 @@ sw.addEventListener('fetch', (event) => {
 	}
 });
 
-// Daily reminders: the server sends { title, body, url } (src/makan/reminders.py).
+// Daily reminders: the server sends { title, body, url } (src/bao/reminders.py).
 sw.addEventListener('push', (event) => {
 	let msg: { title?: string; body?: string; url?: string } = {};
 	try {
@@ -57,7 +57,7 @@ sw.addEventListener('push', (event) => {
 		msg = { body: event.data?.text() };
 	}
 	event.waitUntil(
-		sw.registration.showNotification(msg.title ?? 'makan', {
+		sw.registration.showNotification(msg.title ?? 'Bao', {
 			body: msg.body,
 			icon: '/icons/icon-192.png',
 			badge: '/icons/badge-96.png',
