@@ -1,8 +1,8 @@
 """Read-only MCP server for analysis agents (e.g. a Claude fitness analyst on claude.ai).
 
-claude.ai connectors need an OAuth server with dynamic client registration, so FastMCP's OIDCProxy
-fronts Pocket ID: DCR on the outside, one pre-registered Pocket ID client on the inside. The caller
-sees only the log of the person who signed in.
+claude.ai connectors need an OAuth server that accepts new clients (CIMD or DCR), so FastMCP's
+OIDCProxy fronts Pocket ID: CIMD and DCR on the outside, one pre-registered Pocket ID client on the
+inside. The caller sees only the log of the person who signed in.
 """
 
 from datetime import date
@@ -49,9 +49,8 @@ def build_auth() -> OIDCProxy | None:
         extra_authorize_params={"scope": "openid profile email"},
         # Pocket ID rejects the RFC 8707 `resource` parameter claude.ai sends.
         forward_resource=False,
-        # Registrations go through /register so they are inspectable records in the store.
-        enable_cimd=False,
-        # A DCR proxy that accepts any redirect URI is an open redirector.
+        # A proxy that accepts any redirect URI is an open redirector. CIMD clients must match
+        # this list as well as their own document's redirect_uris.
         allowed_client_redirect_uris=s.dcr_redirect_uris,
     )
 

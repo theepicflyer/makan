@@ -35,7 +35,7 @@ class Settings(BaseSettings):
     oidc_client_secret: str | None = None
     # Optional allowlist on top of Pocket ID's group restriction.
     allowed_emails: str = ""
-    # Space-separated callbacks an MCP client may register through DCR; a trailing ":*" matches any
+    # Space-separated callbacks an MCP client may use, through DCR or CIMD; a trailing ":*" matches any
     # port and path. Empty means the default below.
     mcp_dcr_allowed_redirect_uris: str = ""
 
