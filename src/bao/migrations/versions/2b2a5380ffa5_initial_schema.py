@@ -237,7 +237,7 @@ def upgrade() -> None:
         batch_op.create_index(batch_op.f("ix_changes_turn_id"), ["turn_id"], unique=False)
 
     # ### end Alembic commands ###
-    # Full-text index over food names; rowid = foods.id, maintained by makan.foods.
+    # Full-text index over food names; rowid = foods.id, maintained by bao.foods.
     op.execute(
         "CREATE VIRTUAL TABLE food_fts USING fts5("
         "name, extra, tokenize = 'unicode61 remove_diacritics 2')"

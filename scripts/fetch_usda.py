@@ -25,7 +25,7 @@ DATASETS = {
     "fndds": "FoodData_Central_survey_food_csv_2024-10-31",
 }
 DATA_TYPE = {"foundation": "foundation_food", "sr_legacy": "sr_legacy_food", "fndds": "survey_fndds_food"}
-USER_AGENT = "makan-snapshot/0.1 (self-hosted nutrition tracker; one-off dataset snapshot)"
+USER_AGENT = "bao-snapshot/0.1 (self-hosted nutrition tracker; one-off dataset snapshot)"
 
 ROOT = Path(__file__).resolve().parent.parent
 CACHE = ROOT / "data" / "cache" / "usda"

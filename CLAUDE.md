@@ -4,18 +4,18 @@ Guidance for working in this repository.
 
 ## Project
 
-makan is a calorie and macro tracker for a two-person household: FastAPI + SQLite backend (`src/makan/`), SvelteKit PWA (`web/`), a Claude agent that logs food from text and photos (`src/makan/agent/`), and a read-only MCP server for analysis agents (`src/makan/mcp_server.py`). Everything is served from one origin by `makan.main:app`.
+Bao is a calorie and macro tracker for a two-person household: FastAPI + SQLite backend (`src/bao/`), SvelteKit PWA (`web/`), a Claude agent that logs food from text and photos (`src/bao/agent/`), and a read-only MCP server for analysis agents (`src/bao/mcp_server.py`). Everything is served from one origin by `bao.main:app`.
 
 ## Commands
 
 ```bash
 uv sync
 uv run pytest                                   # backend tests (no network, fake Anthropic client)
-DEV_LOGIN=true uv run uvicorn makan.main:app --reload --port 8000
+DEV_LOGIN=true uv run uvicorn bao.main:app --reload --port 8000
 cd web && npm run check && npm run build        # web app; the backend serves web/build
 uv run python -m evals.run --model claude-haiku-5-5 --effort low --reps 2   # paid: real API calls
 uv run python -m evals.report                   # writes evals/results/summary.md
-uv run python -c "from makan.migrate import revision; revision('message')"  # new Alembic migration
+uv run python -c "from bao.migrate import revision; revision('message')"  # new Alembic migration
 ```
 
 Evals cost real money (Haiku is ~$0.001/case, Opus ~$0.02/case). Run a subset with `--cases` or `--tags` while iterating. `evals/photos` is a symlink to private photos in the main checkout and is gitignored.
@@ -49,7 +49,7 @@ Evals cost real money (Haiku is ~$0.001/case, Opus ~$0.02/case). Run a subset wi
 
 ## Releases and deploy
 
-Images go to `ghcr.io/theepicflyer/makan`. Two workflows plus a reusable build:
+Images go to `ghcr.io/theepicflyer/bao` (the name follows the GitHub repo). Two workflows plus a reusable build:
 
 - `ci.yml`: `pytest` and the web app's `npm run check` on every PR; also called by `release.yml`.
 - `release.yml`: on every push to `main`, runs the tests, then `.github/scripts/plan-release.sh` looks at the PRs that push merged. If any carries a `version/*` label it bumps from the latest GitHub release, pushes `:X.Y.Z` + `:latest`, then creates the release **last** (so a release never points at a missing image). No label: it pushes `:nightly` only. `workflow_dispatch` builds a one-off `:<tag>` from any ref.

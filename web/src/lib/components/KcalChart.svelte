@@ -22,7 +22,7 @@
 		onpick?: (day: HistoryDay) => void;
 	} = $props();
 
-	// sticker bars: the sunflower's petal colour, today in makan's tomato
+	// sticker bars: the sunflower's petal colour, today in Bao's tomato
 	const bars = $derived(
 		days.map((d) => ({
 			key: d.date,

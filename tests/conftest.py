@@ -4,7 +4,7 @@ import os
 import tempfile
 from pathlib import Path
 
-_TMP = Path(tempfile.mkdtemp(prefix="makan-test-"))
+_TMP = Path(tempfile.mkdtemp(prefix="bao-test-"))
 _REF = _TMP / "reference"
 _REF.mkdir()
 os.environ.update(
@@ -128,14 +128,14 @@ with gzip.open(_REF / "fixture.jsonl.gz", "wt") as fh:
 import pytest
 from fastapi.testclient import TestClient
 
-from makan.db import new_session
-from makan.main import app
-from makan.models import Food, User
+from bao.db import new_session
+from bao.main import app
+from bao.models import Food, User
 
 
 @pytest.fixture(scope="session")
 def client():
-    with TestClient(app, headers={"x-makan": "1"}) as c:
+    with TestClient(app, headers={"x-bao": "1"}) as c:
         yield c
 
 
@@ -158,7 +158,7 @@ def db(client):
 
 @pytest.fixture
 def alice(db) -> User:
-    from makan.auth import upsert_user
+    from bao.auth import upsert_user
 
     return upsert_user(db, sub="dev:alice", email="alice@dev.local", name="Alice")
 

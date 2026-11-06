@@ -1,7 +1,7 @@
 <script lang="ts" module>
 	import { ICONS } from './art.js';
 
-	/* Burrow's icon set plus the few makan needs, drawn the same way: round caps, 2.2 stroke, 24 grid. */
+	/* Burrow's icon set plus the few Bao needs, drawn the same way: round caps, 2.2 stroke, 24 grid. */
 	const EXTRA = {
 		'chevron-left': 'M15 5 L8 12 L15 19',
 		'chevron-right': 'M9 5 L16 12 L9 19',

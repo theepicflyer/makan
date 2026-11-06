@@ -15,17 +15,17 @@ from fastmcp.server.dependencies import get_access_token
 from pydantic import Field
 from sqlalchemy import select
 
-from makan import foods as food_svc
-from makan import log as log_svc
-from makan.auth import upsert_user
-from makan.config import get_settings
-from makan.db import session_scope
-from makan.models import MEALS, NUTRIENTS, Food, User
+from bao import foods as food_svc
+from bao import log as log_svc
+from bao.auth import upsert_user
+from bao.config import get_settings
+from bao.db import session_scope
+from bao.models import MEALS, NUTRIENTS, Food, User
 
 MAX_RANGE_DAYS = 400
 
 INSTRUCTIONS = """\
-Read-only access to one person's food log from makan, a calorie and macro tracker used in \
+Read-only access to one person's food log from Bao, a calorie and macro tracker used in \
 Singapore. Entries are grouped by date and meal (breakfast, lunch, dinner, snacks). Nutrients are \
 totals for the portion eaten: kcal, protein_g, carb_g, fat_g, fibre_g, sugar_g, sodium_mg, \
 sat_fat_g (null when the source food has no value). A day with zero entries means nothing was \
@@ -56,7 +56,7 @@ def build_auth() -> OIDCProxy | None:
     )
 
 
-mcp = FastMCP(name="makan", instructions=INSTRUCTIONS, auth=build_auth())
+mcp = FastMCP(name="bao", instructions=INSTRUCTIONS, auth=build_auth())
 
 
 def _user(db) -> User:
@@ -74,7 +74,7 @@ def _user(db) -> User:
     user = db.scalar(select(User).where(User.oidc_sub == sub)) if sub else None
     if user is None:
         raise ToolError(
-            "No makan account for this login. Sign in to makan in a browser once, then retry."
+            "No Bao account for this login. Sign in to Bao in a browser once, then retry."
         )
     return user
 

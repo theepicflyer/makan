@@ -102,7 +102,7 @@
 	}
 </script>
 
-<svelte:head><title>{isNew ? 'New food' : (food?.name ?? 'Food')} · makan</title></svelte:head>
+<svelte:head><title>{isNew ? 'New food' : (food?.name ?? 'Food')} · Bao</title></svelte:head>
 
 <!-- a form and a label: they read best narrow, so wider screens don't stretch them, and half-folded they keep to the left of the fold -->
 <div class="mk-page mk-top sm:max-w-3xl book:max-w-[env(viewport-segment-right_0_0)]">

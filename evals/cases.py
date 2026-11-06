@@ -1,4 +1,4 @@
-"""Eval cases for the makan logging agent.
+"""Eval cases for the Bao logging agent.
 
 Each case seeds a fresh database, sends one or more messages through the real agent loop, and is
 graded on what ends up in the database. Photo-case reference totals were estimated by Claude

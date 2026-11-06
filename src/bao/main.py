@@ -11,14 +11,14 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.sessions import SessionMiddleware
 
-from makan import api, auth, reminders
-from makan.config import get_settings
-from makan.db import session_scope
-from makan.foods import load_reference
-from makan.mcp_server import mcp
-from makan.migrate import upgrade
+from bao import api, auth, reminders
+from bao.config import get_settings
+from bao.db import session_scope
+from bao.foods import load_reference
+from bao.mcp_server import mcp
+from bao.migrate import upgrade
 
-log = logging.getLogger("makan")
+log = logging.getLogger("bao")
 
 # Client-side routes of the web app; everything else unmatched goes to the MCP/OAuth app.
 SPA_ROUTES = (
@@ -64,11 +64,11 @@ def create_app() -> FastAPI:
                 with suppress(asyncio.CancelledError):
                     await scheduler
 
-    app = FastAPI(title="makan", lifespan=lifespan, docs_url=None, redoc_url=None)
+    app = FastAPI(title="Bao", lifespan=lifespan, docs_url=None, redoc_url=None)
     app.add_middleware(
         SessionMiddleware,
         secret_key=settings.resolved_session_secret(),
-        session_cookie="makan_session",
+        session_cookie="bao_session",
         max_age=180 * 24 * 3600,
         same_site="lax",
         https_only=settings.public_url.startswith("https://"),
@@ -80,9 +80,9 @@ def create_app() -> FastAPI:
         if (
             request.url.path.startswith("/api/")
             and request.method not in ("GET", "HEAD", "OPTIONS")
-            and request.headers.get("x-makan") != "1"
+            and request.headers.get("x-bao") != "1"
         ):
-            return JSONResponse({"detail": "missing X-Makan header"}, status_code=403)
+            return JSONResponse({"detail": "missing X-Bao header"}, status_code=403)
         return await call_next(request)
 
     app.include_router(auth.router)

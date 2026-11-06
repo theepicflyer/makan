@@ -21,4 +21,4 @@ ENV DATA_DIR=/data \
     FASTMCP_HOME=/data/fastmcp
 VOLUME /data
 EXPOSE 8000
-CMD ["uvicorn", "makan.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips", "*"]
+CMD ["uvicorn", "bao.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers", "--forwarded-allow-ips", "*"]

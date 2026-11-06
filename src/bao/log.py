@@ -8,8 +8,8 @@ from typing import Any
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from makan import foods as food_svc
-from makan.models import MEALS, NUTRIENTS, Change, Entry, Food, Pin, SavedMeal, User
+from bao import foods as food_svc
+from bao.models import MEALS, NUTRIENTS, Change, Entry, Food, Pin, SavedMeal, User
 
 
 class LogError(ValueError):

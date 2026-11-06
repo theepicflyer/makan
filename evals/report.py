@@ -65,7 +65,7 @@ def summarise() -> str:
         if p.is_dir() and (p / "results.jsonl").exists() and p.name != "pilot"
     )
     lines = [
-        "# makan agent eval",
+        "# Bao agent eval",
         "",
         (
             "Pass = every check on the case passed (right foods, meals, dates and portions; household foods used or "

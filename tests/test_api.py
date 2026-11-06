@@ -4,7 +4,7 @@ def test_requires_login(client):
 
 
 def test_requires_app_header(logged_in):
-    r = logged_in.post("/api/entries", json={}, headers={"x-makan": ""})
+    r = logged_in.post("/api/entries", json={}, headers={"x-bao": ""})
     assert r.status_code == 403
 
 
@@ -87,7 +87,7 @@ def test_quick_and_pins(logged_in):
 
 
 def test_session_secret_is_generated_and_kept(tmp_path):
-    from makan.config import Settings
+    from bao.config import Settings
 
     settings = Settings(data_dir=tmp_path, session_secret="")
     first = settings.resolved_session_secret()
@@ -100,7 +100,7 @@ def test_session_secret_is_generated_and_kept(tmp_path):
 
 
 def test_dcr_redirect_uris_default_and_override(tmp_path):
-    from makan.config import Settings
+    from bao.config import Settings
 
     default = Settings(data_dir=tmp_path).dcr_redirect_uris
     assert "https://claude.ai/api/mcp/auth_callback" in default

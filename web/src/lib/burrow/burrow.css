@@ -1,6 +1,6 @@
 /* Burrow component styles: components/bundle.css from the Burrow design system (https://claude.ai/artifact/ShL86DzdjvTZDwRHLsd8L4).
    Copied as is, minus the Google Fonts import (the fonts are bundled from @fontsource). Re-sync rather than edit; app tweaks live in routes/layout.css. */
-/* Burrow component styles. Plain classes: usable from Svelte (makan) and Django templates (money) as-is. */
+/* Burrow component styles. Plain classes: usable from Svelte (Bao) and Django templates (money) as-is. */
 .bh-app, body { background: var(--paper); color: var(--ink); font-family: var(--font-sans); }
 .bh-app--money { --accent: var(--mint); --accent-soft: var(--mint-soft); }
 .bh-num { font-variant-numeric: tabular-nums; }

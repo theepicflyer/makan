@@ -12,7 +12,7 @@
 
 {#snippet nav()}
 	<nav class="mk-rail__card" aria-label="Main" {@attach slidingPill}>
-		<a href={NAV_ITEMS[0].href()} class="mk-rail__brand"><img src="/icons/icon.svg" alt="" width="32" height="32" />makan</a>
+		<a href={NAV_ITEMS[0].href()} class="mk-rail__brand"><img src="/icons/icon.svg" alt="" width="32" height="32" />Bao</a>
 		{#each NAV_ITEMS as item (item.label)}
 			{@const active = item.match(path)}
 			<a href={item.href()} class="mk-rail__item {active ? 'is-active' : ''}" aria-current={active ? 'page' : undefined}>

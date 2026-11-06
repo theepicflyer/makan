@@ -6,9 +6,9 @@ from fastapi.responses import RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from makan.config import get_settings
-from makan.db import get_db
-from makan.models import User
+from bao.config import get_settings
+from bao.db import get_db
+from bao.models import User
 
 router = APIRouter()
 _oauth: OAuth | None = None
@@ -80,7 +80,7 @@ async def callback(request: Request, db: Session = Depends(get_db)):
     email = (info.get("email") or "").lower() or None
     allowed = get_settings().allowed_email_set
     if allowed and (email is None or email not in allowed):
-        raise HTTPException(403, "This account isn't allowed to use makan.")
+        raise HTTPException(403, "This account isn't allowed to use Bao.")
     user = upsert_user(
         db, sub=info["sub"], email=email, name=info.get("name") or info.get("preferred_username")
     )

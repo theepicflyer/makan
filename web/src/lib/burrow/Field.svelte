@@ -2,7 +2,7 @@
 	import type { HTMLInputAttributes } from 'svelte/elements';
 	import NutrientIcon, { type Nutrient } from '../components/NutrientIcon.svelte';
 
-	/* Burrow's labelled input. `nutrient` puts makan's symbol for it before the label (calorie and macro fields). */
+	/* Burrow's labelled input. `nutrient` puts Bao's symbol for it before the label (calorie and macro fields). */
 	let {
 		label,
 		value = $bindable(),

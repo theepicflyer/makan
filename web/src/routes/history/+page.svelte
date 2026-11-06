@@ -77,7 +77,7 @@
 	}
 </script>
 
-<svelte:head><title>History · makan</title></svelte:head>
+<svelte:head><title>History · Bao</title></svelte:head>
 
 {#snippet tile(label: string, value: number | null, of?: string, note?: string, nutrient?: Nutrient)}
 	<div>

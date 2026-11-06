@@ -23,12 +23,12 @@ from pywebpush import WebPushException, webpush
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from makan import log as log_svc
-from makan.config import Settings, get_settings
-from makan.db import session_scope
-from makan.models import PushSubscription, User
+from bao import log as log_svc
+from bao.config import Settings, get_settings
+from bao.db import session_scope
+from bao.models import PushSubscription, User
 
-log = logging.getLogger("makan.reminders")
+log = logging.getLogger("bao.reminders")
 
 MAIN_MEALS = ("breakfast", "lunch", "dinner")
 # A reminder missed while the server was down still goes out this late; after that it waits for tomorrow.
@@ -87,7 +87,7 @@ def subject(settings: Settings) -> str:
     if settings.vapid_subject:
         return settings.vapid_subject
     url = urlparse(settings.public_url)
-    return f"https://{url.hostname}" if url.scheme == "https" else "mailto:makan@localhost"
+    return f"https://{url.hostname}" if url.scheme == "https" else "mailto:bao@localhost"
 
 
 def check_endpoint(endpoint: str) -> None:

@@ -2,8 +2,8 @@ from datetime import date
 
 import pytest
 
-from makan import log as log_svc
-from makan.models import Thread, Turn
+from bao import log as log_svc
+from bao.models import Thread, Turn
 from tests.conftest import food_id
 
 DAY = date(2026, 1, 15)

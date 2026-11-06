@@ -14,15 +14,15 @@ import anthropic
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from makan import foods as food_svc
-from makan import log as log_svc
-from makan.agent import pricing
-from makan.agent.prompt import SYSTEM_PROMPT, build_context
-from makan.agent.tools import TOOLS, WRITE_TOOLS, ToolContext, run_tool
-from makan.config import get_settings
-from makan.db import new_session
-from makan.models import Change, Photo, Thread, Turn, User
-from makan.photos import photo_b64
+from bao import foods as food_svc
+from bao import log as log_svc
+from bao.agent import pricing
+from bao.agent.prompt import SYSTEM_PROMPT, build_context
+from bao.agent.tools import TOOLS, WRITE_TOOLS, ToolContext, run_tool
+from bao.config import get_settings
+from bao.db import new_session
+from bao.models import Change, Photo, Thread, Turn, User
+from bao.photos import photo_b64
 
 log = logging.getLogger(__name__)
 

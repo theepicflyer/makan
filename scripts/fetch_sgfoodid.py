@@ -28,7 +28,7 @@ from pathlib import Path
 
 API = "https://pphtpc.hpb.gov.sg/bff/v1/food-portal"
 SITE = "https://pphtpc.hpb.gov.sg/web/sgfoodid"
-USER_AGENT = "makan-snapshot/0.1 (self-hosted nutrition tracker; one-off dataset snapshot)"
+USER_AGENT = "bao-snapshot/0.1 (self-hosted nutrition tracker; one-off dataset snapshot)"
 MIN_INTERVAL = 1.05  # the API allows 60 requests a minute (x-ratelimit-limit)
 PAGE_SIZE = 25
 COMPARE_BATCH = 10  # foods/compare returns full detail records for 2-10 ids

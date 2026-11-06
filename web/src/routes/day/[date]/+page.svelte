@@ -106,7 +106,7 @@
 	}
 </script>
 
-<svelte:head><title>{valid ? `${dayLabel(date, today)} · makan` : 'makan'}</title></svelte:head>
+<svelte:head><title>{valid ? `${dayLabel(date, today)} · Bao` : 'Bao'}</title></svelte:head>
 
 {#if !valid}
 	<div class="mk-page py-10 text-center text-ink-muted">That's not a date. <a class="mk-link" href="/day/{today}">Go to today</a></div>

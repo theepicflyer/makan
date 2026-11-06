@@ -1,7 +1,7 @@
 import { get, post } from './api.ts';
 
 /* Daily reminders on this device: a Web Push subscription the server sends to at the user's reminder time
-   (src/makan/reminders.py). The service worker shows them and opens the day when one is tapped. */
+   (src/bao/reminders.py). The service worker shows them and opens the day when one is tapped. */
 
 /** What this browser can do: subscribe, needs installing first (iPhone and iPad), or nothing. */
 export type PushSupport = 'ready' | 'install' | 'unsupported';

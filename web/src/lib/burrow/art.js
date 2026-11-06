@@ -68,7 +68,7 @@ function acornAt(x, y, s, rot) { s = s || 1; return '<g transform="translate(' +
 function twigAt(x1, y1, x2, y2, w) { w = w || 5; return line('M' + x1 + ' ' + y1 + ' L' + x2 + ' ' + y2, w + 4.4) + line('M' + x1 + ' ' + y1 + ' L' + x2 + ' ' + y2, w, C.twig) + line('M' + x1 + ' ' + (y1 - 1) + ' L' + x2 + ' ' + (y2 - 1), 1, '#b98a62'); }
 
 var CAST = {
-  /* Bao: Syrian hamster, makan's host. Golden back, cream bib, pink hands holding a sunflower seed. */
+  /* Bao: Syrian hamster, the app's host. Golden back, cream bib, pink hands holding a sunflower seed. */
   hamster: function (m) {
     var body = 'M60 20 C74 20 86 26 91 38 C94 44 95 50 95 54 L99 57 L96 59.5 L101 64 L97 66 L101 71 L96.5 72.5 C102 82 104 92 98 100 C92 108 78 111 60 111 C42 111 28 108 22 100 C16 92 18 82 23.5 72.5 L19 71 L23 66 L19 64 L24 59.5 L21 57 L25 54 C25 50 26 44 29 38 C34 26 46 20 60 20 Z';
     var ear = 'M31 37 C23 25 28 12 39 12 C47 13 50 22 47 33 Z', foot = 'M33 110 C33 104 39 102.5 45 103.5 C51 104.5 54 108.5 52 112 C46 114.5 35 114 33 110 Z';

@@ -1,7 +1,7 @@
 from alembic import context
 
-from makan import models  # noqa: F401  (registers tables on Base.metadata)
-from makan.db import Base, get_engine
+from bao import models  # noqa: F401  (registers tables on Base.metadata)
+from bao.db import Base, get_engine
 
 target_metadata = Base.metadata
 
