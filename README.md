@@ -57,6 +57,8 @@ You need Docker with Compose, a domain behind Caddy (or another TLS proxy), a Po
 
 All state is in the `makan-data` volume (named from when the app was called makan): the SQLite database, meal photos, the OAuth store behind the MCP connector, and the key that signs reminders (lose it and each phone has to turn reminders on again). Back up that volume. To update, set `BAO_TAG` to the new release (or leave it on `latest`) and run `docker compose pull && docker compose up -d`. Release notes list any manual steps under **Deploy actions**. To run your own changes, build from source with `docker compose up -d --build`.
 
+Upgrading from a release made before the app was called Bao (1.x, image `ghcr.io/theepicflyer/makan`): rename `MAKAN_TAG` to `BAO_TAG` in `.env`, pull the new `docker-compose.yml`, then run `docker compose pull && docker compose up -d --remove-orphans`. The service is now called `bao`, and `--remove-orphans` stops the old `makan` container so it frees the port. The data volume is unchanged. Everyone signs in once more, because the session cookie was renamed.
+
 ### Connect the analyst (claude.ai)
 
 In claude.ai, go to Settings → Connectors → Add custom connector and enter `https://bao.example.com/mcp`. Sign in to Bao in a browser at least once before you connect, because the connector only reads an existing account. The tools are `get_profile`, `get_daily_totals`, `get_food_log`, `search_foods` and `list_household_foods`. All of them are read-only.
