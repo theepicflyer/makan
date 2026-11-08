@@ -26,8 +26,14 @@
 
 <section class="bh-card" aria-labelledby="{id}-title">
 	<header class="bh-card__head">
-		<h2 id="{id}-title" class="bh-card__title">{title}</h2>
-		{#if note}<span class="small text-ink-muted">{note}</span>{/if}
+		{#if note}
+			<div class="bh-card__heading">
+				<h2 id="{id}-title" class="bh-card__title">{title}</h2>
+				<p class="bh-card__sub">{note}</p>
+			</div>
+		{:else}
+			<h2 id="{id}-title" class="bh-card__title">{title}</h2>
+		{/if}
 	</header>
 	{#if empty}
 		<p class="body text-ink-muted">{empty}</p>

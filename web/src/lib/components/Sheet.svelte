@@ -7,6 +7,7 @@
 	let {
 		open = $bindable(false),
 		title = '',
+		when,
 		onclose,
 		children,
 		footer,
@@ -14,6 +15,8 @@
 	}: {
 		open?: boolean;
 		title?: string;
+		/** A date shown beside the title, with the calendar icon. */
+		when?: string;
 		onclose?: () => void;
 		children: Snippet;
 		footer?: Snippet;
@@ -62,6 +65,7 @@
 			<div class="mk-handle absolute top-2 left-1/2 -translate-x-1/2 sm:hidden"></div>
 			<div class="flex items-center gap-2 px-5 pt-5 pb-3">
 				<h2 class="card-title min-w-0 flex-1 truncate">{title}</h2>
+				{#if when}<span class="bh-when"><Icon name="calendar" size={14} />{when}</span>{/if}
 				<button class="bh-btn bh-btn--ghost bh-btn--sm bh-btn--icon -mr-2" aria-label="Close" onclick={close}>
 					<Icon name="close" size={20} />
 				</button>

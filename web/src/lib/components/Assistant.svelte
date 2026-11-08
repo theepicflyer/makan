@@ -54,7 +54,7 @@
 	let shownDate = '';
 
 	// Bao, the app's host in Burrow, is the face of the assistant.
-	const title = $derived(`Bao · ${dayLabel(date, session.me?.today ?? date)}`);
+	const when = $derived(dayLabel(date, session.me?.today ?? date));
 	const canSend = $derived(!sending && (text.trim().length > 0 || photos.length > 0));
 
 	function reset() {
@@ -232,8 +232,8 @@
 		return new Set(changes.filter((c) => c.table === 'foods').map((c) => c.action)).size > 1;
 	}
 
-	// The card's heading: "Saved 3 foods", "Logged 4 · Removed 1".
-	function changesTitle(changes: TurnChange[]): string {
+	// The card's heading, one Tag each: "Saved 3 foods", "Logged 4", "Removed 1".
+	function changesTitle(changes: TurnChange[]): string[] {
 		const verbs: Record<string, [string, string]> = {
 			'foods create': ['Saved', ' food'],
 			'foods update': ['Updated', ' food'],
@@ -251,8 +251,7 @@
 			.map(([key, n]) => {
 				const [verb, noun] = verbs[key];
 				return `${verb} ${n}${noun}${noun && n !== 1 ? 's' : ''}`;
-			})
-			.join(' · ');
+			});
 	}
 </script>
 
@@ -393,7 +392,7 @@
 	</div>
 {/if}
 
-<Sheet bind:open {title} tall>
+<Sheet bind:open title="Bao" {when} tall>
 	<div class="space-y-4 pt-1 pb-2">
 		{#if !turns.length && !pending}
 			<div class="bh-card bh-card--tint flex gap-3">
@@ -425,7 +424,7 @@
 					{#if turn.changes.length}
 						<div class="mk-rise-in mt-1.5 ml-12 rounded-[var(--radius-md)] border-2 border-line px-3 py-1.5 transition-opacity {turn.undone ? 'opacity-60' : ''}">
 							<div class="flex items-center justify-between gap-2">
-								<span class="small font-semibold text-ink-muted">{changesTitle(turn.changes)}</span>
+								<span class="bh-tags">{#each changesTitle(turn.changes) as t (t)}<span class="bh-tag">{t}</span>{/each}</span>
 								{#if turn.undone}
 									<span class="small py-2 text-ink-muted">Undone</span>
 								{:else}
@@ -437,14 +436,14 @@
 									{@const removed = c.action === 'delete'}
 									<li class="flex items-start gap-2 py-1.5 {removed ? 'text-ink-muted line-through' : ''}">
 										{#if c.table === 'foods'}
-											{@const detail = [mixedFoods(turn.changes) ? foodLabel(c) : '', c.serving ? `per ${c.serving}` : ''].filter(Boolean).join(' · ')}
+											{@const detail = [mixedFoods(turn.changes) ? foodLabel(c) : '', c.serving ? `per ${c.serving}` : ''].filter(Boolean)}
 											<div class="min-w-0 flex-1">
 												{#if removed || turn.undone}
 													<span class="font-semibold">{c.name ?? '–'}</span>
 												{:else}
 													<a href="/foods/{c.row_id}" class="font-semibold text-ink underline decoration-line underline-offset-2">{c.name ?? '–'}</a>
 												{/if}
-												{#if detail}<p class="text-ink-muted">{detail}</p>{/if}
+												{#if detail.length}<p class="flex flex-wrap gap-x-2 text-ink-muted">{#each detail as d (d)}<span>{d}</span>{/each}</p>{/if}
 												{#if c.aliases?.length}<p class="text-ink-muted">Answers to {c.aliases.map((a) => `“${a}”`).join(', ')}</p>{/if}
 											</div>
 										{:else}

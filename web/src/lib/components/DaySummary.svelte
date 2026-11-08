@@ -23,11 +23,11 @@
 			<span class="small">kcal eaten</span>
 		{/if}
 	</Ring>
-	<p class="small mt-2 text-center text-ink-muted">
+	<div class="mt-2 flex justify-center">
 		{#if target != null}
-			<span class="bh-num"><Count value={eaten} format={kcal} /> of {kcal(target)}</span> kcal eaten
+			<span class="bh-tag bh-tag--lg"><Count value={eaten} format={kcal} /> of {kcal(target)} kcal eaten</span>
 		{:else}
-			<a class="mk-link" href="/settings">Set a daily target</a>
+			<a class="bh-btn bh-btn--secondary bh-btn--sm" href="/settings">Set a daily target</a>
 		{/if}
-	</p>
+	</div>
 </div>

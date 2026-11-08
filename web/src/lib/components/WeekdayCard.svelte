@@ -13,8 +13,10 @@
 
 <section class="bh-card" aria-labelledby="{id}-title">
 	<header class="bh-card__head mb-2">
-		<h2 id="{id}-title" class="bh-card__title">By weekday</h2>
-		<span class="small text-ink-muted">average kcal</span>
+		<div class="bh-card__heading">
+			<h2 id="{id}-title" class="bh-card__title">By weekday</h2>
+			<p class="bh-card__sub">Average kcal</p>
+		</div>
 	</header>
 	<BarChart
 		bars={week.map((w) => ({

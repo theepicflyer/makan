@@ -147,7 +147,8 @@
 				{#if food}
 					<div class="small flex items-center gap-2 text-ink-muted">
 						<SourceBadge source={food.source} />
-						<span class="truncate">{food.brand ? `${food.brand} · ` : ''}{food.name}</span>
+						<span class="truncate">{food.name}</span>
+						{#if food.brand}<span class="bh-tag">{food.brand}</span>{/if}
 					</div>
 					<PortionPicker {food} bind:value={portion} />
 				{:else}
@@ -168,11 +169,9 @@
 
 			<div>
 				<span class="mk-section-label">Meal</span>
-				<div class="mk-choice" role="radiogroup" aria-label="Meal">
+				<div class="bh-seg" role="radiogroup" aria-label="Meal">
 					{#each MEALS as m (m)}
-						<button role="radio" aria-checked={meal === m} class="bh-chip {meal === m ? 'is-selected' : ''}" onclick={() => (meal = m)}>
-							{#if meal === m}<Icon name="check" size={16} />{/if}{MEAL_LABEL[m]}
-						</button>
+						<button role="radio" aria-checked={meal === m} class="bh-seg__opt {meal === m ? 'is-on' : ''}" onclick={() => (meal = m)}>{MEAL_LABEL[m]}</button>
 					{/each}
 				</div>
 			</div>

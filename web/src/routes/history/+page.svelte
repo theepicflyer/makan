@@ -91,12 +91,12 @@
 	{#if data}
 		<section class="bh-card px-3 pb-2" aria-labelledby="chart-title">
 			<header class="bh-card__head mb-1 px-1">
-				<h2 id="chart-title" class="bh-card__title">Daily calories</h2>
+				<div class="bh-card__heading">
+					<h2 id="chart-title" class="bh-card__title">Daily calories</h2>
+					<p class="bh-card__sub">Dots mark days with nothing logged.{#if columns.current}&nbsp;Select a bar to open that day.{/if}</p>
+				</div>
 			</header>
 			<KcalChart {days} target={data.targets.kcal} {today} {trend} {height} onpick={columns.current ? openDay : undefined} />
-			<p class="small px-1 pb-1 text-ink-muted">
-				Dots mark days with nothing logged.{#if columns.current}&nbsp;Select a bar to open that day.{/if}
-			</p>
 		</section>
 	{/if}
 {/snippet}
@@ -105,7 +105,7 @@
 	{#if data}
 		<MacrosCard
 			title="Average macros"
-			note="logged days"
+			note="A day, over logged days"
 			protein={avg('protein_g')}
 			carbs={avg('carb_g')}
 			fat={avg('fat_g')}
@@ -157,11 +157,9 @@
 <div class="mk-page">
 	<!-- one row of controls scoping everything below: how many days, and which ones (one each side of a fold) -->
 	<div class="flex flex-wrap items-center gap-x-4 gap-y-3 pt-4 book:grid book:grid-cols-2 book:gap-x-9 lg:pt-6">
-		<div class="mk-choice" role="radiogroup" aria-label="Range">
+		<div class="bh-seg" role="radiogroup" aria-label="Range">
 			{#each RANGES as r (r)}
-				<button role="radio" aria-checked={range === r} class="bh-chip {range === r ? 'is-selected' : ''}" onclick={() => (range = r)}>
-					{#if range === r}<Icon name="check" size={16} />{/if}{r} days
-				</button>
+				<button role="radio" aria-checked={range === r} class="bh-seg__opt {range === r ? 'is-on' : ''}" onclick={() => (range = r)}>{r} days</button>
 			{/each}
 		</div>
 		<div class="flex items-center gap-1.5">
@@ -171,7 +169,7 @@
 			<button class="bh-btn bh-btn--secondary bh-btn--sm bh-btn--icon" aria-label="Later {range} days" disabled={current} onclick={() => shift(range)}>
 				<Icon name="chevron-right" size={18} />
 			</button>
-			<span class="small bh-num px-1 text-ink-muted">{start ? spanLabel(start, last, today) : ''}</span>
+			{#if start}<span class="bh-when px-1"><Icon name="calendar" size={14} />{spanLabel(start, last, today)}</span>{/if}
 			{#if !current}
 				<button class="bh-btn bh-btn--ghost bh-btn--sm" onclick={() => (end = '')}>Latest</button>
 			{/if}
@@ -232,9 +230,10 @@
 					<TunnelRow
 						day={`${when.getDate()}`}
 						month={when.toLocaleDateString('en-SG', { month: 'short' }).toUpperCase()}
-						title={d.entries ? `${chamberTitle(d.date)} · ${kcal(d.kcal)} kcal` : chamberTitle(d.date)}
+						title={chamberTitle(d.date)}
 						last={i === newestFirst.length - 1}
 					>
+						{#snippet aside()}{#if d.entries}<NutrientIcon kind="energy" />{kcal(d.kcal)} kcal{/if}{/snippet}
 						<a href="/day/{d.date}" class="bh-card block py-3 no-underline hover:bg-surface-sunk">
 							{#if d.entries}
 								<span class="small block text-ink-muted"><MacroAmounts protein={d.protein_g} carbs={d.carb_g} fat={d.fat_g} unit=" g" /></span>

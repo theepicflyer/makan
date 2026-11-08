@@ -7,9 +7,10 @@
 		day,
 		month,
 		title,
+		aside,
 		last = false,
 		children
-	}: { day: string; month: string; title?: string; last?: boolean; children?: Snippet } = $props();
+	}: { day: string; month: string; title?: string; aside?: Snippet; last?: boolean; children?: Snippet } = $props();
 
 	const prints = $derived(
 		last
@@ -42,7 +43,12 @@
 	<span class="bh-tunnel__rail">{@html rail}</span>
 	<span class="bh-tunnel__day"><span class="bh-tunnel__num">{day}</span><span class="bh-tunnel__mon">{month}</span></span>
 	<div class="bh-tunnel__body">
-		{#if title}<span class="bh-tunnel__title">{title}</span>{/if}
+		{#if title || aside}
+			<div class="bh-tunnel__head">
+				<span class="bh-tunnel__title">{title}</span>
+				{#if aside}<span class="bh-tunnel__aside">{@render aside()}</span>{/if}
+			</div>
+		{/if}
 		{@render children?.()}
 	</div>
 </div>

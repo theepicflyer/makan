@@ -1,6 +1,7 @@
 <script lang="ts">
 	import BarChart from './BarChart.svelte';
 	import NutrientIcon from './NutrientIcon.svelte';
+	import Icon from '../burrow/Icon.svelte';
 	import type { HistoryDay, Targets } from '../types.ts';
 	import { grams } from '../format.ts';
 	import { dayAxisLabel, loggedAverage, shortDate } from '../history.ts';
@@ -23,8 +24,11 @@
 
 <section class="bh-card" aria-labelledby="{id}-title">
 	<header class="bh-card__head mb-2">
-		<h2 id="{id}-title" class="bh-card__title">Macros per day</h2>
-		<span class="small text-ink-muted">{day ? shortDate(day.date) : 'grams, logged days'}</span>
+		<div class="bh-card__heading">
+			<h2 id="{id}-title" class="bh-card__title">Macros per day</h2>
+			<p class="bh-card__sub">Grams, over logged days</p>
+		</div>
+		{#if day}<span class="bh-when"><Icon name="calendar" size={14} />{shortDate(day.date)}</span>{/if}
 	</header>
 	<div class="grid gap-3" data-chart-group>
 		{#each MACROS as m, k (m.key)}
@@ -39,7 +43,7 @@
 						{:else}
 							<b class="text-ink">{grams(loggedAverage(days, m.key))} g</b> average
 						{/if}
-						{#if target}· target {grams(target)} g{/if}
+						{#if target}<span class="bh-tag ml-1">Target {grams(target)} g</span>{/if}
 					</span>
 				</div>
 				<BarChart

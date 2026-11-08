@@ -55,8 +55,10 @@
 	<a href="/foods/{food.id}" class="bh-row mk-row-btn">
 		<span class="bh-row__text">
 			<span class="bh-row__title">{food.name}</span>
-			<span class="bh-row__sub truncate">
-				{food.brand ? `${food.brand} · ` : ''}<NutrientIcon kind="energy" />{servingKcal(food)}{food.aliases.length ? ` · “${food.aliases.join('”, “')}”` : ''}
+			<span class="bh-row__sub">
+				{#if food.brand}<span class="truncate">{food.brand}</span>{/if}
+				<span><NutrientIcon kind="energy" />{servingKcal(food)}</span>
+				{#each food.aliases as a (a)}<span class="bh-tag">“{a}”</span>{/each}
 			</span>
 		</span>
 		<SourceBadge source={food.source} />
@@ -98,8 +100,10 @@
 {#snippet household()}
 	<section class="bh-card" aria-labelledby="ours-title">
 		<header class="bh-card__head mb-1">
-			<h2 id="ours-title" class="bh-card__title">Ours</h2>
-			<span class="small text-ink-muted">shared by the household</span>
+			<div class="bh-card__heading">
+				<h2 id="ours-title" class="bh-card__title">Ours</h2>
+				<p class="bh-card__sub">Shared by the household</p>
+			</div>
 		</header>
 		{#if ours === null}
 			<div class="grid justify-items-center py-6"><Loader kind="crumbs" /></div>

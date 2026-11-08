@@ -28,7 +28,7 @@
 	{@const selected = value.unit === unit}
 	<button role="radio" aria-checked={selected} class="bh-chip {selected ? 'is-selected' : ''}" onclick={() => pick(unit)}>
 		{#if selected}<Icon name="check" size={16} />{/if}
-		{text}{#if detail}<span class="font-normal text-ink-muted">· {detail}</span>{/if}
+		{text}{#if detail}<span class="font-normal text-ink-muted">{detail}</span>{/if}
 	</button>
 {/snippet}
 

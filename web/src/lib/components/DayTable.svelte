@@ -86,8 +86,10 @@
 
 <section class="bh-card" aria-labelledby="{id}-title">
 	<header class="bh-card__head mb-2">
-		<h2 id="{id}-title" class="bh-card__title">Every day</h2>
-		<span class="small text-ink-muted">Select a column to sort</span>
+		<div class="bh-card__heading">
+			<h2 id="{id}-title" class="bh-card__title">Every day</h2>
+			<p class="bh-card__sub">Select a column to sort</p>
+		</div>
 	</header>
 	<div class="-mx-2 overflow-x-auto">
 		<table class="mk-table">
@@ -161,5 +163,5 @@
 			</tfoot>
 		</table>
 	</div>
-	<p class="small mt-2 text-ink-muted">Averages are over the days with something logged.</p>
+	<footer class="bh-card__foot">Averages are over the days with something logged.</footer>
 </section>
