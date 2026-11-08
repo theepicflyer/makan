@@ -44,12 +44,14 @@ export function dayLabel(iso: string, today: string): string {
 	if (iso === addDays(today, 1)) return 'Tomorrow';
 	const d = parseDate(iso);
 	const sameYear = iso.slice(0, 4) === today.slice(0, 4);
-	return d.toLocaleDateString('en-SG', {
-		weekday: 'short',
-		day: 'numeric',
-		month: 'short',
-		...(sameYear ? {} : { year: 'numeric' })
-	});
+	return d
+		.toLocaleDateString('en-SG', {
+			weekday: 'short',
+			day: 'numeric',
+			month: 'short',
+			...(sameYear ? {} : { year: 'numeric' })
+		})
+		.replace(',', '');
 }
 
 const RELATIVE = ['Today', 'Yesterday', 'Tomorrow'];
@@ -92,7 +94,7 @@ export function servingKcal(food: Food): string {
 	const g = s ? s.grams : 100;
 	const v = food.per_100g.kcal;
 	if (v == null) return '';
-	return `${kcal((v * g) / 100)} kcal · ${s ? s.label : '100 g'}`;
+	return `${kcal((v * g) / 100)} kcal for ${s ? s.label : '100 g'}`;
 }
 
 /** "1 regular cup", "2 × slice", "150 g". SG FoodID labels already start with "1 ...". */
@@ -108,7 +110,7 @@ export function portionText(servings: number | null, label: string | null, g: nu
 
 export function entryPortion(servings: number | null, label: string | null, g: number | null): string {
 	const text = portionText(servings, label, g);
-	return label && g != null && !/^\d+(\.\d+)? ?g$/.test(label) ? `${text} · ${Math.round(g)} g` : text;
+	return label && g != null && !/^\d+(\.\d+)? ?g$/.test(label) ? `${text} (${Math.round(g)} g)` : text;
 }
 
 export function initialPortion(

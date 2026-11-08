@@ -38,9 +38,9 @@
 	<div class="bh-meter__top">
 		<span class="bh-meter__label">{#if nutrient}<NutrientIcon kind={nutrient} size={14} />{/if}{label}</span>
 		<span class="bh-meter__value"
-			><Count {value} />{target ? ` / ${Math.round(target)}` : ''} {unit}{#if over && target}<span class={overIsGood ? 'meter-over-good' : 'bh-meter__over'}>
-					· {Math.round(value - target)} {unit} over</span
-				>{:else if !target}<span> · no target</span>{/if}</span
+			><Count {value} />{target ? ` / ${Math.round(target)}` : ''} {unit}{#if over && target}<span class="bh-tag {overIsGood ? 'bh-tag--in' : 'bh-tag--over'}"
+					>{Math.round(value - target)} {unit} over</span
+				>{:else if !target}<span class="bh-tag">No target</span>{/if}</span
 		>
 	</div>
 	<div class="bh-meter__rail">
@@ -95,9 +95,5 @@
 		margin-left: -1px;
 		border-radius: 1px;
 		background: var(--outline);
-	}
-	.meter-over-good {
-		color: var(--mint-text);
-		font-weight: 600;
 	}
 </style>

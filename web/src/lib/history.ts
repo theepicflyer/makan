@@ -9,7 +9,7 @@ export function dayAxisLabel(iso: string, count: number): string {
 }
 
 export function shortDate(iso: string): string {
-	return parseDate(iso).toLocaleDateString('en-SG', { weekday: 'short', day: 'numeric', month: 'short' });
+	return parseDate(iso).toLocaleDateString('en-SG', { weekday: 'short', day: 'numeric', month: 'short' }).replace(',', '');
 }
 
 /** "8 Oct – 21 Oct", with the year on both ends when either isn't this year. */

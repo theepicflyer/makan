@@ -292,7 +292,8 @@ var ICONS = {
   'arrow-up': 'M12 19 V5 M6 11 L12 5 L18 11',
   'arrow-down': 'M12 5 V19 M6 13 L12 19 L18 13',
   check: 'M5 12.5 L10 17.5 L19 7',
-  calendar: 'M5 6 H19 V20 H5 Z M5 10 H19 M9 3.5 V7.5 M15 3.5 V7.5'
+  calendar: 'M5 6 H19 V20 H5 Z M5 10 H19 M9 3.5 V7.5 M15 3.5 V7.5',
+  repeat: 'M4 12 V10 A4 4 0 0 1 8 6 H18 M15 3 L18 6 L15 9 M20 12 V14 A4 4 0 0 1 16 18 H6 M9 21 L6 18 L9 15'
 };
 var STEP_MARK = { crumbs: 'crumbs', seeds: 'seed', footprints: 'footprint', acorns: 'acorn', leaves: 'leaf', chips: 'chips' };
 

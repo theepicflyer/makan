@@ -5,11 +5,16 @@
 	import Icon from '#lib/burrow/Icon.svelte';
 	import TrailPath from '#lib/burrow/TrailPath.svelte';
 	import { ApiError, get, patch, post } from '#lib/api.ts';
-	import { clock } from '#lib/format.ts';
+	import { clock, dayLabel, isoDate } from '#lib/format.ts';
 	import { pushSupport, refresh, sendTest, turnOff, turnOn, type PushSupport } from '#lib/push.ts';
 	import type { Me, Usage } from '#lib/types.ts';
 	import { columns, session, toasts } from '#lib/state.svelte.ts';
 	import { onMount } from 'svelte';
+
+	/** An ISO date as the app shows dates ("Wed 21 Oct"); anything else as it is. */
+	function dateText(v: string): string {
+		return /^\d{4}-\d{2}-\d{2}$/.test(v) ? dayLabel(v, session.me?.today ?? isoDate(new Date())) : v;
+	}
 
 	type Manifest = Record<string, Record<string, unknown>>;
 
@@ -200,11 +205,14 @@
 	<section class="bh-card" aria-labelledby="usage-title">
 		<header class="bh-card__head mb-1"><h2 id="usage-title" class="bh-card__title">Assistant usage</h2></header>
 		{#if usage}
-			<p class="body text-ink-muted">
+			<div class="flex items-baseline justify-between gap-3">
+				<span class="body text-ink-muted">This month</span>
 				<span class="card-title bh-num text-ink">${usage.month_usd < 1 ? usage.month_usd.toFixed(3) : usage.month_usd.toFixed(2)}</span>
-				this month across {usage.turns} message{usage.turns === 1 ? '' : 's'}
-			</p>
-			<p class="small mt-1 text-ink-muted">Model: {usage.model}</p>
+			</div>
+			<div class="bh-tags mt-2">
+				<span class="bh-tag">{usage.turns} message{usage.turns === 1 ? '' : 's'}</span>
+				<span class="bh-tag">{usage.model}</span>
+			</div>
 		{:else}
 			<p class="body text-ink-muted">–</p>
 		{/if}
@@ -217,7 +225,10 @@
 		<div>
 			<p class="body-strong text-ink">Singapore Food Insights Database (SG FoodID)</p>
 			<p class="mk-well mt-1 leading-relaxed">{sgNotice}</p>
-			{#if sg?.items}<p class="mt-1">{str(sg.items)} items · Health Promotion Board, Singapore</p>{/if}
+			<div class="bh-tags mt-2">
+				{#if sg?.items}<span class="bh-tag">{str(sg.items)} items</span>{/if}
+				<span class="bh-tag">Health Promotion Board, Singapore</span>
+			</div>
 		</div>
 		<div>
 			<p class="body-strong text-ink">USDA FoodData Central</p>
@@ -225,12 +236,16 @@
 				{str(usda?.attribution) || 'U.S. Department of Agriculture, Agricultural Research Service. FoodData Central. fdc.nal.usda.gov.'}
 			</p>
 			{#if usda}
-				<p class="mt-1">
-					{usda.items ? `${str(usda.items)} items` : ''}{usda.licence ? ` · ${str(usda.licence)}` : ''}{usda.accessed ? ` · accessed ${str(usda.accessed)}` : ''}
-				</p>
+				<div class="bh-tags mt-2">
+					{#if usda.items}<span class="bh-tag">{str(usda.items)} items</span>{/if}
+					{#if usda.licence}<span class="bh-tag">{str(usda.licence)}</span>{/if}
+				</div>
+				{#if usda.accessed}
+					<span class="bh-when mt-2"><Icon name="calendar" size={14} />Accessed {dateText(str(usda.accessed))}</span>
+				{/if}
 			{/if}
 		</div>
-		<p>Nutrition values are estimates. They are not medical advice.</p>
+		<footer class="bh-card__foot">Nutrition values are estimates. They are not medical advice.</footer>
 	</section>
 {/snippet}
 

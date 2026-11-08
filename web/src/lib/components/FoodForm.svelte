@@ -59,9 +59,7 @@
 
 {#snippet basisChip(basis: 'per_100g' | 'per_serving', text: string)}
 	{@const selected = draft.basis === basis}
-	<button role="radio" aria-checked={selected} class="bh-chip {selected ? 'is-selected' : ''}" onclick={() => setBasis(basis)}>
-		{#if selected}<Icon name="check" size={16} />{/if}{text}
-	</button>
+	<button role="radio" aria-checked={selected} class="bh-seg__opt {selected ? 'is-on' : ''}" onclick={() => setBasis(basis)}>{text}</button>
 {/snippet}
 
 <div class="space-y-5">
@@ -111,7 +109,7 @@
 	<div>
 		<div class="mb-3 flex flex-wrap items-center justify-between gap-2">
 			<span class="mk-section-label mb-0">Nutrition</span>
-			<div class="mk-choice" role="radiogroup" aria-label="Nutrition basis">
+			<div class="bh-seg" role="radiogroup" aria-label="Nutrition basis">
 				{@render basisChip('per_100g', 'Per 100 g')}
 				{@render basisChip('per_serving', 'Per serving')}
 			</div>

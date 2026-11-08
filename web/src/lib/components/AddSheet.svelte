@@ -229,7 +229,7 @@
 							<button class="bh-row mk-row-btn" onclick={() => choose(food)}>
 								<span class="bh-row__text">
 									<span class="bh-row__title">{food.name}</span>
-									<span class="bh-row__sub truncate">{food.brand ? `${food.brand} · ` : ''}<NutrientIcon kind="energy" />{servingKcal(food)}</span>
+									<span class="bh-row__sub">{#if food.brand}<span class="truncate">{food.brand}</span>{/if}<span><NutrientIcon kind="energy" />{servingKcal(food)}</span></span>
 								</span>
 								<SourceBadge source={food.source} />
 							</button>

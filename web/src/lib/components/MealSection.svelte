@@ -38,7 +38,7 @@
 		<section class="bh-card bh-card--nibbled" aria-label={label}>
 			<header class="bh-card__head mk-nibble-head mb-1 justify-start">
 				<h2 class="bh-card__title">{label}</h2>
-				<span class="small bh-num text-ink-muted"><NutrientIcon kind="energy" /><Count value={subtotal.kcal} format={kcal} /> kcal</span>
+				<span class="bh-tag"><NutrientIcon kind="energy" /><Count value={subtotal.kcal} format={kcal} /> kcal</span>
 			</header>
 			<!-- a new entry rises into place (layout.css), the others make room; a removed one fades -->
 			<ul class="mk-rows mk-stagger">
