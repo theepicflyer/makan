@@ -3,6 +3,7 @@
     uv run python -m evals.run --model claude-haiku-5-5 --effort low --reps 2
     uv run python -m evals.run --model claude-opus-5-5 --effort low --tags text
     uv run python -m evals.run --model claude-haiku-5-5 --effort low --no-cache --name haiku-low-nocache
+    uv run python -m evals.run --dry-run          # check and seed every case, no API calls
 
 Each (case, rep) gets its own SQLite copy of a template database with the reference foods loaded.
 Results go to evals/results/<name>/: results.jsonl, errors.jsonl and traces/<case>_rep<k>.json.
@@ -33,11 +34,11 @@ from bao.config import get_settings
 from bao.db import make_engine, session_scope, use_database
 from bao.models import Entry, Food, Thread, Turn, User
 from bao.photos import save_photo
-from evals.cases import CASES, Case, FoodCheck, Item
+from evals.cases import CASES, PRIVATE, Case, FoodCheck, Item
 
 ROOT = Path(__file__).parent
 RESULTS = ROOT / "results"
-PHOTOS = ROOT / "photos"
+PHOTOS = PRIVATE / "photos"
 CASE_TIMEOUT_S = 240
 
 
@@ -81,14 +82,24 @@ def seed(case: Case) -> tuple[int, dict[str, int]]:
                 aliases=spec["aliases"],
             )
             ours[spec["key"]] = food.id
-        for day, meal, ref, servings in case.entries:
+        for spec in case.entries:
+            if not isinstance(spec, dict):
+                day, meal, ref, servings = spec
+                spec = {"date": day, "meal": meal, "ref": ref, "servings": servings}
+            ref = spec.get("ref")
             log_svc.add_entry(
                 db,
                 user,
-                day=date.fromisoformat(day),
-                meal=meal,
-                food_id=_food_ref(db, ref, ours),
-                servings=servings,
+                day=date.fromisoformat(spec["date"]),
+                meal=spec["meal"],
+                food_id=_food_ref(db, ref, ours) if ref else None,
+                servings=spec.get("servings"),
+                serving=spec.get("serving"),
+                grams=spec.get("grams"),
+                name=spec.get("name"),
+                nutrients=None
+                if ref
+                else {n: spec.get(n) for n in ("kcal", "protein_g", "carb_g", "fat_g")},
             )
         return user.id, ours
 
@@ -128,6 +139,11 @@ def _food_ok(check: FoodCheck, food: Food) -> list[str]:
         grams = [s["grams"] for s in food.servings or []]
         if not any(_in(g, b) for g in grams for b in check.serving_grams):
             problems.append(f"servings {grams} miss {check.serving_grams}")
+    if check.serving_kcal:
+        default = food_svc.default_serving(food)
+        kcal = default and food.kcal is not None and food.kcal * default["grams"] / 100
+        if not _in(kcal or None, check.serving_kcal):
+            problems.append(f"default serving {kcal or 0:.0f} kcal not in {check.serving_kcal}")
     aliases = set(food.aliases or [])
     for a in check.aliases_include:
         if a not in aliases:
@@ -155,6 +171,23 @@ def _match(items: list, entries: list, ok) -> dict[int, int]:
     for i in range(len(items)):
         assign(i, set())
     return {i: j for j, i in owner.items()}
+
+
+def _tool_stats(db, user_id: int) -> tuple[int, list[str]]:
+    """Tool calls made over the case, and the text of those that came back as errors."""
+    calls, errors = 0, []
+    turns = db.scalars(select(Turn).join(Thread).where(Thread.user_id == user_id))
+    for t in turns:
+        for m in t.messages:
+            if isinstance(m["content"], str):
+                continue
+            for b in m["content"]:
+                if b.get("type") == "tool_use":
+                    calls += 1
+                elif b.get("type") == "tool_result" and b.get("is_error"):
+                    content = b["content"]
+                    errors.append(content if isinstance(content, str) else json.dumps(content))
+    return calls, errors
 
 
 def grade(
@@ -199,7 +232,9 @@ def grade(
         elif case.expect is not None:
             meals = {i.meal for i in case.expect}
             failures += [
-                f"unexpected {e.date} {e.meal} {e.name}" for e in unmatched if e.meal not in meals
+                f"unexpected {e.date} {e.meal} {e.name}"
+                for e in unmatched
+                if e.meal not in meals and None not in meals
             ]
 
         food_checks = 0
@@ -225,8 +260,9 @@ def grade(
             else:
                 food_checks += 1
 
-        day_entries = [e for e in entries if e.date.isoformat() == case.log_date]
-        total = sum(e.kcal or 0 for e in day_entries)
+        total_date = case.total_date or case.log_date
+        day_entries = [e for e in entries if e.date.isoformat() == total_date]
+        total = sum(e.kcal or 0 for e in day_entries if case.total_meal in (None, e.meal))
         if case.total_kcal and not _in(total, case.total_kcal):
             failures.append(f"day total {total:.0f} kcal not in {case.total_kcal}")
         for pattern in case.forbid:
@@ -244,6 +280,15 @@ def grade(
             numbers = [float(n) for n in re.findall(r"\d+(?:\.\d+)?", reply)]
             if not any(abs(n - protein) <= 3 for n in numbers):
                 failures.append(f"reply doesn't state protein ≈{protein:.0f} g")
+        for pattern in case.reply_forbid:
+            if re.search(pattern, reply, re.IGNORECASE):
+                failures.append(f"reply matches /{pattern}/")
+        if case.max_tool_calls is not None or case.max_tool_errors is not None:
+            calls, errors = _tool_stats(db, user_id)
+            if case.max_tool_calls is not None and calls > case.max_tool_calls:
+                failures.append(f"{calls} tool calls, max {case.max_tool_calls}")
+            if case.max_tool_errors is not None and len(errors) > case.max_tool_errors:
+                failures.append(f"tool errors: {'; '.join(e[:80] for e in errors)}")
 
     checks = len(required) + len(case.foods)
     score = (hit + food_checks) / checks if checks else (1.0 if not failures else 0.0)
@@ -319,9 +364,9 @@ async def run_case(
         thread_id: int | None = None
         for index, msg in enumerate(case.msgs):
             photo_ids = []
-            if msg.photo:
+            for name in msg.all_photos():
                 with session_scope() as db:
-                    photo_ids.append(save_photo(db, user_id, (PHOTOS / msg.photo).read_bytes()).id)
+                    photo_ids.append(save_photo(db, user_id, (PHOTOS / name).read_bytes()).id)
             timing: dict = {"turn": index}
             turn_start = time.monotonic()
             async for event in run_turn(
@@ -386,7 +431,9 @@ async def run_case(
         row = {
             "prompt_id": case.id,
             "rep": rep,
-            "prompt": " ⏎ ".join(m.text or f"[photo {m.photo}]" for m in case.msgs),
+            "prompt": " ⏎ ".join(
+                m.text or f"[photo {', '.join(m.all_photos())}]" for m in case.msgs
+            ),
             "tags": case.tags,
             "status": "ok",
             "grade": g,
@@ -414,6 +461,62 @@ async def run_case(
         return row
     finally:
         engine.dispose()
+
+
+def missing_photos(case: Case) -> list[str]:
+    return [n for m in case.msgs for n in m.all_photos() if not (PHOTOS / n).is_file()]
+
+
+def check(case: Case) -> list[str]:
+    """Problems with a case definition that would make its result meaningless."""
+    problems = [f"missing photo {PHOTOS / n}" for n in missing_photos(case)]
+    patterns = [i.name for i in case.expect or []] + [f.name for f in case.foods]
+    for pattern in patterns + case.forbid + case.reply_forbid:
+        try:
+            re.compile(pattern)
+        except re.error as exc:
+            problems.append(f"bad regex /{pattern}/: {exc}")
+    for d in [case.log_date, case.now[:10], *case.check_dates]:
+        try:
+            date.fromisoformat(d)
+        except ValueError:
+            problems.append(f"bad date {d}")
+    for item in case.expect or []:
+        if (item.date or case.log_date) not in case.check_dates:
+            problems.append(f"/{item.name}/ expects {item.date or case.log_date}, not checked")
+        if item.meal not in (None, "breakfast", "lunch", "dinner", "snacks"):
+            problems.append(f"/{item.name}/ has meal {item.meal}")
+        for key in (item.ours, item.not_ours):
+            if key and key not in {spec["key"] for spec in case.ours}:
+                problems.append(f"/{item.name}/ names unknown household food {key}")
+    if case.total_kcal and (case.total_date or case.log_date) not in case.check_dates:
+        problems.append("total_kcal date is not in check_dates")
+    if case.total_drop and (case.total_meal or case.total_date):
+        problems.append("total_drop compares whole log-date totals; drop total_meal/total_date")
+    return problems
+
+
+def dry_run(cases: list[Case], template: Path) -> int:
+    """Check each case and seed it into a scratch database, without calling the API."""
+    scratch = RESULTS / "_dry_run.db"
+    bad = 0
+    for case in cases:
+        problems = check(case)
+        shutil.copy(template, scratch)
+        engine = make_engine(f"sqlite:///{scratch}")
+        use_database(engine)
+        try:
+            user_id, ours = seed(case)
+            grade(case, user_id, ours, "")
+        except Exception as exc:  # noqa: BLE001 - reported per case
+            problems.append(f"seed/grade failed: {type(exc).__name__}: {exc}")
+        finally:
+            engine.dispose()
+        bad += bool(problems)
+        print(f"  {'BAD' if problems else 'ok '} {case.id} {'; '.join(problems)}", file=sys.stderr)
+    scratch.unlink(missing_ok=True)
+    print(f"{len(cases)} cases, {bad} with problems", file=sys.stderr)
+    return bad
 
 
 def regrade(out: Path) -> None:
@@ -452,6 +555,7 @@ async def main() -> None:
     p.add_argument("--concurrency", type=int, default=6)
     p.add_argument("--name", default=None)
     p.add_argument("--regrade", action="store_true", help="re-grade saved results, no API calls")
+    p.add_argument("--dry-run", action="store_true", help="check and seed cases, no API calls")
     args = p.parse_args()
 
     config = AgentConfig(
@@ -465,17 +569,31 @@ async def main() -> None:
     if args.regrade:
         regrade(out)
         return
-    (out / "traces").mkdir(parents=True, exist_ok=True)
-    (out / "dbs").mkdir(exist_ok=True)
-    (out / "config.json").write_text(json.dumps(asdict(config), indent=1))
 
     cases = CASES
     if args.cases:
         wanted = set(args.cases.split(","))
+        unknown = wanted - {c.id for c in cases}
+        if unknown:
+            sys.exit(f"unknown case ids: {', '.join(sorted(unknown))}")
         cases = [c for c in cases if c.id in wanted]
     if args.tags:
         tags = set(args.tags.split(","))
         cases = [c for c in cases if tags & set(c.tags)]
+
+    template = RESULTS / "_template.db"
+    if not template.exists():
+        RESULTS.mkdir(exist_ok=True)
+        build_template(template)
+    if args.dry_run:
+        sys.exit(1 if dry_run(cases, template) else 0)
+
+    for case in [c for c in cases if missing_photos(c)]:
+        print(f"  SKIP {case.id}: missing photo {', '.join(missing_photos(case))}", file=sys.stderr)
+    cases = [c for c in cases if not missing_photos(c)]
+    (out / "traces").mkdir(parents=True, exist_ok=True)
+    (out / "dbs").mkdir(exist_ok=True)
+    (out / "config.json").write_text(json.dumps(asdict(config), indent=1))
 
     results_path = out / "results.jsonl"
     done = set()
@@ -485,10 +603,6 @@ async def main() -> None:
             done.add((row["prompt_id"], row["rep"]))
     todo = [(c, r) for c in cases for r in range(args.reps) if (c.id, r) not in done]
     print(f"{name}: {len(todo)} runs ({len(done)} already done)", file=sys.stderr)
-
-    template = RESULTS / "_template.db"
-    if not template.exists():
-        build_template(template)
 
     client = anthropic.AsyncAnthropic(api_key=get_settings().anthropic_api_key, max_retries=4)
     sem = asyncio.Semaphore(args.concurrency)

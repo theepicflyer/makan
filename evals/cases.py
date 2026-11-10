@@ -1,15 +1,21 @@
 """Eval cases for the Bao logging agent.
 
 Each case seeds a fresh database, sends one or more messages through the real agent loop, and is
-graded on what ends up in the database. Photo-case reference totals were estimated by Claude
-(Opus 5.5 in Claude Code) looking at each photo, as the benchmark for photo understanding.
+graded on what ends up in the database. The cases here are text only and made up. Photo cases use
+real meals, so they live outside the repo in `evals/private/` (see README.md) and are added to
+CASES when that directory exists.
 """
 
+import importlib.util
 from dataclasses import dataclass, field
+from pathlib import Path
 
 TODAY = "2026-10-21"
 YESTERDAY = "2026-10-20"
+DAY_BEFORE = "2026-10-19"
 EVENING = "2026-10-21T21:30"
+MORNING = "2026-10-21T09:40"
+PRIVATE = Path(__file__).parent / "private"
 
 CHOBANI = {
     "key": "chobani",
@@ -27,20 +33,16 @@ CP_RIB = {
     "servings": [{"label": "piece", "grams": 20, "default": True}, {"label": "pack", "grams": 350}],
     "aliases": ["chicken rib", "chicken ribs"],
 }
-FAIRPRICE_OAT = {
-    "key": "fp_oat",
-    "name": "Oat Milk",
-    "brand": "FairPrice",
-    "nutrients": {"kcal": 62, "protein_g": 1.0, "carb_g": 7.2, "fat_g": 3.2},
-    "servings": [{"label": "glass", "grams": 250, "default": True}],
-    "aliases": ["oat milk"],
-}
 
 
 @dataclass
 class Msg:
     text: str
     photo: str | None = None
+    photos: list[str] = field(default_factory=list)  # several photos in one message, in order
+
+    def all_photos(self) -> list[str]:
+        return ([self.photo] if self.photo else []) + self.photos
 
 
 @dataclass
@@ -72,6 +74,7 @@ class FoodCheck:
     )
     aliases_include: list[str] = field(default_factory=list)
     aliases_exclude: list[str] = field(default_factory=list)
+    serving_kcal: tuple[float, float] | None = None  # kcal of the default serving
 
 
 @dataclass
@@ -82,11 +85,14 @@ class Case:
     now: str = EVENING
     log_date: str = TODAY
     ours: list[dict] = field(default_factory=list)
-    # (date, meal, food ref "sg:Name" | "usda:Name" | "ours:key", servings or None)
-    entries: list[tuple] = field(default_factory=list)
+    # (date, meal, food ref "sg:Name" | "usda:Name" | "ours:key", servings or None), or a dict
+    # with date, meal and either ref (plus servings/serving/grams/name) or name plus kcal and macros.
+    entries: list[tuple | dict] = field(default_factory=list)
     expect: list[Item] | None = None  # the complete log for the checked dates
     check_dates: list[str] = field(default_factory=lambda: [TODAY])
-    total_kcal: tuple[float, float] | None = None  # on log_date
+    total_kcal: tuple[float, float] | None = None  # on total_date
+    total_date: str | None = None  # defaults to log_date
+    total_meal: str | None = None  # count only this meal in total_kcal and ref_kcal
     ref_kcal: float | None = None  # benchmark estimate for photo cases
     foods: list[FoodCheck] = field(default_factory=list)
     reply_protein: bool = False  # the reply must state the day's protein total
@@ -96,6 +102,9 @@ class Case:
     strict_count: bool = (
         True  # False: extra entries are fine (photo meals split into any number of parts)
     )
+    max_tool_calls: int | None = None  # over every message of the case
+    max_tool_errors: int | None = None  # tool calls rejected as invalid or failed
+    reply_forbid: list[str] = field(default_factory=list)  # regexes the last reply must not match
 
 
 CASES: list[Case] = [
@@ -399,442 +408,185 @@ CASES: list[Case] = [
             Item(r"kopi c", "snacks", kcal=(100, 160)),
         ],
     ),
+    # --- regressions: patterns that went wrong in real use, with made-up meals ---------
     Case(
-        "photo_then_drop_item",
-        ["photo", "edit", "multi_turn", "add_then_edit"],
-        [Msg("lunch", photo="PXL_20260811_042257624.jpg"), Msg("I didn't eat the you tiao")],
-        now="2026-08-11T12:22",
-        log_date="2026-08-11",
-        check_dates=["2026-08-11"],
+        "reg_yesterday_when_log_date_is_yesterday",
+        ["text", "dates", "regression", "stale_date"],
+        [Msg("beef hor fun for dinner yesterday")],
+        now=MORNING,
+        log_date=YESTERDAY,
+        entries=[
+            (YESTERDAY, "breakfast", "sg:Kopi C", None),
+            (YESTERDAY, "breakfast", "sg:Kaya and butter toast", None),
+        ],
+        check_dates=[DAY_BEFORE, YESTERDAY, TODAY],
         expect=[
-            Item(r"bak kut teh|pork rib|rib soup", "lunch", from_first_turn=True),
-            Item(r"rice", "lunch", from_first_turn=True),
-            Item(r"peanut", "lunch", from_first_turn=True),
-        ],
-        forbid=[r"you ?tiao|dough|fritter"],
-        strict_count=False,
-        total_kcal=(450, 1250),
-        total_drop=(200, 1100),
-    ),
-    Case(
-        "photo_then_half_rice",
-        ["photo", "edit", "multi_turn", "add_then_edit"],
-        [Msg("lunch", photo="PXL_20260922_051842044.jpg"), Msg("I only ate half the rice")],
-        now="2026-09-22T13:18",
-        log_date="2026-09-22",
-        check_dates=["2026-09-22"],
-        expect=[Item(r"nasi lemak|coconut rice|rice", "lunch", from_first_turn=True)]
-        + [Item(r".", "lunch", optional=True)] * 6,
-        total_drop=(60, 450),
-        strict_count=False,
-    ),
-    Case(
-        "label_then_fix_serving",
-        ["photo", "label", "edit", "multi_turn", "add_then_edit"],
-        [
-            Msg("save this, it's our oat milk", photo="PXL_20261020_103601464.jpg"),
-            Msg("we drink it in 200 ml glasses"),
-        ],
-        now="2026-10-20T18:36",
-        log_date="2026-10-20",
-        check_dates=["2026-10-20"],
-        expect=[],
-        foods=[
-            FoodCheck(
-                r"oat", kcal=(60, 64), serving_grams=[(195, 205)], aliases_include=["oat milk"]
-            )
-        ],
-    ),
-    # --- nutrition labels ---------------------------------------------------------
-    Case(
-        "label_chicken_rib",
-        ["photo", "label"],
-        [Msg("save this, we always have these in the freezer", photo="PXL_20261004_033808808.jpg")],
-        now="2026-10-04T11:38",
-        log_date="2026-10-04",
-        check_dates=["2026-10-04"],
-        expect=[],
-        foods=[
-            FoodCheck(
-                r"chicken rib",
-                kcal=(298, 306),
-                protein_g=(12, 13),
-                carb_g=(11.5, 12.5),
-                fat_g=(22, 23.5),
-                serving_grams=[(19, 21), (99, 101)],
-            )
+            Item(r"hor fun", "dinner", date=YESTERDAY, kcal=(450, 900)),
+            Item(r"kopi c", "breakfast", date=YESTERDAY),
+            Item(r"kaya", "breakfast", date=YESTERDAY),
         ],
     ),
     Case(
-        "label_oat_milk_and_log",
-        ["photo", "label"],
-        [
-            Msg(
-                "this is our oat milk, save it. also had a glass with breakfast",
-                photo="PXL_20261020_103601464.jpg",
-            )
-        ],
-        now="2026-10-20T18:36",
-        log_date="2026-10-20",
-        check_dates=["2026-10-20"],
-        expect=[Item(r"oat", "breakfast", date="2026-10-20", kcal=(120, 170))],
-        foods=[
-            FoodCheck(
-                r"oat",
-                kcal=(60, 64),
-                protein_g=(0.9, 1.1),
-                carb_g=(7, 7.4),
-                fat_g=(3.1, 3.3),
-                aliases_include=["oat milk"],
-            )
-        ],
+        "reg_today_when_log_date_is_yesterday",
+        ["text", "dates", "regression", "stale_date"],
+        [Msg("lunch today was fishball noodle soup")],
+        now="2026-10-21T12:50",
+        log_date=YESTERDAY,
+        check_dates=[YESTERDAY, TODAY],
+        expect=[Item(r"fish ?ball", "lunch", date=TODAY, kcal=(350, 700))],
     ),
     Case(
-        "label_switch_oat_milk",
-        ["photo", "label", "ours"],
-        [Msg("we switched to this oat milk", photo="PXL_20261020_103629088.MP.jpg")],
-        now="2026-10-20T18:36",
-        log_date="2026-10-20",
-        check_dates=["2026-10-20"],
-        ours=[FAIRPRICE_OAT],
-        expect=[],
-        foods=[
-            FoodCheck(
-                r"milklab|oatside|noumi|oat",
-                kcal=(63, 67),
-                protein_g=(0.6, 0.8),
-                carb_g=(7.7, 8.1),
-                fat_g=(3.1, 3.3),
-                aliases_include=["oat milk"],
-            ),
-            FoodCheck(r"^Oat Milk$", aliases_exclude=["oat milk"]),
-        ],
+        "reg_very_big_portion",
+        ["text", "edit", "multi_turn", "regression", "portion"],
+        [Msg("lunch: hokkien mee"), Msg("it was a very big portion")],
+        expect=[Item(r"hokkien", "lunch", kcal=(950, 1700), from_first_turn=True)],
+        total_drop=(-1000, -120),  # the total has to rise
     ),
-    # --- meal photos (reference totals: Claude's estimate from the photo) ---------
     Case(
-        "photo_instant_noodles_fishcake",
-        ["photo", "meal"],
-        [Msg("dinner", photo="PXL_20260527_110549412.jpg")],
-        now="2026-05-27T19:05",
-        log_date="2026-05-27",
-        check_dates=["2026-05-27"],
+        "reg_split_into_portions_edit",
+        ["text", "edit", "regression", "split"],
+        [Msg("we shared all of dinner, it was split into 4 portions and I had one")],
+        entries=[
+            {"date": TODAY, "meal": "dinner", "ref": "sg:Chicken curry", "grams": 600},
+            {"date": TODAY, "meal": "dinner", "ref": "sg:Cooked white rice", "grams": 600},
+            {"date": TODAY, "meal": "dinner", "ref": "sg:Sambal kangkong", "grams": 300},
+        ],
         expect=[
-            Item(r"noodle|mee|mian|ramen|indomie", "dinner"),
-            Item(r"fish ?cake|luncheon|spam|tofu|tau kwa", "dinner", optional=True),
-        ]
-        + [Item(r".", "dinner", optional=True)] * 3,
-        total_kcal=(700, 1300),
-        ref_kcal=1000,
+            Item(r"curry", "dinner", kcal=(180, 250)),
+            Item(r"rice", "dinner", kcal=(165, 225)),
+            Item(r"kangkong", "dinner", kcal=(85, 115)),
+        ],
+        total_kcal=(440, 590),
     ),
     Case(
-        "photo_nasi_lemak_curry_leaf_chicken",
-        ["photo", "meal"],
-        [Msg("lunch, the wings were shared 3 ways", photo="PXL_20260618_044143778.jpg")],
-        now="2026-06-18T12:41",
-        log_date="2026-06-18",
-        check_dates=["2026-06-18"],
+        "reg_split_into_portions_text",
+        ["text", "portion", "regression", "split"],
+        [Msg("lunch: 2 plates of char kway teow split into 4 portions, I had one")],
+        expect=[Item(r"char kway teow", "lunch", kcal=(380, 600))],
+    ),
+    Case(
+        "reg_save_logged_meal",
+        ["text", "ours", "regression", "save_as"],
+        [Msg("save today's lunch as corner stall hokkien mee so I can log it next time")],
+        entries=[
+            {"date": TODAY, "meal": "lunch", "ref": "sg:Hokkien mee", "grams": 700},
+            {
+                "date": TODAY,
+                "meal": "lunch",
+                "name": "Sambal sotong side",
+                "kcal": 180,
+                "protein_g": 15,
+                "carb_g": 8,
+                "fat_g": 10,
+            },
+        ],
         expect=[
-            Item(r"nasi lemak|coconut rice|rice", "lunch"),
-            Item(r"wing", "lunch", kcal=(100, 300)),
-            Item(r"teh|tea|kopi|coffee|drink", optional=True),
-        ]
-        + [Item(r".", "lunch", optional=True)] * 5,
-        total_kcal=(1100, 2000),
-        ref_kcal=1550,
+            Item(r"hokkien", "lunch", kcal=(1000, 1100)),
+            Item(r"sotong", "lunch", kcal=(170, 190)),
+        ],
+        foods=[FoodCheck(r"corner stall", serving_kcal=(1100, 1350))],
+        max_tool_calls=3,
     ),
     Case(
-        "photo_sri_lankan_rice_curry",
-        ["photo", "meal"],
-        [Msg("lunch, just the plate. the bowl wasn't mine", photo="PXL_20260619_045749973.jpg")],
-        now="2026-06-19T12:57",
-        log_date="2026-06-19",
-        check_dates=["2026-06-19"],
+        "reg_ours_shared_word",
+        ["text", "ours", "regression", "search"],
+        [Msg("dinner: 2 braised beef short ribs and a bowl of rice")],
+        ours=[CP_RIB],
         expect=[
-            Item(r"rice|nasi", "lunch"),
-            Item(r"dh?al|lentil|parippu", "lunch", optional=True),
-            Item(r"curry", "lunch", optional=True),
-        ]
-        + [Item(r".", "lunch", optional=True)] * 6,
-        total_kcal=(800, 1500),
-        ref_kcal=1150,
+            Item(r"rib", "dinner", kcal=(300, 1100), not_ours="rib"),
+            Item(r"rice", "dinner", kcal=(200, 340)),
+        ],
     ),
     Case(
-        "photo_economy_bee_hoon",
-        ["photo", "meal"],
-        [Msg("", photo="PXL_20260625_015549662.jpg")],
-        now="2026-06-25T09:55",
-        log_date="2026-06-25",
-        check_dates=["2026-06-25"],
-        expect=[Item(r"bee ?hoon|mee|noodle|vermicelli", "breakfast")]
-        + [Item(r".", "breakfast", optional=True)] * 6,
-        total_kcal=(520, 1000),
-        ref_kcal=750,
-    ),
-    Case(
-        "photo_nabeyaki_udon_tempura",
-        ["photo", "meal"],
-        [Msg("lunch", photo="PXL_20260703_042440695.jpg")],
-        now="2026-07-03T12:24",
-        log_date="2026-07-03",
-        check_dates=["2026-07-03"],
+        "reg_tau_pok_not_poke",
+        ["text", "regression", "search"],
+        [Msg("dinner: 2 pieces of tau pok and a bowl of rice")],
         expect=[
-            Item(r"udon|noodle", "lunch"),
-            Item(r"tempura|prawn|ebi|shrimp", "lunch"),
-            Item(r"orange", "lunch", optional=True),
-        ]
-        + [Item(r".", "lunch", optional=True)] * 5,
-        total_kcal=(580, 1100),
-        ref_kcal=830,
+            Item(r"tau ?pok|bean ?curd", "dinner", kcal=(60, 260)),
+            Item(r"rice", "dinner", kcal=(200, 340)),
+        ],
+        forbid=[r"pok[eé]"],
     ),
     Case(
-        "photo_nasi_lemak_box_half",
-        ["photo", "meal"],
-        [Msg("breakfast, shared this, I had half", photo="PXL_20260704_012824313.jpg")],
-        now="2026-07-04T09:28",
-        log_date="2026-07-04",
-        check_dates=["2026-07-04"],
-        expect=[Item(r"nasi lemak|coconut rice|rice", "breakfast")]
-        + [Item(r".", "breakfast", optional=True)] * 5,
-        total_kcal=(480, 900),
-        ref_kcal=680,
+        "reg_pork_collar_not_collards",
+        ["text", "regression", "search"],
+        [Msg("dinner: 150g grilled pork collar with a bowl of rice")],
+        expect=[
+            Item(r"pork", "dinner", kcal=(280, 550)),
+            Item(r"rice", "dinner", kcal=(200, 340)),
+        ],
+        forbid=[r"collard"],
     ),
     Case(
-        "photo_zha_jiang_mian",
-        ["photo", "meal"],
+        "reg_prawns_not_prawn_dish",
+        ["text", "regression", "search"],
+        [Msg("dinner: a bowl of rice, 4 steamed prawns and a scoop of stir fried kailan")],
+        expect=[
+            Item(r"prawn|shrimp", "dinner", kcal=(30, 130)),
+            Item(r"rice", "dinner", kcal=(200, 340)),
+            Item(r"kai ?lan", "dinner", kcal=(40, 120)),
+        ],
+        forbid=[r"noodle|mock|assam|cereal|sambal|fritter|drunken"],
+    ),
+    Case(
+        "reg_fried_hokkien_mee_not_prawn_noodles",
+        ["text", "regression", "near_name"],
+        [Msg("lunch: fried hokkien prawn mee")],
+        expect=[Item(r"hokkien", "lunch", kcal=(650, 1050))],
+        forbid=[r"prawn noodles"],
+    ),
+    Case(
+        "reg_roasted_chicken_rice_not_white_rice",
+        ["text", "regression", "near_name"],
         [
             Msg(
-                "lunch, the dumplings and bean sprouts were shared between 2",
-                photo="PXL_20260706_045332053.jpg",
+                "lunch: roasted chicken rice, the rice and chicken came on separate plates, "
+                "with a bowl of clear soup"
             )
         ],
-        now="2026-07-06T12:53",
-        log_date="2026-07-06",
-        check_dates=["2026-07-06"],
         expect=[
-            Item(r"zha ?jiang|jajang|noodle|mee|mian", "lunch"),
-            Item(
-                r"dumpling|gyoza|jiaozi|pot ?sticker|guo ?tie|wonton|wanton",
-                "lunch",
-                kcal=(80, 260),
-            ),
-            Item(r"sprout|namul|salad", "lunch", kcal=(30, 150)),
-            Item(r"egg", "lunch", optional=True),
-        ]
-        + [Item(r".", "lunch", optional=True)] * 2,
-        total_kcal=(670, 1250),
-        ref_kcal=950,
-    ),
-    Case(
-        "photo_pineapple_fried_rice",
-        ["photo", "meal"],
-        [Msg("lunch, the kangkong was shared", photo="PXL_20260709_044306146.jpg")],
-        now="2026-07-09T12:43",
-        log_date="2026-07-09",
-        check_dates=["2026-07-09"],
-        expect=[
-            Item(r"pineapple|fried rice", "lunch"),
-            Item(r"kang ?kong|water spinach|morning glory|pak ?boong", "lunch", kcal=(35, 140)),
-            Item(r"floss", "lunch", optional=True),
-        ]
-        + [Item(r".", "lunch", optional=True)] * 2,
-        total_kcal=(620, 1150),
-        ref_kcal=880,
-    ),
-    Case(
-        "photo_roast_meat_rice",
-        ["photo", "meal"],
-        [Msg("lunch", photo="PXL_20260724_041550514.jpg")],
-        now="2026-07-24T12:15",
-        log_date="2026-07-24",
-        check_dates=["2026-07-24"],
-        expect=[
-            Item(r"char? ?si[eu]w?|bbq pork|barbecue pork", "lunch"),
-            Item(r"roast(ed)? pork|siu ?yuk|siew ?yo?k|sio ?bak|pork belly|crispy pork", "lunch"),
-            Item(r"duck", "lunch"),
-            Item(r"rice", "lunch", optional=True),
-            Item(r"soup", optional=True),
-        ]
-        + [Item(r".", "lunch", optional=True)] * 3,
-        total_kcal=(690, 1270),
-        ref_kcal=980,
-    ),
-    Case(
-        "photo_buffet_plate",
-        ["photo", "meal"],
-        [Msg("lunch buffet", photo="PXL_20260801_042103853.jpg")],
-        now="2026-08-01T12:21",
-        log_date="2026-08-01",
-        check_dates=["2026-08-01"],
-        expect=[
-            Item(r"fish|cod|dory|basa|barramundi|snapper|sea ?bass|sole|halibut", "lunch"),
-            Item(r"chicken|pork|lamb|meat", "lunch"),
-            Item(r"mac|pasta", "lunch"),
-            Item(r"rice|biryani|briyani|pilaf|pilau", "lunch"),
-            Item(r"cake|pandan|matcha|green tea|dessert", "lunch", optional=True),
-        ]
-        + [Item(r".", "lunch", optional=True)] * 2,
-        total_kcal=(830, 1530),
-        ref_kcal=1180,
-    ),
-    Case(
-        "photo_curry_cutlet_rice",
-        ["photo", "meal"],
-        [Msg("dinner", photo="PXL_20260805_123446588.jpg")],
-        now="2026-08-05T20:34",
-        log_date="2026-08-05",
-        check_dates=["2026-08-05"],
-        expect=[
-            Item(r"cutlet|chop|katsu|schnitzel|fried chicken|fried pork", "dinner"),
-            Item(r"rice|curry", "dinner", optional=True),
-            Item(r"egg", "dinner", optional=True),
-        ]
-        + [Item(r".", "dinner", optional=True)] * 3,
-        total_kcal=(690, 1270),
-        ref_kcal=980,
-    ),
-    Case(
-        "photo_bak_kut_teh",
-        ["photo", "meal"],
-        [Msg("lunch", photo="PXL_20260811_042257624.jpg")],
-        now="2026-08-11T12:22",
-        log_date="2026-08-11",
-        check_dates=["2026-08-11"],
-        expect=[
-            Item(r"bak kut teh|pork rib|rib soup", "lunch"),
-            Item(r"rice", "lunch"),
-            Item(r"you ?tiao|dough|fritter|youtiao", "lunch"),
-            Item(r"peanut", "lunch"),
-            Item(r".", "lunch", optional=True),
+            Item(r"roast(ed)? chicken rice", "lunch", kcal=(500, 850)),
+            Item(r"soup", "lunch", optional=True),
         ],
-        total_kcal=(900, 1650),
-        ref_kcal=1200,
+        forbid=[r"white rice|cooked rice|plain rice|^rice"],
     ),
     Case(
-        "photo_prawn_noodles",
-        ["photo", "meal"],
-        [Msg("", photo="PXL_20260821_113659295.jpg")],
-        now="2026-08-21T19:36",
-        log_date="2026-08-21",
-        check_dates=["2026-08-21"],
-        expect=[
-            Item(r"prawn|noodle|mee", "dinner"),
-            Item(r".", "dinner", optional=True),
-            Item(r".", "dinner", optional=True),
-        ],
-        total_kcal=(450, 1000),
-        ref_kcal=700,
+        "reg_half_bowl_not_half_plate",
+        ["text", "portion", "regression", "default_serving"],
+        [Msg("dinner: half a bowl of nasi goreng")],
+        expect=[Item(r"nasi goreng|fried rice", "dinner", kcal=(110, 300))],
     ),
     Case(
-        "photo_home_pork_ribs",
-        ["photo", "meal"],
-        [
-            Msg(
-                "dinner, had 2 pieces of this with a bowl of rice",
-                photo="PXL_20260902_125326268.MP.jpg",
-            )
-        ],
-        now="2026-09-02T20:53",
-        log_date="2026-09-02",
-        check_dates=["2026-09-02"],
-        expect=[Item(r"pork|rib", "dinner"), Item(r"rice", "dinner")],
-        total_kcal=(450, 950),
-        ref_kcal=680,
+        "reg_small_slice",
+        ["text", "portion", "regression", "default_serving"],
+        [Msg("snack: a small thin slice of chocolate cake")],
+        expect=[Item(r"chocolate cake", "snacks", kcal=(100, 260))],
     ),
     Case(
-        "photo_tacos",
-        ["photo", "meal"],
-        [Msg("dinner", photo="PXL_20260914_104534394.jpg")],
-        now="2026-09-14T18:45",
-        log_date="2026-09-14",
-        check_dates=["2026-09-14"],
-        expect=[
-            Item(r"taco", "dinner"),
-            Item(r"taco", "dinner", optional=True),
-            Item(r"taco", "dinner", optional=True),
-        ],
-        total_kcal=(500, 1000),
-        ref_kcal=700,
-    ),
-    Case(
-        "photo_onigiri_two",
-        ["photo", "meal"],
-        [Msg("lunch, I had 2 of these", photo="PXL_20260915_044657210.jpg")],
-        now="2026-09-15T12:46",
-        log_date="2026-09-15",
-        check_dates=["2026-09-15"],
-        expect=[
-            Item(r"onigiri|nigiri|rice|sushi|musubi|hand ?roll|temaki|cone", "lunch"),
-            Item(r".", "lunch", optional=True),
-        ],
-        total_kcal=(380, 750),
-        ref_kcal=540,
-    ),
-    Case(
-        "photo_nasi_lemak_wings",
-        ["photo", "meal"],
-        [Msg("lunch. the wings were shared, I had 1", photo="PXL_20260922_051842044.jpg")],
-        now="2026-09-22T13:18",
-        log_date="2026-09-22",
-        check_dates=["2026-09-22"],
-        expect=[
-            Item(r"nasi lemak|coconut rice", "lunch"),
-            Item(r"wing", "lunch", kcal=(80, 300)),
-            Item(r".", "lunch", optional=True),
-            Item(r".", "lunch", optional=True),
-            Item(r".", "lunch", optional=True),
-        ],
-        total_kcal=(750, 1400),
-        ref_kcal=1030,
-    ),
-    Case(
-        "photo_wanton_mee",
-        ["photo", "meal"],
-        [Msg("", photo="PXL_20261003_041719128.jpg")],
-        now="2026-10-03T12:17",
-        log_date="2026-10-03",
-        check_dates=["2026-10-03"],
-        expect=[
-            Item(r"wanton|wonton|noodle|mee", "lunch"),
-            Item(r".", "lunch", optional=True),
-            Item(r".", "lunch", optional=True),
-        ],
-        total_kcal=(450, 900),
-        ref_kcal=650,
-    ),
-    Case(
-        "photo_nasi_padang",
-        ["photo", "meal"],
-        [Msg("dinner", photo="PXL_20261007_120514824.jpg")],
-        now="2026-10-07T20:05",
-        log_date="2026-10-07",
-        check_dates=["2026-10-07"],
-        expect=[Item(r"rice|nasi", "dinner")] + [Item(r".", "dinner", optional=True)] * 9,
-        total_kcal=(900, 1700),
-        ref_kcal=1300,
-    ),
-    Case(
-        "photo_risotto",
-        ["photo", "meal"],
-        [Msg("lunch", photo="PXL_20261008_053230613.jpg")],
-        now="2026-10-08T13:32",
-        log_date="2026-10-08",
-        check_dates=["2026-10-08"],
-        expect=[Item(r"risotto", "lunch"), Item(r".", "lunch", optional=True)],
-        total_kcal=(450, 950),
-        ref_kcal=650,
-    ),
-    Case(
-        "photo_curry_rice",
-        ["photo", "meal"],
-        [Msg("lunch", photo="PXL_20261019_050831726.jpg")],
-        now="2026-10-19T13:08",
-        log_date="2026-10-19",
-        check_dates=["2026-10-19"],
-        expect=[Item(r"rice|curry", "lunch")] + [Item(r".", "lunch", optional=True)] * 5,
-        total_kcal=(850, 1500),
-        ref_kcal=1150,
+        "reg_fried_carrot_cake_not_dessert",
+        ["text", "regression", "near_name"],
+        [Msg("breakfast: white fried carrot cake")],
+        expect=[Item(r"carrot cake|chai tow kway", "breakfast", kcal=(300, 700))],
+        forbid=[r"dessert|cupcake|cake or|pudding"],
     ),
 ]
+
+
+def _load_private() -> list[Case]:
+    """Cases in evals/private/cases.py (gitignored), tagged private; their photos are in photos/."""
+    path = PRIVATE / "cases.py"
+    if not path.exists():
+        return []
+    spec = importlib.util.spec_from_file_location("evals_private_cases", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    for case in module.CASES:
+        if "private" not in case.tags:
+            case.tags.append("private")
+    return module.CASES
+
+
+CASES += _load_private()
 
 # A meal photo can be split into any number of parts; judge its components and total instead.
 for _case in CASES:
