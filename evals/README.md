@@ -1,15 +1,45 @@
 # Agent evals
 
-These evals check the Bao assistant on the jobs it does every day. Each case starts from a fresh copy of the food database, seeds whatever household foods and log entries the case needs, and sends one or two messages through the real agent loop (`bao.agent.runner.run_turn`) against the live API. It is then graded on what ended up in the database: the right foods, meals, dates and portions; household foods used, or left alone, as asked; no duplicate entries. Grading never reads the reply text, except in the one case that asks a question.
+These evals check the Bao assistant on the jobs it does every day. Each case starts from a fresh copy of the food database, seeds whatever household foods and log entries the case needs, and sends one or more messages through the real agent loop (`bao.agent.runner.run_turn`) against the live API. It is then graded on what ended up in the database: the right foods, meals, dates and portions; household foods used, or left alone, as asked; no duplicate entries. Grading reads the reply text only for the case that asks a question and for cases with `reply_forbid`.
 
-There are 57 cases (`cases.py`):
+## Cases
+
+The repo holds 45 made-up text cases (`cases.py`). Photo cases use real meals and live in a private directory outside the repo (see below).
 
 - Text (23): end-of-day dumps in hawker shorthand and Singlish ("teh c siew dai", "milo peng", "supper ice kachang"), counts and weights, two days in one message, household defaults ("a bowl of yogurt" means the household yogurt; "Fage greek yogurt" doesn't), teaching a portion, follow-up corrections, moving and deleting entries, editing yesterday, copying yesterday's breakfast, a dish the database lacks ("unagi fried rice" must count the eel, not log plain egg fried rice; "onsen eggs" must be estimated under that name, not logged as another egg dish), a qualifier the search must keep ("soft boiled" eggs, not hard-boiled), and a question that must not change anything.
-- Labels (3): a CP chicken rib bag whose label rows are printed out of line with their values, a FairPrice oat milk carton saved and logged in one message, and a switch to a second oat milk, which has to take over the "oat milk" alias without overwriting the first.
-- Add, then edit (10): the first message logs something and the second changes it. The cases fix one portion out of several items, swap steamed for roasted chicken rice, set the meal afterwards, remove one item, move the entry to yesterday, switch teh c to siew dai, drop the you tiao from a bak kut teh photo, halve the rice on a nasi lemak photo, and change the serving on a just-saved label. One more checks that "and another kopi c at 3pm" adds a second entry instead of editing the first. An edit has to change the entry that already exists; deleting it and logging it again fails.
-- Meal photos (21): your own photos (`evals/photos/`, gitignored), including bak kut teh, dry prawn mee, nasi lemak with wings, nasi padang, wanton mee, curry rice, risotto, tacos and onigiri. Eleven more are mixed plates with several parts, many of which have no matching database food: three-roast rice, economy bee hoon, a Sri Lankan rice and curry plate, nabeyaki udon with tempura, zha jiang mian with sides, pineapple fried rice with kangkong, curry cutlet rice, a buffet plate, home-cooked instant noodles with fishcake, and two nasi lemak. Some messages add a share or an exclusion ("the wings were shared 3 ways", "shared this, I had half", "the bowl wasn't mine"). The reference calorie total for each one is Claude's estimate (Opus 5.5, in Claude Code) from looking at the photo, with a tolerance of roughly ±30%. Meal photos are graded on their main components and the day total, not on how many entries they were split into.
+- Add, then edit (7): the first message logs something and the second changes it. The cases fix one portion out of several items, swap steamed for roasted chicken rice, set the meal afterwards, remove one item, move the entry to yesterday and switch teh c to siew dai. One more checks that "and another kopi c at 3pm" adds a second entry instead of editing the first. An edit has to change the entry that already exists; deleting it and logging it again fails.
+- Regressions (15, tagged `regression`): failure patterns seen in real use, rewritten with made-up meals. "Yesterday" when the app is already on yesterday must not go back two days, and "today" must land on today when the app is on a stale date (`stale_date`). "It was a very big portion" must raise the portion (`portion`). "Split into 4 portions, I had one" must quarter the dishes, both as a follow-up edit and in one message (`split`). "Save today's lunch as X" must save one household food whose default serving matches the logged meal, without logging anything new (`save_as`). Searches that put the wrong food first must not win: a household chicken rib for "beef short ribs", poke bowls for "tau pok", collard greens for "pork collar", prawn dishes for "prawns" (`search`). A near-name food must not stand in for a different dish: prawn noodles for fried hokkien mee, white rice for roasted chicken rice, carrot cake the dessert for fried carrot cake (`near_name`). A stated amount beats the default serving: half a bowl of nasi goreng is not half the 485 g plate, a small thin slice of chocolate cake is not the 116 g slice (`default_serving`).
+
+### Private cases
+
+`evals/private/` is gitignored. When it exists, `cases.py` there is loaded after the public cases: it exports `CASES`, built with the same `Case`, `Msg`, `Item` and `FoodCheck` classes (`from evals.cases import Case, ...`), and every case in it gets the `private` tag. Ids must not collide with the public ones. Photo files live in `evals/private/photos/`; every `Msg.photo` and `Msg.photos` name is resolved there. Keep the directory outside the repo and symlink it in:
+
+```bash
+ln -s /path/to/private-evals evals/private
+```
+
+The private set is the photo benchmark: every photo sent in production is a case (several photos in one message stay one case), with the real wording, the household foods that existed at the time, and the log entries the message referred to. Turns the agent got wrong are tagged `regression`, ones it got right `baseline`, so a change that fixes failures but breaks what worked shows up. Meal photos are tagged `photo` and `meal` and are graded on their main components and the meal or day total, not on how many entries they were split into; the reference total is a reviewer's estimate from the photo, with a tolerance of about ±30% (tighter where the production answer was wrong but inside 30%). Label photos are tagged `photo` and `label` and are checked against the label's values. It also holds text cases for real failed turns, tagged `text` and `regression`. Pattern tags match the public regressions, plus `photo_count`, `misidentified`, `protein_undersized`, `small_portion`, `shared`, `instruction`, `ours_outranks`, `tool_calls` and `tool_errors`.
+
+If a photo file is missing, the runner skips that case and prints `SKIP` with the missing path; it is not run or counted.
+
+### Case fields
+
+Most checks are on `Case.expect`, a list of `Item`s (a regex on the entry name, plus meal, date, kcal range, household food), matched one-to-one to the entries on `check_dates`. Others:
+
+- `now` and `log_date` are separate, as in the app: `log_date` is the day the app shows, `now` the time the message is sent.
+- `entries` seeds the log: a tuple `(date, meal, "sg:Name" | "usda:Name" | "ours:key", servings)`, or a dict with `date`, `meal` and either `ref` (plus `servings`, `serving`, `grams`, `name`) or `name` with `kcal`, `protein_g`, `carb_g`, `fat_g` for an estimate.
+- `Msg.photos`: several photos in one message.
+- `total_kcal` with `total_date` (default `log_date`) and `total_meal` (default all meals); `ref_kcal` is the reference for the `kcal_err` metric on the same total.
+- `total_drop`: how far the log date's total must fall from the first message to the end; a negative range means it must rise.
+- `forbid`: regexes no entry on the checked dates may match.
+- `FoodCheck.serving_kcal`: kcal range for a household food's default serving.
+- `max_tool_calls`, `max_tool_errors`: limits over the whole case (tool errors are invalid or failed calls).
+- `reply_forbid`: regexes the last reply must not match (e.g. restated calories).
 
 ## Results (2026-10-21)
+
+These results and the photo-portion results below are historical: they were measured on the previous case set, which had 21 meal and 6 label photo cases that are no longer in the suite. The photo benchmark is now the private set above.
+
 
 | model, effort | runs | pass | text | photos | add then edit | $ per message |
 |---|---|---|---|---|---|---|
@@ -57,12 +87,16 @@ Cost and time per message didn't change. The change mostly helped plates the dat
 ## Running
 
 ```bash
+uv run python -m evals.run --dry-run                                            # check and seed every case, no API calls
 uv run python -m evals.run --model claude-haiku-5-5 --effort low --reps 2       # all cases
 uv run python -m evals.run --model claude-opus-5-5 --effort low --tags text     # text cases only
-uv run python -m evals.run --cases photo_tacos,label_chicken_rib --name scratch  # a few cases
+uv run python -m evals.run --tags regression --name haiku-regressions           # public and private regressions
+uv run python -m evals.run --tags private --name haiku-private                  # the private set only
+uv run python -m evals.run --tags baseline                                      # what worked in production
+uv run python -m evals.run --cases reg_tau_pok_not_poke,reg_small_slice --name scratch  # a few cases
 uv run python -m evals.run --no-cache --name haiku-low-nocache                  # caching off
 uv run python -m evals.run --name haiku-5-5-low --regrade                       # re-grade saved runs, no API calls
 uv run python -m evals.report                                                    # writes results/summary.md
 ```
 
-Every run makes real API calls. Haiku costs about $0.04 for the full 44 cases and Opus about $0.50 for the text cases. Results go to `evals/results/<name>/`, which is gitignored: `results.jsonl` holds one graded row per case and repeat, `traces/` holds the full transcripts, and `dbs/` holds each case's final database, which is what `--regrade` reads. A finished (case, repeat) is skipped when you rerun, so a crashed run resumes where it stopped.
+`--tags` runs a case if it has any of the listed tags. `--dry-run` checks every selected case (regexes compile, photo files exist, expected dates are checked, household food keys exist), seeds it into a scratch database and grades the seeded state, so a broken food reference or seed fails without spending anything. Every other run makes real API calls. Results go to `evals/results/<name>/`, which is gitignored: `results.jsonl` holds one graded row per case and repeat, `traces/` holds the full transcripts, and `dbs/` holds each case's final database, which is what `--regrade` reads. A finished (case, repeat) is skipped when you rerun, so a crashed run resumes where it stopped.

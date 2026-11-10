@@ -1,7 +1,7 @@
 # secrets and local data
 .env
 /data/runtime/
-/evals/photos
+/evals/private
 /evals/results/
 
 # python
