@@ -189,7 +189,14 @@ class Turn(Base):
     usage: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     cost_usd: Mapped[float] = mapped_column(Float, default=0.0)
     status: Mapped[str] = mapped_column(String, default="ok")
+    # Why a turn ended "error": the exception's type and message, for audits. Never shown or replayed.
+    error: Mapped[str | None] = mapped_column(Text)
+    app_version: Mapped[str | None] = mapped_column(String)
     undone_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # The user's thumbs up (1) or down (-1) on the reply. Feedback for us, never sent to the model.
+    rating: Mapped[int | None] = mapped_column(Integer)
+    rating_note: Mapped[str | None] = mapped_column(Text)
+    rated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
@@ -205,6 +212,20 @@ class Change(Base):
     row_id: Mapped[int] = mapped_column(Integer)
     before: Mapped[dict[str, Any] | None] = mapped_column(JSON)
     after: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+
+
+class EntryEdit(Base):
+    """A hand edit or delete of an entry the agent logged, kept to audit the agent. Not part of undo."""
+
+    __tablename__ = "entry_edits"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    entry_id: Mapped[int] = mapped_column(Integer, index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    action: Mapped[str] = mapped_column(String)
+    before: Mapped[dict[str, Any]] = mapped_column(JSON)
+    after: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 
 class Meta(Base):

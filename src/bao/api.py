@@ -4,7 +4,7 @@ import json
 from datetime import date, datetime, time
 from typing import Any, Literal
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import func, select
@@ -13,7 +13,14 @@ from sqlalchemy.orm import Session
 from bao import foods as food_svc
 from bao import log as log_svc
 from bao import reminders
-from bao.agent.runner import AgentConfig, run_turn, serialize_turn, undo_turn
+from bao.agent.runner import (
+    AgentConfig,
+    day_turns,
+    rate_turn,
+    run_turn,
+    serialize_turn,
+    undo_turn,
+)
 from bao.auth import current_user
 from bao.config import get_settings
 from bao.db import get_db
@@ -235,6 +242,7 @@ def patch_entry(
             name=body.name,
             nutrients=body.nutrients,
             note=body.note,
+            by_hand=True,
         )
     except ValueError as exc:
         raise _bad_request(exc) from exc
@@ -244,7 +252,7 @@ def patch_entry(
 @router.delete("/entries/{entry_id}")
 def remove_entry(entry_id: int, user: User = Depends(current_user), db: Session = Depends(get_db)):
     try:
-        log_svc.delete_entry(db, user, entry_id)
+        log_svc.delete_entry(db, user, entry_id, by_hand=True)
     except ValueError as exc:
         raise HTTPException(404, str(exc)) from exc
     return {"ok": True}
@@ -529,6 +537,31 @@ def agent_undo(turn_id: int, user: User = Depends(current_user), db: Session = D
     return serialize_turn(db, turn)
 
 
+class RatingIn(BaseModel):
+    rating: Literal[1, -1] | None
+    note: str | None = Field(None, max_length=1000)
+
+
+@router.put("/agent/turns/{turn_id}/rating")
+def agent_rate(
+    turn_id: int, body: RatingIn, user: User = Depends(current_user), db: Session = Depends(get_db)
+):
+    try:
+        turn = rate_turn(db, user, turn_id, body.rating, body.note)
+    except ValueError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    return serialize_turn(db, turn)
+
+
+@router.get("/agent/turns")
+def agent_day_turns(
+    date_: str = Query(alias="date"),
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    return {"turns": day_turns(db, user, _day(date_))}
+
+
 @router.get("/photos/{photo_id}")
 def get_photo(photo_id: int, user: User = Depends(current_user), db: Session = Depends(get_db)):
     photo = db.get(Photo, photo_id)
@@ -639,4 +672,4 @@ def usage(user: User = Depends(current_user), db: Session = Depends(get_db)):
 def about():
     manifest_path = get_settings().reference_dir / "manifest.json"
     manifest = json.loads(manifest_path.read_text()) if manifest_path.exists() else {}
-    return {"reference": manifest}
+    return {"version": get_settings().app_version or None, "reference": manifest}

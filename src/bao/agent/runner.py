@@ -7,7 +7,7 @@ unchanged, which keeps the prompt cache warm and keeps thinking blocks valid.
 import logging
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
 import anthropic
@@ -159,6 +159,8 @@ def serialize_turn(db: Session, turn: Turn) -> dict[str, Any]:
         "reply_text": turn.reply_text,
         "status": turn.status,
         "undone": turn.undone_at is not None,
+        "rating": turn.rating,
+        "rating_note": turn.rating_note,
         "changes": turn_changes(db, turn.id),
         "cost_usd": round(turn.cost_usd, 5),
         "created_at": turn.created_at.isoformat(),
@@ -218,6 +220,7 @@ async def run_turn(
             photo_id=photo_ids[0] if photo_ids else None,
             messages=[{"role": "user", "content": content}],
             status="running",
+            app_version=get_settings().app_version or None,
         )
         db.add(turn)
         db.commit()
@@ -231,6 +234,7 @@ async def run_turn(
         ctx = ToolContext(db=db, user=user, log_date=log_date, changes=changes, photo_ids=photo_ids)
         reply_parts: list[str] = []
         status = "ok"
+        error: str | None = None
         model_used = config.model
 
         system = [{"type": "text", "text": SYSTEM_PROMPT}]
@@ -281,6 +285,7 @@ async def run_turn(
                     "That was too long for me to finish. Try splitting it into smaller messages."
                 ]
                 status = "error"
+                error = "max_tokens reached with tool calls pending"
                 break
             if not tool_uses:
                 reply_parts = texts
@@ -312,6 +317,7 @@ async def run_turn(
                 "I stopped before finishing. Check the log and tell me what's missing."
             ]
             status = "error"
+            error = f"stopped after {config.max_iterations} model calls"
 
         turn.messages = turn_messages
         turn.reply_text = "\n".join(p.strip() for p in reply_parts if p.strip())
@@ -319,6 +325,7 @@ async def run_turn(
         turn.cost_usd = pricing.cost(model_used, usage)
         # Only "ok" turns are replayed as history; the others may end mid tool call.
         turn.status = status
+        turn.error = error
         if status == "ok":
             thread.foods_fingerprint = fingerprint
         db.commit()
@@ -330,15 +337,15 @@ async def run_turn(
     except anthropic.APIError as exc:
         db.rollback()
         log.exception("agent API error")
-        _mark_failed(db, locals().get("turn"))
+        _mark_failed(db, locals().get("turn"), exc)
         yield {
             "type": "error",
             "message": f"The assistant is unavailable right now ({exc.__class__.__name__}).",
         }
-    except Exception:
+    except Exception as exc:
         db.rollback()
         log.exception("agent turn failed")
-        _mark_failed(db, locals().get("turn"))
+        _mark_failed(db, locals().get("turn"), exc)
         yield {
             "type": "error",
             "message": "Something went wrong. Nothing after the last confirmed change was saved.",
@@ -347,28 +354,79 @@ async def run_turn(
         db.close()
 
 
-def _mark_failed(db: Session, turn: Turn | None) -> None:
+def describe_error(exc: BaseException) -> str:
+    return f"{exc.__class__.__name__}: {exc}"[:500]
+
+
+def _mark_failed(db: Session, turn: Turn | None, exc: BaseException) -> None:
     if turn is None or turn.id is None:
         return
     try:
         fresh = db.get(Turn, turn.id)
         if fresh is not None:
             fresh.status = "error"
+            fresh.error = describe_error(exc)
             fresh.reply_text = fresh.reply_text or "Something went wrong."
             db.commit()
     except Exception:  # noqa: BLE001 - best effort while already handling a failure
         db.rollback()
 
 
-def undo_turn(db: Session, user: User, turn_id: int) -> Turn:
+def _own_turn(db: Session, user: User, turn_id: int) -> Turn:
     turn = db.get(Turn, turn_id)
-    if turn is None:
+    thread = db.get(Thread, turn.thread_id) if turn is not None else None
+    if turn is None or thread is None or thread.user_id != user.id:
         raise log_svc.LogError(f"No turn {turn_id}")
-    thread = db.get(Thread, turn.thread_id)
-    if thread is None or thread.user_id != user.id:
-        raise log_svc.LogError(f"No turn {turn_id}")
+    return turn
+
+
+def undo_turn(db: Session, user: User, turn_id: int) -> Turn:
+    turn = _own_turn(db, user, turn_id)
     if turn.undone_at is None:
         log_svc.undo_changes(db, turn.id)
         turn.undone_at = datetime.now(get_settings().tz)
         db.flush()
     return turn
+
+
+def rate_turn(db: Session, user: User, turn_id: int, rating: int | None, note: str | None) -> Turn:
+    """Thumbs up (1), down (-1) or neither (None). Kept on the turn, outside the messages the agent replays.
+
+    Only a thumbs down keeps a note; `note=None` leaves the one it has.
+    """
+    turn = _own_turn(db, user, turn_id)
+    if rating != -1:
+        turn.rating_note = None
+    elif note is not None:
+        turn.rating_note = note.strip()[:1000] or None
+    turn.rating = rating
+    turn.rated_at = datetime.now(UTC) if rating is not None else None
+    db.flush()
+    return turn
+
+
+# A turn still "running" after this long was cut off (a restart, a dropped connection) and never finished.
+STALE_RUNNING = timedelta(minutes=10)
+
+
+def day_turns(
+    db: Session, user: User, day: date, now: datetime | None = None
+) -> list[dict[str, Any]]:
+    """Every turn of the user's threads about `day`, oldest first, for showing the day's conversation."""
+    now = now or datetime.now(UTC)
+    rows = db.execute(
+        select(Turn)
+        .join(Thread, Turn.thread_id == Thread.id)
+        .where(Thread.user_id == user.id, Thread.date == day)
+        .order_by(Turn.id)
+    ).scalars()
+    out = []
+    for turn in rows:
+        item = serialize_turn(db, turn) | {"thread_id": turn.thread_id}
+        created = turn.created_at
+        if created.tzinfo is None:
+            created = created.replace(tzinfo=UTC)
+        if turn.status == "running" and now - created > STALE_RUNNING:
+            item["status"] = "error"
+        out.append(item)
+    return out

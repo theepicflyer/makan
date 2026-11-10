@@ -34,10 +34,10 @@
 	/* the floating nav: 54px items + 12px padding + 4px outline */
 	--nav-h: 70px;
 	--nav-gap: 12px;
-	/* What fixed things clear: on phones the floating nav (and the composer on day screens);
+	/* What fixed things clear: on phones the floating nav (and the message button on day screens);
 	   on desktop the side rail, with nothing along the bottom; on a half-folded screen the far side of the fold. */
 	--dock-h: calc(var(--nav-gap) + var(--nav-h));
-	--composer-h: 88px;
+	--message-h: 64px;
 	--rail-w: 0px;
 	--fold-right: 0px;
 	--fold-bottom: 0px;
@@ -46,7 +46,7 @@
 }
 
 /* Unfolded foldables and tablets: Tailwind's sm and `columns` in state.svelte.ts. Screens lay out in columns
-   under the same docked nav and composer as phones; sheets become dialogs. */
+   under the same docked nav and message button as phones; sheets become dialogs. */
 @media (min-width: 640px) {
 	:root {
 		--sheet-h: 85dvh;
@@ -57,7 +57,7 @@
 @media (min-width: 1024px) {
 	:root {
 		--dock-h: 0px;
-		--composer-h: 0px;
+		--message-h: 0px;
 		--rail-w: 220px;
 	}
 }
@@ -69,14 +69,14 @@
 }
 
 /* Book posture: pages already split into two equal columns either side of the fold, and the nav,
-   composer, toasts and sheets keep to the left-hand segment. */
+   message button, toasts and sheets keep to the left-hand segment. */
 @media (horizontal-viewport-segments: 2) {
 	:root {
 		--fold-right: calc(100vw - env(viewport-segment-right 0 0));
 	}
 }
 
-/* Tabletop: the fold runs across. The nav, composer and toasts already sit in the bottom half; sheets
+/* Tabletop: the fold runs across. The nav, message button and toasts already sit in the bottom half; sheets
    move up to the top half, clear of the keyboard. */
 @media (vertical-viewport-segments: 2) {
 	:root {
@@ -470,7 +470,38 @@ textarea {
 		background: var(--line);
 	}
 
-	/* The composer: a sticker pill like the nav. */
+	/* Bao's message button on phones: a round sticker like Burrow's nav FAB, floating on its own. */
+	.mk-fab {
+		display: grid;
+		place-items: center;
+		width: 56px;
+		height: 56px;
+		border-radius: 50%;
+		border: var(--border-sticker) solid var(--outline);
+		background: var(--accent);
+		color: var(--on-accent);
+		box-shadow: var(--shadow-sticker);
+		cursor: pointer;
+	}
+
+	.mk-fab:active {
+		transform: translateY(3px);
+		box-shadow: none;
+	}
+
+	.mk-fab:focus-visible {
+		outline: 3px solid var(--sky-text);
+		outline-offset: 2px;
+	}
+
+	/* Between one Bao session and the next in the day's chat. */
+	.mk-session-break {
+		border: 0;
+		border-top: 1px solid var(--line);
+		margin-inline: var(--space-6);
+	}
+
+	/* The composer, in Bao's sheet: a sticker pill like the nav. */
 	.mk-composer {
 		display: flex;
 		align-items: flex-end;
@@ -563,7 +594,7 @@ textarea {
 		pointer-events: none;
 	}
 
-	/* Bao ducks behind the nav on day screens, where it sits over the composer instead. */
+	/* Bao ducks behind the nav on day screens, where it sits over the message button instead. */
 	.mk-peek--away .bh-peek__animal {
 		translate: 0 70%;
 		opacity: 0;
@@ -878,6 +909,14 @@ textarea {
 
 		.mk-row-btn:active:not(:disabled) {
 			scale: 0.99;
+		}
+
+		/* Bao's message button pops in with the day. */
+		.mk-fab {
+			animation: mk-pop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s backwards;
+			transition:
+				transform 0.12s ease,
+				box-shadow 0.12s ease;
 		}
 
 		.mk-sort__arrow {

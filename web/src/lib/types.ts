@@ -146,9 +146,14 @@ export interface Turn {
 	reply_text: string;
 	status: string;
 	undone: boolean;
+	/** The user's thumbs up (1) or down (-1), and a note on a thumbs down. */
+	rating: 1 | -1 | null;
+	rating_note: string | null;
 	changes: TurnChange[];
 	cost_usd: number;
 	created_at: string;
+	/** Set when listed with the day's earlier turns (GET /api/agent/turns). */
+	thread_id?: number;
 }
 
 export interface HistoryDay extends Nutrients {

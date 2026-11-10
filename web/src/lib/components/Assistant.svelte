@@ -1,13 +1,15 @@
 <script lang="ts">
 	import NutrientIcon from './NutrientIcon.svelte';
 	import Sheet from './Sheet.svelte';
+	import ThumbIcon from './ThumbIcon.svelte';
+	import Field from '../burrow/Field.svelte';
 	import Icon from '../burrow/Icon.svelte';
 	import Loader from '../burrow/Loader.svelte';
 	import Mascot from '../burrow/Mascot.svelte';
 	import Peek from '../burrow/Peek.svelte';
 	import type { Mood } from '../burrow/art.js';
 	import type { Turn, TurnChange } from '../types.ts';
-	import { post } from '../api.ts';
+	import { get, post, put } from '../api.ts';
 	import { sendTurn, TOOL_LABEL } from '../agent.ts';
 	import { prepareImage } from '../photo.ts';
 	import { parseReply, type Span } from '../reply.ts';
@@ -23,7 +25,7 @@
 	}: {
 		date: string;
 		onchanged: () => void;
-		/** Desktop: the composer sits in the page where it's placed, instead of floating over the nav. */
+		/** Desktop: the message button sits in the page where it's placed, instead of floating over the nav. */
 		inline?: boolean;
 	} = $props();
 
@@ -41,21 +43,24 @@
 	const MAX_PHOTOS = 6;
 	let photos = $state<{ blob: Blob; url: string }[]>([]);
 	let turns = $state<Turn[]>([]);
+	// The day's turns from earlier Bao sessions, shown above this one. Display only: the agent never sees them.
+	let earlier = $state<Turn[]>([]);
 	let pending = $state<Pending | null>(null);
 	let sending = $state(false);
 	let fileInput: HTMLInputElement | undefined = $state();
 	let cameraInput: HTMLInputElement | undefined = $state();
-	// Which composer (docked or in the sheet) has its photo menu open; both can be on screen at once.
-	let photoMenu = $state<boolean | null>(null);
+	let textarea: HTMLTextAreaElement | undefined = $state();
+	let photoMenu = $state(false);
 	let end: HTMLDivElement | undefined = $state();
 	// Each time Bao opens is a new conversation; the server returns its id with the first turn.
-	let threadId: number | null = null;
+	let threadId = $state<number | null>(null);
 	let conversation = 0;
 	let shownDate = '';
 
 	// Bao, the app's host in Burrow, is the face of the assistant.
 	const when = $derived(dayLabel(date, session.me?.today ?? date));
 	const canSend = $derived(!sending && (text.trim().length > 0 || photos.length > 0));
+	const shownEarlier = $derived(earlier.filter((t) => t.thread_id !== threadId && !turns.some((x) => x.id === t.id)));
 
 	function reset() {
 		conversation++;
@@ -67,7 +72,33 @@
 	$effect(() => {
 		if (date !== shownDate) {
 			shownDate = date;
+			earlier = [];
 			reset();
+		}
+	});
+
+	let historySeq = 0;
+	async function loadEarlier(d: string) {
+		const mine = ++historySeq;
+		try {
+			const res = await get<{ turns: Turn[] }>(`/api/agent/turns?date=${d}`);
+			if (mine === historySeq && d === date) {
+				earlier = res.turns;
+				pin();
+			}
+		} catch {
+			/* the live conversation still works without the earlier one */
+		}
+	}
+
+	$effect(() => {
+		if (open) loadEarlier(date);
+	});
+
+	// Keyboards and pointers start typing straight away; on a phone the keyboard waits for a tap, so the history stays in view.
+	$effect(() => {
+		if (open && !matchMedia('(pointer: coarse)').matches) {
+			tick().then(() => requestAnimationFrame(() => textarea?.focus()));
 		}
 	});
 
@@ -119,19 +150,19 @@
 	}
 
 	// Phones get a choice of camera or library; elsewhere `capture` is ignored, so go straight to the file picker.
-	function attachPhoto(docked: boolean) {
-		if (matchMedia('(pointer: coarse)').matches) photoMenu = photoMenu === docked ? null : docked;
+	function attachPhoto() {
+		if (matchMedia('(pointer: coarse)').matches) photoMenu = !photoMenu;
 		else fileInput?.click();
 	}
 
 	function choosePhoto(input: HTMLInputElement | undefined) {
-		photoMenu = null;
+		photoMenu = false;
 		input?.click();
 	}
 
 	function closePhotoMenu(e: Event) {
-		if (photoMenu == null) return;
-		if (e instanceof KeyboardEvent ? e.key === 'Escape' : !(e.target as Element).closest?.('[data-photo-menu]')) photoMenu = null;
+		if (!photoMenu) return;
+		if (e instanceof KeyboardEvent ? e.key === 'Escape' : !(e.target as Element).closest?.('[data-photo-menu]')) photoMenu = false;
 	}
 
 	function removePhoto(i: number) {
@@ -149,7 +180,6 @@
 		text = '';
 		photos = [];
 		sending = true;
-		open = true;
 		pin();
 		try {
 			for await (const ev of sendTurn(d, message, images, threadId)) {
@@ -182,14 +212,33 @@
 		}
 	}
 
+	// Undo and ratings work on earlier sessions' turns too.
+	function replace(updated: Turn) {
+		const merge = (t: Turn) => (t.id === updated.id ? { ...t, ...updated } : t);
+		turns = turns.map(merge);
+		earlier = earlier.map(merge);
+	}
+
 	async function undo(turn: Turn) {
 		try {
-			const updated = await post<Turn>(`/api/agent/turns/${turn.id}/undo`);
-			turns = turns.map((t) => (t.id === turn.id ? updated : t));
+			replace(await post<Turn>(`/api/agent/turns/${turn.id}/undo`));
 			onchanged();
 		} catch (err) {
 			toasts.error((err as Error).message);
 		}
+	}
+
+	async function rate(turn: Turn, rating: 1 | -1 | null, note?: string) {
+		try {
+			replace(await put<Turn>(`/api/agent/turns/${turn.id}/rating`, { rating, note }));
+		} catch (err) {
+			toasts.error((err as Error).message);
+		}
+	}
+
+	function saveNote(turn: Turn, e: Event) {
+		const note = (e.currentTarget as HTMLInputElement).value.trim();
+		if (turn.rating === -1 && note !== (turn.rating_note ?? '')) rate(turn, -1, note);
 	}
 
 	function onkeydown(e: KeyboardEvent) {
@@ -215,6 +264,7 @@
 	// Glad when a message logged something, worried when it failed.
 	function replyMood(turn: Turn): Mood {
 		if (turn.status === 'error') return 'worried';
+		if (turn.status === 'running') return 'busy';
 		return turn.changes.length && !turn.undone ? 'joy' : 'happy';
 	}
 
@@ -255,9 +305,9 @@
 	}
 </script>
 
-{#snippet composer(docked: boolean)}
+{#snippet composer()}
 	<form
-		class="mk-composer pointer-events-auto {docked ? 'shadow-[var(--shadow-lift)]' : ''}"
+		class="mk-composer"
 		onsubmit={(e) => {
 			e.preventDefault();
 			send();
@@ -268,12 +318,12 @@
 				type="button"
 				class="bh-btn bh-btn--ghost bh-btn--icon min-h-11 w-11"
 				aria-label="Attach a photo"
-				aria-expanded={photoMenu === docked}
-				onclick={() => attachPhoto(docked)}
+				aria-expanded={photoMenu}
+				onclick={attachPhoto}
 			>
 				<Icon name="camera" size={22} />
 			</button>
-			{#if photoMenu === docked}
+			{#if photoMenu}
 				<div
 					class="absolute bottom-full left-0 z-10 mb-2 flex w-48 origin-bottom-left flex-col rounded-[var(--radius-sm)] border-2 border-outline bg-surface p-1 shadow-[var(--shadow-lift)]"
 					transition:scale={{ start: 0.85, duration: 160 }}
@@ -288,28 +338,16 @@
 			{/if}
 		</div>
 		<textarea
+			bind:this={textarea}
 			use:autosize
 			bind:value={text}
 			{onkeydown}
 			rows="1"
 			enterkeyhint="send"
-			placeholder={docked ? 'Tell Bao what you ate' : 'Reply or correct something…'}
+			placeholder={turns.length || pending ? 'Reply or correct something…' : 'Tell Bao what you ate'}
 			aria-label="Message Bao"
 			class="body max-h-[120px] min-h-11 min-w-0 flex-1 resize-none bg-transparent py-2.5 text-ink outline-none placeholder:text-ink-muted focus-visible:outline-none"
 		></textarea>
-		{#if docked && (turns.length || pending)}
-			<button
-				type="button"
-				class="bh-btn bh-btn--ghost bh-btn--icon relative shrink-0 min-h-11 w-11"
-				aria-label="Show the chat with Bao"
-				onclick={() => (open = true)}
-			>
-				<Icon name="chat" size={22} />
-				{#if sending}
-					<span class="absolute top-2 right-2 h-2.5 w-2.5 rounded-full border-2 border-outline bg-accent motion-safe:animate-pulse"></span>
-				{/if}
-			</button>
-		{/if}
 		<button type="submit" class="bh-btn bh-btn--primary bh-btn--icon shrink-0 min-h-11 w-11" aria-label="Send" disabled={!canSend}>
 			<Icon name="arrow-up" size={20} />
 		</button>
@@ -318,7 +356,7 @@
 
 {#snippet attached()}
 	{#if photos.length}
-		<div class="pointer-events-auto mb-2 flex flex-wrap items-center gap-3 pt-2">
+		<div class="mb-2 flex flex-wrap items-center gap-3 pt-2">
 			{#each photos as p, i (p.url)}
 				<div class="mk-pop-in relative" out:scale={{ start: 0.6, duration: 150 }}>
 					<img src={p.url} alt="Attached" class="h-16 w-16 rounded-[var(--radius-sm)] border-2 border-outline object-cover" />
@@ -369,24 +407,132 @@
 	{/if}
 {/snippet}
 
+{#snippet rating(turn: Turn)}
+	<div class="mt-1 ml-12">
+		<div class="flex items-center gap-1">
+			<button
+				class="bh-btn bh-btn--ghost bh-btn--sm bh-btn--icon {turn.rating === 1 ? 'text-accent' : 'text-ink-muted'}"
+				aria-label="Good reply"
+				aria-pressed={turn.rating === 1}
+				onclick={() => rate(turn, turn.rating === 1 ? null : 1)}
+			>
+				<ThumbIcon size={18} filled={turn.rating === 1} />
+			</button>
+			<button
+				class="bh-btn bh-btn--ghost bh-btn--sm bh-btn--icon {turn.rating === -1 ? 'text-tomato-text' : 'text-ink-muted'}"
+				aria-label="Bad reply"
+				aria-pressed={turn.rating === -1}
+				onclick={() => rate(turn, turn.rating === -1 ? null : -1)}
+			>
+				<ThumbIcon down size={18} filled={turn.rating === -1} />
+			</button>
+		</div>
+		{#if turn.rating === -1}
+			<div class="mt-1" transition:fly={{ y: -6, duration: 180 }}>
+				<Field
+					label="What was off?"
+					placeholder="Optional"
+					value={turn.rating_note ?? ''}
+					maxlength={1000}
+					enterkeyhint="done"
+					onblur={(e) => saveNote(turn, e)}
+					onkeydown={(e) => {
+						if (e.key === 'Enter') (e.currentTarget as HTMLInputElement).blur();
+					}}
+				/>
+			</div>
+		{/if}
+	</div>
+{/snippet}
+
+{#snippet turnView(turn: Turn)}
+	<div class="space-y-2">
+		{#if turn.user_text || turn.photo_ids.length}
+			<div class="ml-auto flex max-w-[85%] flex-col items-end gap-1">
+				{@render sentPhotos(turn.photo_ids.map((id) => `/api/photos/${id}`))}
+				{#if turn.user_text}
+					<div class="mk-bubble mk-bubble--me">{turn.user_text}</div>
+				{/if}
+			</div>
+		{/if}
+		<div>
+			<div class="flex max-w-[92%] items-end gap-2">
+				<Mascot character="bao" mood={replyMood(turn)} size={40} />
+				{#if turn.status === 'error'}
+					<div class="mk-bubble min-w-0 border-2 border-tomato-text font-semibold text-tomato-text">That one didn't go through. Try sending it again.</div>
+				{:else}
+					<div class="mk-bubble mk-bubble--them min-w-0">
+						{#if turn.reply_text}{@render replyText(turn.reply_text)}{:else}…{/if}
+					</div>
+				{/if}
+			</div>
+			{#if turn.changes.length}
+				<div class="mk-rise-in mt-1.5 ml-12 rounded-[var(--radius-md)] border-2 border-line px-3 py-1.5 transition-opacity {turn.undone ? 'opacity-60' : ''}">
+					<div class="flex items-center justify-between gap-2">
+						<span class="bh-tags">{#each changesTitle(turn.changes) as t (t)}<span class="bh-tag">{t}</span>{/each}</span>
+						{#if turn.undone}
+							<span class="small py-2 text-ink-muted">Undone</span>
+						{:else}
+							<button class="bh-btn bh-btn--ghost bh-btn--sm -mr-2" onclick={() => undo(turn)}>Undo</button>
+						{/if}
+					</div>
+					<ul class="small divide-y divide-line {turn.undone ? 'line-through' : ''}">
+						{#each turn.changes as c, i (i)}
+							{@const removed = c.action === 'delete'}
+							<li class="flex items-start gap-2 py-1.5 {removed ? 'text-ink-muted line-through' : ''}">
+								{#if c.table === 'foods'}
+									{@const detail = [mixedFoods(turn.changes) ? foodLabel(c) : '', c.serving ? `per ${c.serving}` : ''].filter(Boolean)}
+									<div class="min-w-0 flex-1">
+										{#if removed || turn.undone}
+											<span class="font-semibold">{c.name ?? '–'}</span>
+										{:else}
+											<a href="/foods/{c.row_id}" class="font-semibold text-ink underline decoration-line underline-offset-2">{c.name ?? '–'}</a>
+										{/if}
+										{#if detail.length}<p class="flex flex-wrap gap-x-2 text-ink-muted">{#each detail as d (d)}<span>{d}</span>{/each}</p>{/if}
+										{#if c.aliases?.length}<p class="text-ink-muted">Answers to {c.aliases.map((a) => `“${a}”`).join(', ')}</p>{/if}
+									</div>
+								{:else}
+									<span class="min-w-0 flex-1 truncate">{#if c.action === 'update' && marksChanged(turn.changes)}<span class="text-ink-muted">Changed </span>{/if}{c.name ?? '–'}</span>
+								{/if}
+								{#if c.kcal != null}
+									<span class="bh-num shrink-0 font-semibold"><NutrientIcon kind="energy" labelled />{kcal(c.kcal)}</span>
+								{/if}
+							</li>
+						{/each}
+					</ul>
+				</div>
+			{/if}
+			{#if turn.status === 'ok' || turn.status === 'refused'}
+				{@render rating(turn)}
+			{/if}
+		</div>
+	</div>
+{/snippet}
+
 <svelte:window onpointerdown={closePhotoMenu} onkeydown={closePhotoMenu} />
 <input bind:this={fileInput} type="file" accept="image/*" multiple class="hidden" onchange={pickPhotos} />
 <input bind:this={cameraInput} type="file" accept="image/*" capture="environment" class="hidden" onchange={pickPhotos} />
 
 {#if inline}
-	<div>
-		{@render attached()}
-		<Peek character="bao" mood={sending ? 'busy' : 'happy'} size={52} side="left" offset={22}>
-			{@render composer(true)}
-		</Peek>
-	</div>
-{:else if !open}
-	<div class="pointer-events-none fixed left-0 z-20 px-4" style="right: var(--fold-right); bottom: calc(env(safe-area-inset-bottom) + var(--nav-gap) + var(--nav-h) + 10px)">
-		<div class="mx-auto max-w-lg">
-			{@render attached()}
-			<!-- Bao listens over the composer, nibbling while working on a message -->
-			<Peek character="bao" mood={sending ? 'busy' : 'happy'} size={52} side="left" offset={22}>
-				{@render composer(true)}
+	<!-- desktop: Bao over a button in Today's left column -->
+	<Peek character="bao" mood={sending ? 'busy' : 'happy'} size={52} side="left" offset={22}>
+		<button class="bh-btn bh-btn--primary relative w-full gap-2" onclick={() => (open = true)}>
+			<Icon name="chat" size={20} />Message Bao
+			{#if sending}<span class="absolute top-2 right-3 h-2.5 w-2.5 rounded-full border-2 border-outline bg-surface motion-safe:animate-pulse"></span>{/if}
+		</button>
+	</Peek>
+{:else}
+	<!-- phones and tablets: Bao peeks over a round button above the nav, on the right of the page column -->
+	<div
+		class="pointer-events-none fixed left-0 z-20 px-4"
+		style="right: var(--fold-right); bottom: calc(env(safe-area-inset-bottom) + var(--dock-h) + 12px)"
+	>
+		<div class="mx-auto flex max-w-lg justify-end">
+			<Peek character="bao" mood={sending ? 'busy' : 'happy'} size={44} side="left" offset={6}>
+				<button class="mk-fab pointer-events-auto relative" aria-label="Message Bao" onclick={() => (open = true)}>
+					<Icon name="chat" size={24} />
+					{#if sending}<span class="absolute top-1 right-1 h-3 w-3 rounded-full border-2 border-outline bg-surface motion-safe:animate-pulse"></span>{/if}
+				</button>
 			</Peek>
 		</div>
 	</div>
@@ -394,7 +540,7 @@
 
 <Sheet bind:open title="Bao" {when} tall>
 	<div class="space-y-4 pt-1 pb-2">
-		{#if !turns.length && !pending}
+		{#if !shownEarlier.length && !turns.length && !pending}
 			<div class="bh-card bh-card--tint flex gap-3">
 				<Mascot character="bao" mood="happy" size={72} />
 				<div class="body min-w-0">
@@ -404,61 +550,14 @@
 				</div>
 			</div>
 		{/if}
+		<!-- earlier sessions this day, a thin line between each; this session below the last line -->
+		{#each shownEarlier as turn, i (turn.id)}
+			{#if i && turn.thread_id !== shownEarlier[i - 1].thread_id}<hr class="mk-session-break" />{/if}
+			{@render turnView(turn)}
+		{/each}
+		{#if shownEarlier.length && (turns.length || pending)}<hr class="mk-session-break" />{/if}
 		{#each turns as turn (turn.id)}
-			<div class="space-y-2">
-				{#if turn.user_text || turn.photo_ids.length}
-					<div class="ml-auto flex max-w-[85%] flex-col items-end gap-1">
-						{@render sentPhotos(turn.photo_ids.map((id) => `/api/photos/${id}`))}
-						{#if turn.user_text}
-							<div class="mk-bubble mk-bubble--me">{turn.user_text}</div>
-						{/if}
-					</div>
-				{/if}
-				<div>
-					<div class="flex max-w-[92%] items-end gap-2">
-						<Mascot character="bao" mood={replyMood(turn)} size={40} />
-						<div class="mk-bubble mk-bubble--them min-w-0">
-							{#if turn.reply_text}{@render replyText(turn.reply_text)}{:else}{turn.status === 'error' ? 'Something went wrong. Try sending it again.' : '…'}{/if}
-						</div>
-					</div>
-					{#if turn.changes.length}
-						<div class="mk-rise-in mt-1.5 ml-12 rounded-[var(--radius-md)] border-2 border-line px-3 py-1.5 transition-opacity {turn.undone ? 'opacity-60' : ''}">
-							<div class="flex items-center justify-between gap-2">
-								<span class="bh-tags">{#each changesTitle(turn.changes) as t (t)}<span class="bh-tag">{t}</span>{/each}</span>
-								{#if turn.undone}
-									<span class="small py-2 text-ink-muted">Undone</span>
-								{:else}
-									<button class="bh-btn bh-btn--ghost bh-btn--sm -mr-2" onclick={() => undo(turn)}>Undo</button>
-								{/if}
-							</div>
-							<ul class="small divide-y divide-line {turn.undone ? 'line-through' : ''}">
-								{#each turn.changes as c, i (i)}
-									{@const removed = c.action === 'delete'}
-									<li class="flex items-start gap-2 py-1.5 {removed ? 'text-ink-muted line-through' : ''}">
-										{#if c.table === 'foods'}
-											{@const detail = [mixedFoods(turn.changes) ? foodLabel(c) : '', c.serving ? `per ${c.serving}` : ''].filter(Boolean)}
-											<div class="min-w-0 flex-1">
-												{#if removed || turn.undone}
-													<span class="font-semibold">{c.name ?? '–'}</span>
-												{:else}
-													<a href="/foods/{c.row_id}" class="font-semibold text-ink underline decoration-line underline-offset-2">{c.name ?? '–'}</a>
-												{/if}
-												{#if detail.length}<p class="flex flex-wrap gap-x-2 text-ink-muted">{#each detail as d (d)}<span>{d}</span>{/each}</p>{/if}
-												{#if c.aliases?.length}<p class="text-ink-muted">Answers to {c.aliases.map((a) => `“${a}”`).join(', ')}</p>{/if}
-											</div>
-										{:else}
-											<span class="min-w-0 flex-1 truncate">{#if c.action === 'update' && marksChanged(turn.changes)}<span class="text-ink-muted">Changed </span>{/if}{c.name ?? '–'}</span>
-										{/if}
-										{#if c.kcal != null}
-											<span class="bh-num shrink-0 font-semibold"><NutrientIcon kind="energy" labelled />{kcal(c.kcal)}</span>
-										{/if}
-									</li>
-								{/each}
-							</ul>
-						</div>
-					{/if}
-				</div>
-			</div>
+			{@render turnView(turn)}
 		{/each}
 		{#if pending}
 			<!-- the message just sent rises into the chat -->
@@ -492,6 +591,6 @@
 	</div>
 	{#snippet footer()}
 		{@render attached()}
-		{@render composer(false)}
+		{@render composer()}
 	{/snippet}
 </Sheet>

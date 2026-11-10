@@ -4,7 +4,7 @@
 	import { toasts } from '../state.svelte.ts';
 	import { fly } from '../motion.ts';
 
-	// One at a time, the newest, just above the nav (and the composer on day screens); centred on the page beside the rail.
+	// One at a time, the newest, just above the nav (and Bao's message button on day screens); centred on the page beside the rail.
 	// A list of one so the old toast drops away (in the same grid cell) as the next pops in.
 	const shown = $derived(toasts.items.slice(-1));
 	const onDay = $derived(page.url.pathname.startsWith('/day'));
@@ -13,7 +13,7 @@
 
 <div
 	class="pointer-events-none fixed z-50 grid px-4"
-	style="left: {onLogin ? '0px' : 'var(--rail-w)'}; right: var(--fold-right); bottom: calc(env(safe-area-inset-bottom) + {onLogin ? '16px' : `var(--dock-h) + ${onDay ? 'var(--composer-h) + 16px' : '16px'}`})"
+	style="left: {onLogin ? '0px' : 'var(--rail-w)'}; right: var(--fold-right); bottom: calc(env(safe-area-inset-bottom) + {onLogin ? '16px' : `var(--dock-h) + ${onDay ? 'var(--message-h) + 16px' : '16px'}`})"
 	aria-live="polite"
 >
 	{#each shown as toast (toast.id)}

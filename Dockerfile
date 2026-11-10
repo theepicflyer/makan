@@ -15,7 +15,10 @@ COPY src ./src
 RUN uv sync --frozen --no-dev
 COPY data/reference ./data/reference
 COPY --from=web /web/build ./web/build
-ENV DATA_DIR=/data \
+# The release this image is (build-push.yml passes it), recorded on each assistant turn.
+ARG APP_VERSION=""
+ENV APP_VERSION=$APP_VERSION \
+    DATA_DIR=/data \
     REFERENCE_DIR=/app/data/reference \
     STATIC_DIR=/app/web/build \
     FASTMCP_HOME=/data/fastmcp

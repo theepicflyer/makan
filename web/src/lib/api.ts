@@ -51,5 +51,6 @@ function withBody(method: string, body: unknown): RequestInit {
 }
 
 export const post = <T>(path: string, body?: unknown) => api<T>(path, withBody('POST', body ?? {}));
+export const put = <T>(path: string, body: unknown) => api<T>(path, withBody('PUT', body));
 export const patch = <T>(path: string, body: unknown) => api<T>(path, withBody('PATCH', body));
 export const del = <T>(path: string) => api<T>(path, { method: 'DELETE' });
