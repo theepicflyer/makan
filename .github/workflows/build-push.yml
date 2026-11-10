@@ -51,6 +51,8 @@ jobs:
           push: true
           provenance: false
           tags: ${{ inputs.image_tags }}
+          build-args: |
+            APP_VERSION=${{ inputs.version }}
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.revision=${{ steps.rev.outputs.sha }}

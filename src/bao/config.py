@@ -53,6 +53,9 @@ class Settings(BaseSettings):
     reminders: bool = True
     vapid_subject: str = ""
 
+    # The release this build is, set by the image build (APP_VERSION); empty when run from source.
+    app_version: str = ""
+
     anthropic_api_key: str | None = None
     agent_model: str = "claude-haiku-5-5"
     agent_effort: str = "low"

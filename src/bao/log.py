@@ -9,7 +9,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from bao import foods as food_svc
-from bao.models import MEALS, NUTRIENTS, Change, Entry, Food, Pin, SavedMeal, User
+from bao.models import MEALS, NUTRIENTS, Change, Entry, EntryEdit, Food, Pin, SavedMeal, User
 
 
 class LogError(ValueError):
@@ -66,6 +66,23 @@ def entry_snapshot(entry: Entry) -> dict[str, Any]:
     snap = {k: getattr(entry, k) for k in _ENTRY_FIELDS}
     snap["date"] = entry.date.isoformat()
     return snap
+
+
+def _record_hand_edit(
+    db: Session, user: User, entry_id: int, before: dict[str, Any], after: dict[str, Any] | None
+) -> None:
+    """Keep a person's change to an entry the agent logged, to see where the agent got it wrong."""
+    if before.get("origin") != "agent" or before == after:
+        return
+    db.add(
+        EntryEdit(
+            entry_id=entry_id,
+            user_id=user.id,
+            action="delete" if after is None else "update",
+            before=before,
+            after=after,
+        )
+    )
 
 
 def _apply_snapshot(entry: Entry, snap: dict[str, Any]) -> None:
@@ -204,6 +221,7 @@ def update_entry(
     nutrients: dict[str, float | None] | None = None,
     note: str | None = None,
     changes: ChangeLog | None = None,
+    by_hand: bool = False,
 ) -> Entry:
     entry = _get_entry(db, user, entry_id)
     before = entry_snapshot(entry)
@@ -278,11 +296,17 @@ def update_entry(
     db.flush()
     if changes:
         changes.record("entries", "update", entry.id, before, entry_snapshot(entry))
+    if by_hand:
+        _record_hand_edit(db, user, entry.id, before, entry_snapshot(entry))
     return entry
 
 
 def delete_entry(
-    db: Session, user: User, entry_id: int, changes: ChangeLog | None = None
+    db: Session,
+    user: User,
+    entry_id: int,
+    changes: ChangeLog | None = None,
+    by_hand: bool = False,
 ) -> dict[str, Any]:
     entry = _get_entry(db, user, entry_id)
     snap = entry_snapshot(entry)
@@ -290,6 +314,8 @@ def delete_entry(
     db.flush()
     if changes:
         changes.record("entries", "delete", entry_id, snap, None)
+    if by_hand:
+        _record_hand_edit(db, user, entry_id, snap, None)
     return snap
 
 
