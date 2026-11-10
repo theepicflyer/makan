@@ -36,6 +36,18 @@ Most checks are on `Case.expect`, a list of `Item`s (a regex on the entry name, 
 - `max_tool_calls`, `max_tool_errors`: limits over the whole case (tool errors are invalid or failed calls).
 - `reply_forbid`: regexes the last reply must not match (e.g. restated calories).
 
+## Baseline on the current set (2026-11-10)
+
+All 93 cases (45 public, 48 private), low effort, prompt and tools as released in 2.1.0. Haiku and Sonnet ran twice, Opus once. The private cases can't be reproduced outside the household; the public columns can.
+
+| model | pass | earlier text cases (30) | regression cases (47) | baseline photo cases (16) | all photo cases (36) | photo kcal error (median) | $ per case |
+|---|---|---|---|---|---|---|---|
+| Haiku 5.5 | 65% ± 7% | 97% | 43% | 72% | 50% | 21% | $0.0009 |
+| Sonnet 5.5 | 80% ± 6% | 100% | 66% | 84% | 67% | 17% | $0.0135 |
+| Opus 5.5 | 87% ± 7% | 100% | 79% | 88% | 75% | 12% | $0.0267 |
+
+Replies finish in about the same time on all three (first message p50 3.4 s to 4.5 s, photo message 7 s to 9 s). Eight cases fail on every model: small home portions logged at a standard serving, a drink size read from a photo, a photo logged while the app is on an older date, a shared table, and a per-item split.
+
 ## Results (2026-10-21)
 
 These results and the photo-portion results below are historical: they were measured on the previous case set, which had 21 meal and 6 label photo cases that are no longer in the suite. The photo benchmark is now the private set above.
