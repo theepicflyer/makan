@@ -26,7 +26,7 @@ Quick adds cover pinned items, frequent and recent foods, saved meals and "same 
 
 Each of you can turn on a daily reminder in Settings and pick its time. It arrives as a phone notification, and only on days when breakfast, lunch or dinner isn't logged yet. It says which meals are missing, and tapping it opens that day. On an iPhone this needs iOS 16.4 or later and Bao added to the Home Screen; on Android it works in Chrome.
 
-The assistant (Claude) turns a text dump or meal photos (up to six per message, taken in the app or picked from the library) into entries, applies them straight away, and fixes them when you reply ("actually 2", "that was lunch"). It can also edit past days and read a nutrition label into an Ours food. Each of its replies has an undo.
+The assistant (Claude) turns a text dump or meal photos (up to six per message, taken in the app or picked from the library) into entries, applies them straight away, and fixes them when you reply ("actually 2", "that was lunch"). It can also edit past days and read a nutrition label into an Ours food. Each of its replies has an undo and a thumbs up or down (with an optional note on a thumbs down). On Today a message button opens the chat: a round button above the nav on a phone, a button under the macros on a desktop. Each time you open it Bao starts a fresh conversation, but the chat still shows that day's earlier messages above it, including ones that didn't go through.
 
 The look comes from Burrow, the household's shared design system (also used by the money app): plain cards and numbers, with Bao the hamster and friends living around them. Bao is also the assistant you chat with. Calories, protein, carbs and fat each have a symbol (a flame, a drumstick, an ear of wheat and a drop) used everywhere they appear. Each screen has its animal's home as a header, the day's calories are a sunflower that opens a petal at a time, logged meals get a bite out of the corner, and a trail of crumbs or footprints winds down each screen behind the cards to the next thing to do. It follows the phone's light or dark setting.
 
@@ -100,6 +100,16 @@ Layout:
 
 - `src/bao/`: the FastAPI app (`main.py`, `api.py`, `auth.py`), the food and log logic (`foods.py`, `log.py`), the agent (`agent/`), the MCP server (`mcp_server.py`), and Alembic migrations.
 - `web/`: the SvelteKit PWA, built to `web/build` and served by the backend. `web/src/lib/burrow/` holds the Burrow design system's tokens, styles and drawings.
-- `data/reference/`: the food snapshot. `scripts/` holds the scripts that build it.
+- `data/reference/`: the food snapshot. `scripts/` holds the scripts that build it, and `export_flagged.py`.
+
+### Reviewing the assistant
+
+Each assistant turn keeps its rating, the error if it failed, and the app version it ran on (`APP_VERSION`, set by the image build). Hand edits and deletes of entries the assistant logged go in `entry_edits`. To pull out the turns worth a look (thumbs down, failed, or later corrected by hand) with their transcripts, notes, changes and photo paths:
+
+```bash
+uv run --no-project python -I scripts/export_flagged.py --db /path/to/makan.db --since 2026-11-01 --format markdown --out flagged.md
+```
+
+It opens the database read-only, so it is safe to run against a copy of the live one.
 - `evals/`: the agent eval cases, runner and report.
 - `docs/screenshots/`: the screenshots above, taken from a demo account with made-up meals.

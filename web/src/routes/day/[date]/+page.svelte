@@ -170,10 +170,11 @@
 		{#if loadError && !day}
 			<p class="py-10 text-center font-semibold text-tomato-text">Couldn't load this day: {loadError}</p>
 		{:else if day && columns.current}
-			<!-- unfolded and desktop: the day at a glance (and on desktop Bao) on the left, the meals on the right;
-			     halves until the rail comes in, so a fold runs between them, with room under them for the docked composer -->
+			<!-- unfolded and desktop: the day at a glance (and on desktop Bao's button) on the left, the meals on the right;
+			     halves until the rail comes in, so a fold runs between them, with room under them for the message button -->
 			<div class="grid grid-cols-2 items-start gap-8 pt-6 pb-16 lg:grid-cols-[minmax(0,19rem)_minmax(0,1fr)] lg:pb-6 xl:grid-cols-[minmax(0,23rem)_minmax(0,1fr)] xl:gap-10 transition-opacity {day.date !== date ? 'opacity-50' : ''}">
-				<div class="grid gap-8 [@media(min-height:780px)]:sticky [@media(min-height:780px)]:top-6">
+				<!-- over the meals, so Bao's sheet (opened from here on desktop) isn't drawn under them -->
+					<div class="relative z-10 grid gap-8 [@media(min-height:780px)]:sticky [@media(min-height:780px)]:top-6">
 					{#key day.date}
 						<div class="grid gap-8" in:fly={{ x: dir * 32, duration: 320 }}>
 							<DaySummary totals={day.totals} targets={day.targets} />
@@ -204,7 +205,7 @@
 						</TrailPath>
 					</div>
 				{/key}
-				<!-- room for the docked composer and Bao over it -->
+				<!-- room for the message button and Bao over it -->
 				<div class="h-16"></div>
 			</div>
 		{:else}

@@ -9,7 +9,7 @@ export const NAV_ITEMS: { href: () => string; label: string; match: (p: string) 
 	{ href: () => '/settings', label: 'Settings', match: (p) => p.startsWith('/settings'), icon: 'gear' }
 ];
 
-/** Day screens put Bao over the composer instead, so there is one peek per screen. */
+/** Day screens put Bao over the message button instead, so there is one peek per screen. */
 export function navPeek(path: string): boolean {
 	return !path.startsWith('/day');
 }
