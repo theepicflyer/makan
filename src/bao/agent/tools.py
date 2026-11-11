@@ -355,7 +355,11 @@ def search_foods(ctx: ToolContext, args: SearchFoods) -> str:
     for q in args.queries:
         hits = food_svc.search(ctx.db, q, limit=args.limit)
         out.append(f'"{q}":')
-        out += [f"  {food_line(h.food)}" for h in hits] or ["  (no matches)"]
+        out += [
+            f"  {food_line(h.food)}"
+            + (f' · "{q}" is a known name for this food' if h.alias_match else "")
+            for h in hits
+        ] or ["  (no matches)"]
     return "\n".join(out)
 
 

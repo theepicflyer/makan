@@ -32,5 +32,8 @@
   "sgfoodid:Yong tau foo (clear soup, 7 pieces, mixed)": ["yong tau foo", "ytf"],
   "sgfoodid:Teh Tarik": ["teh tarik"],
   "sgfoodid:Kopi": ["kopi"],
-  "sgfoodid:Teh": ["teh"]
+  "sgfoodid:Teh": ["teh"],
+  "sgfoodid:Stir fried nai bai": ["naibai", "nai bai"],
+  "sgfoodid:Instant noodles (soup)": ["maggi", "maggie", "maggi mee", "maggie mee"],
+  "sgfoodid:Nasi lemak (rice only)": ["coconut rice", "nasi lemak rice"]
 }

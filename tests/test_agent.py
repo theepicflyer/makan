@@ -299,3 +299,38 @@ async def test_stale_thinking_is_dropped_not_rejected(db, user_id):
     request = client.requests[0]
     assert request["thinking"]["block_binding"] == {"prefix_mismatch_behavior": "drop_block"}
     assert "thinking-binding-controls-2026-08-01" in request["betas"]
+
+
+def test_context_names_today_yesterday_and_the_log_date(db, user_id):
+    from bao.agent.prompt import build_context
+    from bao.models import User
+
+    user = db.get(User, user_id)
+    text = build_context(
+        db,
+        user,
+        now=datetime(2026, 10, 21, 9, 40),
+        log_date=date(2026, 10, 20),
+        include_foods=False,
+        include_frequent=False,
+    )
+    assert "Today: Wed 21 Oct 2026 (2026-10-21), 09:40" in text
+    assert "Yesterday: Tue 20 Oct 2026 (2026-10-20)." in text
+    assert "showing): Tue 20 Oct 2026 (2026-10-20), yesterday." in text
+    assert "Entries on 2026-10-20 (yesterday):" in text
+    assert "Entries on 2026-10-21 (today):" in text
+
+
+def test_context_after_midnight_points_today_at_the_day_that_ended(db, user_id):
+    from bao.agent.prompt import build_context
+    from bao.models import User
+
+    text = build_context(
+        db,
+        db.get(User, user_id),
+        now=datetime(2026, 10, 21, 0, 40),
+        log_date=date(2026, 10, 20),
+        include_foods=False,
+        include_frequent=False,
+    )
+    assert '"today" and "tonight" mean Tue 20 Oct 2026 (2026-10-20).' in text

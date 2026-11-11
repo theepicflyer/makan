@@ -6,25 +6,35 @@ Everything here is public, photos included, so you can run the tests yourself an
 
 ## Results
 
-91 cases, run on 2026-11-10 at low effort. Haiku and Sonnet ran each case twice, Opus once.
+91 cases, run on 2026-11-11 at low effort. Haiku ran each case three times, Sonnet twice, Opus once.
 
 | model | all cases | everyday text | real mistakes | photos | photo calories off by | cost per case |
 |---|---|---|---|---|---|---|
-| Claude Haiku 5.5 (Bao's default) | 66% | 97% | 43% | 51% | 21% | $0.0009 |
-| Claude Sonnet 5.5 | 81% | 100% | 67% | 68% | 18% | $0.0135 |
-| Claude Opus 5.5 | 88% | 100% | 80% | 76% | 11% | $0.0267 |
+| Claude Haiku 5.5 (Bao's default) | 83% | 97% | 73% | 70% | 12% | $0.0010 |
+| Claude Sonnet 5.5 | 88% | 100% | 82% | 74% | 13% | $0.0146 |
+| Claude Opus 5.5 | 93% | 100% | 89% | 88% | 10% | $0.0291 |
 
 What the columns mean:
 
-- **all cases**: the share of cases where every check passed. With this many cases, treat each figure as give or take about 7 points.
+- **all cases**: the share of cases where every check passed, give or take about 5 points.
 - **everyday text**: 30 made-up messages of the kind people send every day.
 - **real mistakes**: 46 cases built from times Bao got something wrong in real use. They are hard on purpose.
 - **photos**: 34 real photos of meals and nutrition labels.
 - **photo calories off by**: the typical gap between the calories Bao logged for a meal photo and a reference estimate (the median).
 
-All three models answer in about the same time: 3 to 5 seconds for a typed message, 7 to 9 seconds for a photo.
+All three models answer in about the same time: about 5 seconds for a typed message, 7 to 8 seconds for a photo.
 
-Bao uses Haiku because it is about 30 times cheaper than Opus and almost as good at everyday logging. The gap is in photos and tricky follow-ups, and closing it is what this test set is for.
+### What changed
+
+On 2026-11-11 Bao's instructions were reworked against the failures in this set. Haiku went from 69% to 83%, and from 44% to 73% on the real mistakes, with no loss on the cases it already got right and no change in cost.
+
+- Each message now tells Bao today's date, yesterday's date and which of them the app is showing, so "yesterday" no longer goes back two days. A meal photo sent while the app shows an earlier day is logged today.
+- What the user says about size beats the database's serving: "half a bowl", "a little slice", "a very big portion".
+- Shared meals count only the user's share, and "split into 4" applies to every dish.
+- A dish served in parts is still that dish (roasted chicken rice with the chicken on its own plate), and café drinks aren't matched to instant mixes.
+- A correction changes the entry that's there, including when a label photo arrives for something already logged.
+- "Save this meal as X" saves the whole meal, sides included.
+- Search marks a result as the local meaning of a word ("naibai" is the vegetable), and "naibai", "maggi" and "coconut rice" were added to the shorthand list.
 
 ## What gets tested
 
@@ -57,25 +67,28 @@ Bao uses Haiku because it is about 30 times cheaper than Opus and almost as good
 </tr>
 <tr>
 <td valign="top"><b>"ayam bakar"</b><br>Should log the chicken, rice and sides, about 870 kcal.<br><b>Passes on every model.</b></td>
-<td valign="top"><b>"little slice of cheesecake"</b><br>Should be about 140 kcal. Bao logs a standard slice, about double.<br><b>Fails on every model.</b></td>
-<td valign="top"><b>"my dinner, its all indian food and the drink is pokka green tea"</b><br>The table was shared by four, so one share is about 1,040 kcal. Bao logs the whole table as one person's dinner.<br><b>Fails on every model.</b></td>
+<td valign="top"><b>"little slice of cheesecake"</b><br>Should be about 140 kcal. Haiku logs a bigger slice; Sonnet gets it right.<br><b>Fails on Haiku.</b></td>
+<td valign="top"><b>"my dinner, its all indian food and the drink is pokka green tea"</b><br>The table was shared by four, so one share is about 1,040 kcal. Bao now counts a share, but usually guesses the table was for two.<br><b>Still fails most of the time.</b></td>
 </tr>
 </table>
 
 ## Where it still goes wrong
 
-Seven cases fail on every model:
+On Haiku, these still fail most of the time:
 
-- small home portions logged as a standard serving (the cheesecake slice; pancakes and bacon)
-- a piece count read wrongly from a photo (two eggs logged as three)
-- a photo sent at lunchtime while the app still showed the day before
-- a shared table logged as one person's meal
-- "the rest was split into 4 portion" for a shared dinner never applied to the shared dishes
-- a bun from a bakery chain logged as a generic, smaller bun
+- a shared table of dishes, and "the rest was split into 4" for that dinner
+- a home portion smaller than a standard serving (a little slice of cheesecake, pancakes)
+- unagi hidden in home-made fried rice, read as mushroom
+- roasted chicken rice photographed as rice and chicken on separate plates, logged as plain rice
+- "egg tofu" matched to the database's steamed egg with tofu
+- a household food the user asks to change, where Bao changes the log entry instead
+- a fried chicken drumlet and fried pork, matched to the wrong cuts
+
+Sonnet and Opus get most of the photo ones right. Opus got the shared table once; every model still misses "the rest was split into 4".
 
 ## Run it yourself
 
-Every run except `--dry-run` calls the Anthropic API and costs money: about $0.08 for the whole set on Haiku, about $2.50 on Opus. Put `ANTHROPIC_API_KEY` in `.env` first.
+Every run except `--dry-run` calls the Anthropic API and costs money: about $0.09 for the whole set on Haiku, about $2.70 on Opus. Put `ANTHROPIC_API_KEY` in `.env` first.
 
 ```bash
 uv run python -m evals.run --dry-run                                        # check every case, free
