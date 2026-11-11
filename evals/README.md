@@ -36,6 +36,18 @@ On 2026-11-11 Bao's instructions were reworked against the failures in this set.
 - "Save this meal as X" saves the whole meal, sides included.
 - Search marks a result as the local meaning of a word ("naibai" is the vegetable), and "naibai", "maggi" and "coconut rice" were added to the shorthand list.
 
+### Effort levels
+
+Effort is how much Claude thinks before it acts. Haiku was run at each level on 2026-11-11, three times per case.
+
+| Haiku 5.5 effort | all cases | real mistakes | real cases it got right before | photos | photo calories off by | typed reply, typical / slowest 10% | photo reply, typical | cost per case |
+|---|---|---|---|---|---|---|---|---|
+| low (Bao's default) | 83% | 73% | 84% | 70% | 12% | 4.8 s / 9.0 s | 7.3 s | $0.0010 |
+| medium | 80% | 67% | 82% | 63% | 18% | 5.0 s / 10.7 s | 8.7 s | $0.0011 |
+| high | 85% | 74% | 96% | 77% | 13% | 5.9 s / 13.6 s | 10.8 s | $0.0013 |
+
+Medium is no better than low. High does better on photos and on the real cases Bao used to get right, but its overall lead is within the margin of error and its replies are slower: about 3.5 seconds more for a photo. Bao stays on low. Opus at low effort scores higher than Haiku at high (93%) and is about as quick.
+
 ## What gets tested
 
 **Everyday text (30 cases, made up).** For example:
