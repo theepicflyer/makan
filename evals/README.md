@@ -1,110 +1,160 @@
-# Agent evals
+# How well does Bao log food?
 
-These evals check the Bao assistant on the jobs it does every day. Each case starts from a fresh copy of the food database, seeds whatever household foods and log entries the case needs, and sends one or more messages through the real agent loop (`bao.agent.runner.run_turn`) against the live API. It is then graded on what ended up in the database: the right foods, meals, dates and portions; household foods used, or left alone, as asked; no duplicate entries. Grading reads the reply text only for the case that asks a question and for cases with `reply_forbid`.
+This folder tests Bao the assistant on the jobs people actually give it: a day's meals typed in one go, a correction, a nutrition label, a photo of lunch. Each test, called a case, sends real messages to Claude through the same code the app uses, then checks what ended up in the food log. Did it pick the right foods, the right meal and day, a sensible portion? Did it leave alone anything it shouldn't touch?
 
-## Cases
+Everything here is public, photos included, so you can run the tests yourself and should get similar numbers.
 
-There are 91 cases, all in the repo. `cases.py` holds 45 made-up text cases; `prod_cases.py` holds 46 taken from real use, including every photo case (see below). `spec.py` defines the case format.
+## Results
 
-- Text (23): end-of-day dumps in hawker shorthand and Singlish ("teh c siew dai", "milo peng", "supper ice kachang"), counts and weights, two days in one message, household defaults ("a bowl of yogurt" means the household yogurt; "Fage greek yogurt" doesn't), teaching a portion, follow-up corrections, moving and deleting entries, editing yesterday, copying yesterday's breakfast, a dish the database lacks ("unagi fried rice" must count the eel, not log plain egg fried rice; "onsen eggs" must be estimated under that name, not logged as another egg dish), a qualifier the search must keep ("soft boiled" eggs, not hard-boiled), and a question that must not change anything.
-- Add, then edit (7): the first message logs something and the second changes it. The cases fix one portion out of several items, swap steamed for roasted chicken rice, set the meal afterwards, remove one item, move the entry to yesterday and switch teh c to siew dai. One more checks that "and another kopi c at 3pm" adds a second entry instead of editing the first. An edit has to change the entry that already exists; deleting it and logging it again fails.
-- Regressions (15, tagged `regression`): failure patterns seen in real use, rewritten with made-up meals. "Yesterday" when the app is already on yesterday must not go back two days, and "today" must land on today when the app is on a stale date (`stale_date`). "It was a very big portion" must raise the portion (`portion`). "Split into 4 portions, I had one" must quarter the dishes, both as a follow-up edit and in one message (`split`). "Save today's lunch as X" must save one household food whose default serving matches the logged meal, without logging anything new (`save_as`). Searches that put the wrong food first must not win: a household chicken rib for "beef short ribs", poke bowls for "tau pok", collard greens for "pork collar", prawn dishes for "prawns" (`search`). A near-name food must not stand in for a different dish: prawn noodles for fried hokkien mee, white rice for roasted chicken rice, carrot cake the dessert for fried carrot cake (`near_name`). A stated amount beats the default serving: half a bowl of nasi goreng is not half the 485 g plate, a small thin slice of chocolate cake is not the 116 g slice (`default_serving`).
+91 cases, run on 2026-11-10 at low effort. Haiku and Sonnet ran each case twice, Opus once.
 
-### Cases from real use
-
-`prod_cases.py` is the photo benchmark. Every photo sent to Bao in its first weeks is a case (several photos in one message stay one case), with the real wording, the household foods that existed at the time and the log entries the message referred to. The photos are in `photos/`. Text turns the agent got wrong are cases too. Dates are shifted by five weeks, so weekdays still match the wording ("on Friday too").
-
-Turns the agent got wrong are tagged `regression`, ones it got right `baseline`, so a change that fixes failures but breaks what worked shows up. Meal photos (29) are tagged `photo` and `meal` and are graded on their main components and the meal or day total, not on how many entries they were split into. The reference total is a reviewer's estimate from the photo, with a tolerance of about ±30% (tighter where the agent's wrong answer fell inside 30%). Label photos (5) are tagged `photo` and `label` and are checked against the label's values. The 12 text cases are tagged `text` and `regression`. Pattern tags match the made-up regressions, plus `photo_count`, `misidentified`, `protein_undersized`, `small_portion`, `shared`, `instruction`, `ours_outranks`, `tool_calls` and `tool_errors`.
-
-A run stops before any API call if a photo named by a selected case is missing from `photos/`.
-
-### Case fields
-
-Most checks are on `Case.expect`, a list of `Item`s (a regex on the entry name, plus meal, date, kcal range, household food), matched one-to-one to the entries on `check_dates`. Others:
-
-- `now` and `log_date` are separate, as in the app: `log_date` is the day the app shows, `now` the time the message is sent.
-- `entries` seeds the log: a tuple `(date, meal, "sg:Name" | "usda:Name" | "ours:key", servings)`, or a dict with `date`, `meal` and either `ref` (plus `servings`, `serving`, `grams`, `name`) or `name` with `kcal`, `protein_g`, `carb_g`, `fat_g` for an estimate.
-- `Msg.photos`: several photos in one message.
-- `total_kcal` with `total_date` (default `log_date`) and `total_meal` (default all meals); `ref_kcal` is the reference for the `kcal_err` metric on the same total.
-- `total_drop`: how far the log date's total must fall from the first message to the end; a negative range means it must rise.
-- `forbid`: regexes no entry on the checked dates may match.
-- `FoodCheck.serving_kcal`: kcal range for a household food's default serving.
-- `max_tool_calls`, `max_tool_errors`: limits over the whole case (tool errors are invalid or failed calls).
-- `reply_forbid`: regexes the last reply must not match (e.g. restated calories).
-
-## Baseline on the current set (2026-11-10)
-
-All 91 cases, low effort, prompt and tools as released in 2.1.0. Haiku and Sonnet ran twice, Opus once. These runs were made before the cases from real use moved into the repo (with two photo cases removed and dates shifted); the numbers are recomputed from the same runs without the two removed cases.
-
-| model | pass | earlier text cases (30) | regression cases (46) | baseline photo cases (15) | all photo cases (34) | photo kcal error (median) | $ per case |
-|---|---|---|---|---|---|---|---|
-| Haiku 5.5 | 66% ± 7% | 97% | 43% | 73% | 51% | 21% | $0.0009 |
-| Sonnet 5.5 | 81% ± 6% | 100% | 67% | 83% | 68% | 18% | $0.0135 |
-| Opus 5.5 | 88% ± 7% | 100% | 80% | 87% | 76% | 11% | $0.0267 |
-
-Replies finish in about the same time on all three (first message p50 3.4 s to 4.5 s, photo message 7 s to 9 s). Seven cases fail on every model: small home portions logged at a standard serving (a cheesecake slice, pancakes and bacon), a piece count read from a photo, a photo logged while the app is on an older date, a shared table, a per-item split and a chain bakery's bun.
-
-## Results (2026-10-21)
-
-These results and the photo-portion results below are historical: they were measured on the previous case set, which had 21 meal and 6 label photo cases that are no longer in the suite. The photo benchmark is now the cases from real use above.
-
-
-| model, effort | runs | pass | text | photos | add then edit | $ per message |
+| model | all cases | everyday text | real mistakes | photos | photo calories off by | cost per case |
 |---|---|---|---|---|---|---|
-| Haiku 5.5, low | 43×2 | 97% | 98% | 94% | 100% | $0.0006 |
-| Haiku 5.5, medium | 43×2 | 97% | 100% | 91% | 100% | $0.0006 |
-| Haiku 5.5, high | 43×2 | 97% | 100% | 91% | 100% | $0.0007 |
-| Haiku 5.5, low, no prompt caching | 43×1 | 98% | 96% | 100% | 100% | $0.0018 |
-| Opus 5.5, low (text cases only) | 27×1 | 100% | 100% | n/a | 100% | $0.0138 |
+| Claude Haiku 5.5 (Bao's default) | 66% | 97% | 43% | 51% | 21% | $0.0009 |
+| Claude Sonnet 5.5 | 81% | 100% | 67% | 68% | 18% | $0.0135 |
+| Claude Opus 5.5 | 88% | 100% | 80% | 76% | 11% | $0.0267 |
 
-Wall time per message, in seconds, from sending to the log changing on screen and to the reply finishing:
+What the columns mean:
 
-| model, effort | first message: log changes | first message: reply done (p50 / p90) | follow-up edit: log changes | follow-up edit: reply done (p50 / p90) | photo message: reply done |
-|---|---|---|---|---|---|
-| Haiku 5.5, low | 3.0 | 4.3 / 6.1 | 1.4 | 2.5 / 6.8 | 7.0 |
-| Haiku 5.5, medium | 3.0 | 4.4 / 6.1 | 1.4 | 2.6 / 6.1 | 7.6 |
-| Haiku 5.5, high | 3.2 | 4.5 / 9.0 | 1.3 | 2.5 / 8.6 | 8.6 |
-| Opus 5.5, low | 3.9 | 6.3 / 9.5 | 2.0 | 3.7 / 5.3 | n/a |
+- **all cases**: the share of cases where every check passed. With this many cases, treat each figure as give or take about 7 points.
+- **everyday text**: 30 made-up messages of the kind people send every day.
+- **real mistakes**: 46 cases built from times Bao got something wrong in real use. They are hard on purpose.
+- **photos**: 34 real photos of meals and nutrition labels.
+- **photo calories off by**: the typical gap between the calories Bao logged for a meal photo and a reference estimate (the median).
 
-The default is Haiku 5.5 at low effort. Higher effort bought no accuracy and made the slowest messages slower. Opus 5.5 was perfect on the text cases but took about 2 s longer per first message and cost about 35 times as much per text message ($0.0138 against $0.0004). On Haiku a photo message costs about $0.0010.
+All three models answer in about the same time: 3 to 5 seconds for a typed message, 7 to 9 seconds for a photo.
 
-Follow-up edits are quick because the context already lists the day's entries with their ids, so the assistant can usually change an entry in one call without searching. Every edit case passed on every model and effort.
+Bao uses Haiku because it is about 30 times cheaper than Opus and almost as good at everyday logging. The gap is in photos and tricky follow-ups, and closing it is what this test set is for.
 
-Prompt caching cuts cost by about two thirds, from $0.0018 to $0.0006 per message. The system prompt and tools are cached across both users, and each conversation's history is cached from one turn to the next, so about 90% of input tokens are read from the cache. A message takes about 2.7 API calls on average. A first message usually searches, logs, then replies.
+## What gets tested
 
-The remaining misses are mostly photo portion judgements. "lunch, I had 2 of these" under a photo of four different onigiri is still often read as two of each. Single runs also logged a Fage cup at 141 kcal (just under the band), read "black coffee" as kopi O, and put a large prawn mee below the reference band.
+**Everyday text (30 cases, made up).** For example:
 
-The first round, before the prompt changes in this branch, passed 77 to 85% on Haiku. These prompt fixes closed the gap:
+- A whole day typed in hawker shorthand: "teh c siew dai", "milo peng", "supper ice kachang".
+- Counts and weights: "10 sticks of chicken satay and half a ketupat", "200g grilled chicken breast".
+- Your own foods: "a bowl of yogurt" should use the household's yogurt, but "Fage greek yogurt" should not.
+- Corrections: "actually it was a large plate, make it 1.5", "make it siew dai" or "oh it was roasted chicken rice, not steamed" has to change the entry that's already there, not add a second one.
+- Dishes the database doesn't have: "unagi fried rice" must include the eel, not get logged as plain egg fried rice.
+- A question ("how much protein have I had today?") must not change anything.
 
-- Treat messages about already-logged food as edits. Before this, "I only finished half the laksa" added a second half-portion entry.
-- Log the most likely reading and state the assumption instead of asking which items were eaten.
-- Put follow-ups in the same meal as the item they follow.
-- Create a new household food for a new product instead of overwriting the old one.
+**Real mistakes (46 cases).** Every time Bao got something wrong in real use, it became a case, with the original message. Some are rewritten with made-up meals to test the same pattern again. For example:
 
-### Photo portions (2026-10-27)
+- "steamed chicken rice for dinner yesterday", sent when the app was already showing yesterday, went back two days.
+- "it's a very big portion" made the portion smaller.
+- "split into 4 portions" was never applied.
+- "tau pok" (fried bean curd) was searched and came back as a poke bowl.
+- "half a bowl of briyani" was logged as half of a large restaurant plate.
 
-The prompt now has Bao work out each photo component's grams before it picks a food: size from the plate, bowl, cutlery and piece counts, plus what the photo hides (rice under toppings, oil, gravy). A linked food takes the grams seen instead of its default serving, and a database set counts as the same food only when the photo shows the same components. Haiku 5.5 at low effort, all 27 photo cases, 2 reps each, before and after:
+**Photos (34 cases, real).** Every photo sent to Bao in its first weeks of use: hawker plates, cai fan, restaurant sets, home cooking, a shared dinner, and nutrition labels. Labels must be saved exactly. Meals are checked for their main parts and for a total within about ±30% of a reference estimate.
 
-| | pass | meal total, mean error vs reference | entries with grams |
-|---|---|---|---|
-| before | 51/54 | 13.9% | 65% |
-| after | 53/54 | 11.9% | 75% |
+## Three photos from the set
 
-Cost and time per message didn't change. The change mostly helped plates the database has as a set with different components. A nasi lemak with curry-leaf chicken was logged as the database's chicken wing set (998 and 1249 kcal against a reference of 1550) and is now split into rice and an estimate for the chicken (1491 and 1275). Every linked food in the after run carries grams; the entries without grams are all estimates. With two reps per case, these differences are within noise for any single case. The text, label and edit cases all still pass.
+<table>
+<tr>
+<td width="33%"><img src="photos/photo39.jpg" alt="Ayam bakar set: grilled chicken, rice, tofu, sambal, cabbage, crackers and soup"></td>
+<td width="33%"><img src="photos/photo23.jpg" alt="A thin slice of baked cheesecake in a takeaway box"></td>
+<td width="33%"><img src="photos/photo36.jpg" alt="A table set for four with several Indian dishes to share"></td>
+</tr>
+<tr>
+<td valign="top"><b>"ayam bakar"</b><br>Should log the chicken, rice and sides, about 870 kcal.<br><b>Passes on every model.</b></td>
+<td valign="top"><b>"little slice of cheesecake"</b><br>Should be about 140 kcal. Bao logs a standard slice, about double.<br><b>Fails on every model.</b></td>
+<td valign="top"><b>"my dinner, its all indian food and the drink is pokka green tea"</b><br>The table was shared by four, so one share is about 1,040 kcal. Bao logs the whole table as one person's dinner.<br><b>Fails on every model.</b></td>
+</tr>
+</table>
 
-## Running
+## Where it still goes wrong
+
+Seven cases fail on every model:
+
+- small home portions logged as a standard serving (the cheesecake slice; pancakes and bacon)
+- a piece count read wrongly from a photo (two eggs logged as three)
+- a photo sent at lunchtime while the app still showed the day before
+- a shared table logged as one person's meal
+- "the rest was split into 4 portion" for a shared dinner never applied to the shared dishes
+- a bun from a bakery chain logged as a generic, smaller bun
+
+## Run it yourself
+
+Every run except `--dry-run` calls the Anthropic API and costs money: about $0.08 for the whole set on Haiku, about $2.50 on Opus. Put `ANTHROPIC_API_KEY` in `.env` first.
 
 ```bash
-uv run python -m evals.run --dry-run                                            # check and seed every case, no API calls
-uv run python -m evals.run --model claude-haiku-5-5 --effort low --reps 2       # all cases
-uv run python -m evals.run --model claude-opus-5-5 --effort low --tags text     # text cases only
-uv run python -m evals.run --tags regression --name haiku-regressions           # every regression case
-uv run python -m evals.run --tags photo --name haiku-photos                      # the photo benchmark
-uv run python -m evals.run --tags baseline                                      # what worked in production
-uv run python -m evals.run --cases reg_tau_pok_not_poke,reg_small_slice --name scratch  # a few cases
-uv run python -m evals.run --no-cache --name haiku-low-nocache                  # caching off
-uv run python -m evals.run --name haiku-5-5-low --regrade                       # re-grade saved runs, no API calls
-uv run python -m evals.report                                                    # writes results/summary.md
+uv run python -m evals.run --dry-run                                        # check every case, free
+uv run python -m evals.run --model claude-haiku-5-5 --effort low --reps 2   # everything, twice
+uv run python -m evals.run --tags photo --name haiku-photos                 # just the photos
+uv run python -m evals.run --cases prod_p23_little_cheesecake --name try    # one case
+uv run python -m evals.report                                               # summary table
 ```
 
-`--tags` runs a case if it has any of the listed tags. `--dry-run` checks every selected case (regexes compile, photo files exist, expected dates are checked, household food keys exist), seeds it into a scratch database and grades the seeded state, so a broken food reference or seed fails without spending anything. Every other run makes real API calls. Results go to `evals/results/<name>/`, which is gitignored: `results.jsonl` holds one graded row per case and repeat, `traces/` holds the full transcripts, and `dbs/` holds each case's final database, which is what `--regrade` reads. A finished (case, repeat) is skipped when you rerun, so a crashed run resumes where it stopped.
+Results go to `evals/results/<name>/`: a graded row per case in `results.jsonl`, each full conversation in `traces/`, and each case's final database in `dbs/`. If a run stops halfway, run the same command again and it picks up where it left off. `evals.report` writes a summary of every run to `evals/results/summary.md`.
+
+More options:
+
+- `--tags` runs every case that has any of the listed tags, such as `text`, `photo`, `label`, `regression` or `baseline`.
+- `--cases` takes a comma-separated list of case ids.
+- `--model` and `--effort` choose the Claude model and effort level.
+- `--reps` runs each case more than once.
+- `--no-cache` turns prompt caching off.
+- `--regrade` grades a saved run again without calling the API.
+
+## How the cases work
+
+The cases are in two files:
+
+- `cases.py`: 45 made-up cases, mostly typed messages.
+- `prod_cases.py`: 46 cases from real use, including every photo case. The photos are in `photos/`. Each case keeps the real message, the household's own foods at the time and the log entries the message referred to. Dates are moved five weeks earlier, so weekdays still match what the message says.
+
+`spec.py` defines what a case can say. Each case starts from a fresh copy of the food database and can add:
+
+- `ours`: household foods, and `entries`: log entries that already exist before the message.
+- `now` and `log_date`: when the message is sent and which day the app is showing. These are separate because people often log yesterday.
+- `msgs`: one or more messages, each with optional photos.
+
+Then it checks:
+
+- `expect`: the entries that should be in the log afterwards, each with a pattern for the name and optionally a meal, date, calorie range or household food. They must match one to one, so an extra or duplicate entry fails. Photo meals may be split into any number of parts.
+- `total_kcal`: a calorie range for the day or one meal. `ref_kcal` is the reference behind the "calories off by" figure.
+- `forbid`: names that must not appear, such as "poke" in the tau pok case.
+- `foods`: household foods that should exist afterwards, such as a saved label with its exact values.
+- `reply_forbid`, `max_tool_calls`, `max_tool_errors`: limits on the reply and on how many steps Bao takes.
+
+Tags say what kind of case it is: `text`, `photo`, `meal`, `label`, `edit`. `regression` marks a case Bao got wrong in real use, and `baseline` a real case it got right, so a change that fixes one mistake but breaks something that worked shows up. Other tags name the pattern, such as `stale_date`, `split`, `near_name` or `small_portion`.
+
+Photo references are a reviewer's estimate from the photo, not weighed meals. Treat the calorie figures as approximate.
+
+## Earlier results
+
+These ran on an older version of the test set, so they aren't comparable with the table above. They're kept because they explain Bao's current settings.
+
+<details>
+<summary>Effort levels and prompt caching (2026-10-21)</summary>
+
+43 cases, mostly typed messages, each run twice.
+
+| model, effort | passed | cost per message |
+|---|---|---|
+| Haiku 5.5, low | 97% | $0.0006 |
+| Haiku 5.5, medium | 97% | $0.0006 |
+| Haiku 5.5, high | 97% | $0.0007 |
+| Haiku 5.5, low, no prompt caching | 98% | $0.0018 |
+| Opus 5.5, low (typed cases only) | 100% | $0.0138 |
+
+- Higher effort bought no accuracy and made the slowest messages slower, so Bao uses low.
+- Prompt caching cuts the cost by about two thirds. The instructions and tools are shared by both users, and each conversation is cached from one message to the next.
+- A typed message changed the log in about 3 seconds, and a follow-up edit in about 1.5.
+- Four prompt changes raised Haiku from 77–85% to 97%: treat messages about food already logged as edits, log the likeliest reading and say what was assumed instead of asking, keep follow-ups in the same meal, and save a new product as a new household food instead of overwriting the old one.
+
+</details>
+
+<details>
+<summary>Working out photo portions in grams (2026-10-27)</summary>
+
+Bao was changed to estimate each part of a photo in grams before choosing a food, judging size from the plate, bowl, cutlery and piece counts, and allowing for what the photo hides (rice under toppings, oil, gravy). On 27 photo cases, Haiku at low effort, run twice:
+
+| | passed | meal total off by (mean) |
+|---|---|---|
+| before | 51 of 54 | 13.9% |
+| after | 53 of 54 | 11.9% |
+
+It helped most with plates the database has as a set with different parts. A nasi lemak with curry-leaf chicken had been logged as the database's chicken wing set. It is now split into rice plus an estimate for the chicken.
+
+</details>

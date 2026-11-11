@@ -1,6 +1,12 @@
 # Bao
 
-A self-hosted calorie and macro tracker for a two-person household in Singapore. You log food by meal, either by searching and tapping, or by telling Bao, the assistant, what you ate ("breakfast kopi c and kaya toast, lunch chicken rice…") or sending it a photo. It runs as one Docker container behind your reverse proxy, signs in through Pocket ID, and installs on a phone as a PWA.
+Bao is a calorie and macro tracker for a household of two, built around Singapore food. You can search for a food and tap to add it, or just tell Bao the assistant what you ate:
+
+> breakfast kopi c and kaya toast, lunch chicken rice
+
+or send it a photo of your plate. Bao logs it straight away, and you can correct it by replying ("actually 2", "that was lunch").
+
+You host it yourself. It runs as one Docker container, and you install it on your phone from the browser.
 
 <p>
   <img src="docs/screenshots/today.png" width="200" alt="Today: Bao's meadow, the day's calories as a sunflower, macros against targets, and the button to message Bao">
@@ -12,40 +18,55 @@ A self-hosted calorie and macro tracker for a two-person household in Singapore.
   <img src="docs/screenshots/history-desktop.png" width="824" alt="History on a laptop: a side rail, summary figures, daily calories with a 7-day average, average macros and where calories come from">
 </p>
 
-## What it does
+## What you get
 
-Each entry belongs to a date and a meal (breakfast, lunch, dinner or snacks), since most days get logged in one go at night. Calories, protein, carbs and fat are tracked against daily targets, and fibre, sugar, sodium and saturated fat are stored as well.
+- **Logging by meal.** Every entry goes under breakfast, lunch, dinner or snacks on a given day, so you can log a whole day at once in the evening.
+- **Calories, protein, carbs and fat against your targets.** Fibre, sugar, sodium and saturated fat are recorded too.
+- **Local food that's already there.** About 2,700 Singapore foods from the Health Promotion Board, hawker dishes and kopi orders included, at hawker portions. About 13,600 more generic foods from the USDA.
+- **Your own foods.** Save the things you buy often, or snap a nutrition label and Bao saves it for you. Your own foods win when you're vague: "a bowl of yogurt" means your usual yogurt.
+- **Quick adds.** Pinned foods, frequent and recent foods, saved meals, and "same as yesterday".
+- **A chat with Bao.** Send text or up to six photos. It logs right away, and every reply has an undo button and a thumbs up or down. It can also change past days.
+- **Two people, separate logs.** You share the food list, but each person has their own log, targets and quick adds.
+- **A daily reminder** if you want one. It's a phone notification at the time you choose, and only when a main meal isn't logged yet. It works on Android in Chrome, and on iPhone (iOS 16.4 or later) once Bao is on your Home Screen.
+- **History.** Averages, daily calories against your target, macros per day and where your calories come from. On a laptop it spreads out into a dashboard covering 14, 30 or 90 days.
+- **Optional: connect it to Claude.** A read-only connector lets an assistant on claude.ai read your log and targets, for example to review your week.
 
-Both people search the same food database but see only their own log, targets and quick adds. The foods come from three places:
+The look comes from Burrow, a small design system shared with the household's other apps: plain cards and numbers, with Bao the hamster and friends living around them. The day's calories are a sunflower that opens a petal at a time. It follows your phone's light or dark mode.
 
-- SG FoodID, from the Health Promotion Board: about 2,700 items, including hawker dishes, kopi and teh, and local snacks at typical hawker portions.
-- USDA FoodData Central: about 13,600 generic ingredients and Western foods.
-- Ours, the household's own foods, such as the yogurt you always buy. An Ours food can claim generic words as aliases, so "a bowl of yogurt" means your yogurt unless you name another one.
+## How good is the assistant?
 
-Quick adds cover pinned items, frequent and recent foods, saved meals and "same as yesterday".
+It's tested against 91 cases: everyday text messages, follow-up corrections, nutrition labels, 29 real meal photos, and real mistakes it has made. Simple text logging is close to perfect. Judging portion sizes from photos is the hard part.
 
-Each of you can turn on a daily reminder in Settings and pick its time. It arrives as a phone notification, and only on days when breakfast, lunch or dinner isn't logged yet. It says which meals are missing, and tapping it opens that day. On an iPhone this needs iOS 16.4 or later and Bao added to the Home Screen; on Android it works in Chrome.
+| model | cases passed | cost per case |
+|---|---|---|
+| Claude Haiku 5.5 (the default) | 66% | about $0.001 |
+| Claude Opus 5.5 | 88% | about $0.03 |
 
-The assistant (Claude) turns a text dump or meal photos (up to six per message, taken in the app or picked from the library) into entries, applies them straight away, and fixes them when you reply ("actually 2", "that was lunch"). It can also edit past days and read a nutrition label into an Ours food. Each of its replies has an undo and a thumbs up or down (with an optional note on a thumbs down). On Today a message button opens the chat: a round button above the nav on a phone, a button under the sunflower on a desktop. Each time you open it Bao starts a fresh conversation, but the chat still shows that day's earlier messages above it, including ones that didn't go through.
+A typical message is logged in about 3 seconds. [evals/README.md](evals/README.md) shows what the cases are, where it still goes wrong, and how to run the tests yourself.
 
-The look comes from Burrow, the household's shared design system (also used by the money app): plain cards and numbers, with Bao the hamster and friends living around them. Bao is also the assistant you chat with. Calories, protein, carbs and fat each have a symbol (a flame, a drumstick, an ear of wheat and a drop) used everywhere they appear. Each screen has its animal's home as a header, the day's calories are a sunflower that opens a petal at a time, logged meals get a bite out of the corner, and a trail of crumbs or footprints winds down each screen behind the cards to the next thing to do. It follows the phone's light or dark setting.
+## What it costs to run
 
-It also works in a desktop or laptop browser. From 1024px wide the bottom nav becomes a side rail and screens spread into columns. History becomes a dashboard: summary figures, daily calories with a 7-day average, macros per day against their targets, where the calories come from, the average by weekday, and a sortable table of every day with all its nutrients. You can view 14, 30 or 90 days and step back through earlier periods, and selecting a bar or a row opens that day.
+You pay Anthropic for the assistant. On the default model a message costs about a tenth of a cent, which comes to well under a dollar a month for two people. Settings shows this month's spend. To use a different model, set `AGENT_MODEL` and `AGENT_EFFORT` in `.env`.
 
-A read-only MCP endpoint at `/mcp` lets another Claude agent, such as a fitness analyst on claude.ai, read your log, daily totals and targets. Whoever signs in sees only their own data.
+## Set it up
 
-## Deploy
+You need:
 
-You need Docker with Compose, a domain behind Caddy (or another TLS proxy), a Pocket ID instance and an Anthropic API key.
+- a machine that runs Docker with Compose
+- a domain, with Caddy or another reverse proxy handling HTTPS
+- [Pocket ID](https://pocket-id.org) for sign-in with passkeys
+- an Anthropic API key
 
-1. In Pocket ID, create an OIDC client named `bao` with both callback URLs:
-   - `https://bao.example.com/auth/web/callback` (browser sign-in)
-   - `https://bao.example.com/auth/callback` (the MCP connector's OAuth)
+Steps:
 
-   Restrict it to a user group that holds just the two of you. Copy the client ID and secret.
-2. Run `cp .env.example .env` and fill it in. You can leave `SESSION_SECRET` empty: Bao generates one on first start and keeps it in the data volume.
-3. Start it with `docker compose up -d`. This pulls `ghcr.io/theepicflyer/bao:latest`; set `BAO_TAG=1.2.0` in `.env` to pin a release instead. The first start loads the food database, which takes a few seconds.
-4. Add a Caddy site:
+1. **Create a sign-in client in Pocket ID.** Call it `bao` and give it both callback URLs:
+   - `https://bao.example.com/auth/web/callback` (signing in from the browser)
+   - `https://bao.example.com/auth/callback` (the claude.ai connector)
+
+   Limit it to a user group with just the two of you, and copy the client ID and secret.
+2. **Fill in the settings.** Run `cp .env.example .env` and fill it in. You can leave `SESSION_SECRET` empty; Bao makes one on first start.
+3. **Start it** with `docker compose up -d`. This uses the latest release. To stay on one version, set `BAO_TAG=1.2.0` in `.env`.
+4. **Point your proxy at it.** For Caddy:
 
    ```
    bao.example.com {
@@ -53,63 +74,61 @@ You need Docker with Compose, a domain behind Caddy (or another TLS proxy), a Po
    }
    ```
 
-5. Open the site, sign in with your passkey, and set your daily targets in Settings. On a phone, use "Add to Home Screen" to install it, open it from there, and turn on the daily reminder in Settings if you want one.
+5. **Sign in** with your passkey and set your daily targets in Settings. On your phone, use "Add to Home Screen", open Bao from there, and turn on the reminder if you want it.
 
-All state is in the `makan-data` volume (named from when the app was called makan): the SQLite database, meal photos, the OAuth store behind the MCP connector, and the key that signs reminders (lose it and each phone has to turn reminders on again). Back up that volume. To update, set `BAO_TAG` to the new release (or leave it on `latest`) and run `docker compose pull && docker compose up -d`. Release notes list any manual steps under **Deploy actions**. To run your own changes, build from source with `docker compose up -d --build`.
+### Backups and updates
 
-Upgrading from a release made before the app was called Bao (1.x, image `ghcr.io/theepicflyer/makan`): rename `MAKAN_TAG` to `BAO_TAG` in `.env`, pull the new `docker-compose.yml`, then run `docker compose pull && docker compose up -d --remove-orphans`. The service is now called `bao`, and `--remove-orphans` stops the old `makan` container so it frees the port. The data volume is unchanged. Everyone signs in once more, because the session cookie was renamed.
+Everything Bao keeps is in the `makan-data` Docker volume: the database, meal photos, the connector's sign-in store and the key behind reminders. (The volume is still named after the app's old name, makan.) Back it up.
 
-### Connect the analyst (claude.ai)
+To update, run `docker compose pull && docker compose up -d`. If a release needs anything done by hand, its release notes say so under **Deploy actions**.
 
-In claude.ai, go to Settings → Connectors → Add custom connector and enter `https://bao.example.com/mcp`. Sign in to Bao in a browser at least once before you connect, because the connector only reads an existing account. The tools are `get_profile`, `get_daily_totals`, `get_food_log`, `search_foods` and `list_household_foods`. All of them are read-only.
+**Coming from makan (1.x)?** In `.env`, rename `MAKAN_TAG` to `BAO_TAG`. Get the new `docker-compose.yml`, then run `docker compose pull && docker compose up -d --remove-orphans`, which also stops the old container. Your data stays where it is. Everyone has to sign in once more.
 
-## The assistant and its cost
+### Connect Claude (optional)
 
-The assistant uses `claude-haiku-5-5` at `low` effort by default (`AGENT_MODEL`, `AGENT_EFFORT`). Prompt caching is on. The system prompt and tools are cached across both users, and each conversation's history is cached from one turn to the next. Settings shows this month's assistant spend.
-
-`evals/` checks the assistant against 91 cases: text dumps in Singlish, household-food defaults, follow-up edits, edits to past days, nutrition labels, 29 real meal photos, and the mistakes it made in real use. Each case is graded on the database it leaves behind. On the latest run, Haiku at low effort (the default) passed 66% for about $0.0009 per case and Opus passed 88%; the made-up text cases pass 97 to 100% on every model, and most failures are photo portions and the regression cases. A typical message updates the log in about 3 seconds. [evals/README.md](evals/README.md) has the full results and how to rerun them.
+Sign in to Bao in a browser first. Then in claude.ai go to Settings → Connectors → Add custom connector and enter `https://bao.example.com/mcp`. Claude can then read your profile, daily totals, food log and food list. It can't change anything, and each person only sees their own data.
 
 ## Food data
 
-The reference data is a snapshot committed under `data/reference/`, so the app never calls HPB or USDA at runtime. To refresh it:
+The food lists are saved in the repo under `data/reference/`, so Bao never contacts HPB or the USDA while it runs. To refresh them, run these and restart Bao:
 
 ```bash
-uv run --no-project python -I scripts/fetch_sgfoodid.py   # ~5 min; HPB allows 60 requests/min
+uv run --no-project python -I scripts/fetch_sgfoodid.py   # about 5 minutes
 uv run --no-project python -I scripts/fetch_usda.py
 ```
 
-Then restart the app. Reference foods keep their ids across reloads, so old entries stay linked. `data/reference/aliases.json` maps hawker shorthand to SG FoodID items, for example "chicken rice" to Steamed chicken rice and "teh peng" to Iced Teh.
+Past entries stay linked to their foods. `data/reference/aliases.json` maps hawker shorthand to foods, for example "teh peng" to Iced Teh.
 
 ### Attribution
 
 Contains information from Singapore Food Insights Database (SG FoodID) accessed on 2026-10-21 from Health Promotion Board which is made available under the terms found at https://pphtpc.hpb.gov.sg/web/sgfoodid. The information contained within this dataset is provided on an "as-is" basis. The data, including but not limited to nutritional information, is subject to inherent limitations. No warranty or representation is made as to the accuracy or completeness of the data contained herein. USDA FoodData Central data is public domain. The app shows both notices on its Settings page.
 
-## Development
+## For developers
 
 ```bash
 uv sync
-DEV_LOGIN=true uv run uvicorn bao.main:app --reload --port 8000   # API + built web app
-cd web && npm install && npm run dev                                  # Vite dev server, proxies to :8000
-uv run pytest                                                         # backend tests (CI runs these and the check below on every PR)
-cd web && npm run check && npm run build                              # type-check and build the web app
+DEV_LOGIN=true uv run uvicorn bao.main:app --reload --port 8000   # the app, with a name picker instead of Pocket ID
+cd web && npm install && npm run dev                              # live-reloading web app, talks to :8000
+uv run pytest                                                     # backend tests
+cd web && npm run check && npm run build                          # check and build the web app
 ```
 
-`DEV_LOGIN=true` replaces Pocket ID with a name picker. Never set it on the server. Put `ANTHROPIC_API_KEY` in `.env` to use the assistant locally.
+Never set `DEV_LOGIN=true` on a server. Put `ANTHROPIC_API_KEY` in `.env` to use the assistant locally. To build the image from your own checkout, run `docker compose up -d --build`.
 
-Layout:
+Where things are:
 
-- `src/bao/`: the FastAPI app (`main.py`, `api.py`, `auth.py`), the food and log logic (`foods.py`, `log.py`), the agent (`agent/`), the MCP server (`mcp_server.py`), and Alembic migrations.
-- `web/`: the SvelteKit PWA, built to `web/build` and served by the backend. `web/src/lib/burrow/` holds the Burrow design system's tokens, styles and drawings.
-- `data/reference/`: the food snapshot. `scripts/` holds the scripts that build it, and `export_flagged.py`.
+- `src/bao/`: the FastAPI backend, including the assistant (`agent/`) and the claude.ai connector (`mcp_server.py`)
+- `web/`: the SvelteKit app; `web/src/lib/burrow/` is the design system
+- `data/reference/`: the food lists, and `scripts/` builds them
+- `evals/`: the assistant's test cases
+- `docs/screenshots/`: the screenshots above, from a demo account with made-up meals
 
-### Reviewing the assistant
+### Reviewing the assistant's mistakes
 
-Each assistant turn keeps its rating, the error if it failed, and the app version it ran on (`APP_VERSION`, set by the image build). Hand edits and deletes of entries the assistant logged go in `entry_edits`. To pull out the turns worth a look (thumbs down, failed, or later corrected by hand) with their transcripts, notes, changes and photo paths:
+Bao keeps each reply's rating, any error, and the app version that made it. It also keeps a record whenever someone fixes by hand an entry the assistant logged. To collect the turns worth a look (thumbs down, failed, or fixed by hand) into one file:
 
 ```bash
 uv run --no-project python -I scripts/export_flagged.py --db /path/to/makan.db --since 2026-11-01 --format markdown --out flagged.md
 ```
 
-It opens the database read-only, so it is safe to run against a copy of the live one.
-- `evals/`: the agent eval cases, runner and report.
-- `docs/screenshots/`: the screenshots above, taken from a demo account with made-up meals.
+It only reads the database, so it's safe to run on a copy of the live one.

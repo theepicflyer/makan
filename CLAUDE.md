@@ -18,7 +18,7 @@ uv run python -m evals.report                   # writes evals/results/summary.m
 uv run python -c "from bao.migrate import revision; revision('message')"  # new Alembic migration
 ```
 
-Evals cost real money (Haiku is ~$0.001/case, Opus ~$0.02/case). Run a subset with `--cases` or `--tags` while iterating. Cases from real use, including every photo case, are in `evals/prod_cases.py` with photos in `evals/photos/`; `--dry-run` checks and seeds cases without API calls (see `evals/README.md`).
+Evals cost real money (Haiku is ~$0.001/case, Opus ~$0.03/case). Run a subset with `--cases` or `--tags` while iterating. Cases from real use, including every photo case, are in `evals/prod_cases.py` with photos in `evals/photos/`; `--dry-run` checks and seeds cases without API calls (see `evals/README.md`).
 
 ## Architecture
 
