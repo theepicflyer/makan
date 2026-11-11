@@ -87,6 +87,7 @@ def _query_variants(q: str) -> list[str]:
 class SearchHit:
     food: Food
     score: float
+    alias_match: bool = False
 
 
 def search(
@@ -139,11 +140,12 @@ def search(
         name_norm = " ".join(t.lower() for t in _TOKEN.findall(food.name))
         if name_norm in q_forms:
             score += 8.0
-        if any(a.lower().strip() in q_forms for a in food.aliases or []):
+        alias_match = any(a.lower().strip() in q_forms for a in food.aliases or [])
+        if alias_match:
             score += 20.0
         # Short names are usually the generic item ("Egg, whole, raw" over "Egg, whole, cooked, ...").
         score -= 0.04 * len(food.name)
-        hits.append(SearchHit(food, score))
+        hits.append(SearchHit(food, score, alias_match))
     hits.sort(key=lambda h: h.score, reverse=True)
     # USDA repeats many foods across its Foundation, SR Legacy and FNDDS sets; keep the best-ranked one.
     out, seen_names = [], set()

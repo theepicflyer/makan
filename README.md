@@ -39,10 +39,10 @@ It's tested against 91 cases: everyday text messages, follow-up corrections, nut
 
 | model | cases passed | cost per case |
 |---|---|---|
-| Claude Haiku 5.5 (the default) | 66% | about $0.001 |
-| Claude Opus 5.5 | 88% | about $0.03 |
+| Claude Haiku 5.5 (the default) | 83% | about $0.001 |
+| Claude Sonnet 5.5 | 88% | about $0.015 |
 
-A typical message is logged in about 3 seconds. [evals/README.md](evals/README.md) shows what the cases are, where it still goes wrong, and how to run the tests yourself.
+A typical message is answered in about 5 seconds. [evals/README.md](evals/README.md) shows what the cases are, where it still goes wrong, and how to run the tests yourself.
 
 ## What it costs to run
 
