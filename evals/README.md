@@ -6,13 +6,13 @@ Everything here is public, photos included, so you can run the tests yourself an
 
 ## Results
 
-91 cases, run on 2026-11-11 at low effort. Haiku ran each case three times, Sonnet twice.
+91 cases, run on 2026-11-11 at low effort. Haiku ran each case three times, Sonnet twice, Opus once.
 
 | model | all cases | everyday text | real mistakes | photos | photo calories off by | cost per case |
 |---|---|---|---|---|---|---|
 | Claude Haiku 5.5 (Bao's default) | 83% | 97% | 73% | 70% | 12% | $0.0010 |
 | Claude Sonnet 5.5 | 88% | 100% | 82% | 74% | 13% | $0.0146 |
-| Claude Opus 5.5 | not finished (see below) | | | | | $0.025 |
+| Claude Opus 5.5 | 93% | 100% | 89% | 88% | 10% | $0.0291 |
 
 What the columns mean:
 
@@ -21,8 +21,6 @@ What the columns mean:
 - **real mistakes**: 46 cases built from times Bao got something wrong in real use. They are hard on purpose.
 - **photos**: 34 real photos of meals and nutrition labels.
 - **photo calories off by**: the typical gap between the calories Bao logged for a meal photo and a reference estimate (the median).
-
-The Opus run stopped after 68 of the 91 cases when the API account hit its monthly limit. On those 68 cases Opus passed 96%, Sonnet 94% and Haiku 91%; the 23 it didn't reach include many of the hardest.
 
 All three models answer in about the same time: about 5 seconds for a typed message, 7 to 8 seconds for a photo.
 
@@ -86,11 +84,11 @@ On Haiku, these still fail most of the time:
 - a household food the user asks to change, where Bao changes the log entry instead
 - a fried chicken drumlet and fried pork, matched to the wrong cuts
 
-Sonnet gets most of the photo ones right but also misses the shared table and the split.
+Sonnet and Opus get most of the photo ones right. Opus got the shared table once; every model still misses "the rest was split into 4".
 
 ## Run it yourself
 
-Every run except `--dry-run` calls the Anthropic API and costs money: about $0.09 for the whole set on Haiku, about $2.30 on Opus. Put `ANTHROPIC_API_KEY` in `.env` first.
+Every run except `--dry-run` calls the Anthropic API and costs money: about $0.09 for the whole set on Haiku, about $2.70 on Opus. Put `ANTHROPIC_API_KEY` in `.env` first.
 
 ```bash
 uv run python -m evals.run --dry-run                                        # check every case, free
