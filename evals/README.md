@@ -4,23 +4,19 @@ These evals check the Bao assistant on the jobs it does every day. Each case sta
 
 ## Cases
 
-The repo holds 45 made-up text cases (`cases.py`). Photo cases use real meals and live in a private directory outside the repo (see below).
+There are 91 cases, all in the repo. `cases.py` holds 45 made-up text cases; `prod_cases.py` holds 46 taken from real use, including every photo case (see below). `spec.py` defines the case format.
 
 - Text (23): end-of-day dumps in hawker shorthand and Singlish ("teh c siew dai", "milo peng", "supper ice kachang"), counts and weights, two days in one message, household defaults ("a bowl of yogurt" means the household yogurt; "Fage greek yogurt" doesn't), teaching a portion, follow-up corrections, moving and deleting entries, editing yesterday, copying yesterday's breakfast, a dish the database lacks ("unagi fried rice" must count the eel, not log plain egg fried rice; "onsen eggs" must be estimated under that name, not logged as another egg dish), a qualifier the search must keep ("soft boiled" eggs, not hard-boiled), and a question that must not change anything.
 - Add, then edit (7): the first message logs something and the second changes it. The cases fix one portion out of several items, swap steamed for roasted chicken rice, set the meal afterwards, remove one item, move the entry to yesterday and switch teh c to siew dai. One more checks that "and another kopi c at 3pm" adds a second entry instead of editing the first. An edit has to change the entry that already exists; deleting it and logging it again fails.
 - Regressions (15, tagged `regression`): failure patterns seen in real use, rewritten with made-up meals. "Yesterday" when the app is already on yesterday must not go back two days, and "today" must land on today when the app is on a stale date (`stale_date`). "It was a very big portion" must raise the portion (`portion`). "Split into 4 portions, I had one" must quarter the dishes, both as a follow-up edit and in one message (`split`). "Save today's lunch as X" must save one household food whose default serving matches the logged meal, without logging anything new (`save_as`). Searches that put the wrong food first must not win: a household chicken rib for "beef short ribs", poke bowls for "tau pok", collard greens for "pork collar", prawn dishes for "prawns" (`search`). A near-name food must not stand in for a different dish: prawn noodles for fried hokkien mee, white rice for roasted chicken rice, carrot cake the dessert for fried carrot cake (`near_name`). A stated amount beats the default serving: half a bowl of nasi goreng is not half the 485 g plate, a small thin slice of chocolate cake is not the 116 g slice (`default_serving`).
 
-### Private cases
+### Cases from real use
 
-`evals/private/` is gitignored. When it exists, `cases.py` there is loaded after the public cases: it exports `CASES`, built with the same `Case`, `Msg`, `Item` and `FoodCheck` classes (`from evals.cases import Case, ...`), and every case in it gets the `private` tag. Ids must not collide with the public ones. Photo files live in `evals/private/photos/`; every `Msg.photo` and `Msg.photos` name is resolved there. Keep the directory outside the repo and symlink it in:
+`prod_cases.py` is the photo benchmark. Every photo sent to Bao in its first weeks is a case (several photos in one message stay one case), with the real wording, the household foods that existed at the time and the log entries the message referred to. The photos are in `photos/`. Text turns the agent got wrong are cases too. Dates are shifted by five weeks, so weekdays still match the wording ("on Friday too").
 
-```bash
-ln -s /path/to/private-evals evals/private
-```
+Turns the agent got wrong are tagged `regression`, ones it got right `baseline`, so a change that fixes failures but breaks what worked shows up. Meal photos (29) are tagged `photo` and `meal` and are graded on their main components and the meal or day total, not on how many entries they were split into. The reference total is a reviewer's estimate from the photo, with a tolerance of about ±30% (tighter where the agent's wrong answer fell inside 30%). Label photos (5) are tagged `photo` and `label` and are checked against the label's values. The 12 text cases are tagged `text` and `regression`. Pattern tags match the made-up regressions, plus `photo_count`, `misidentified`, `protein_undersized`, `small_portion`, `shared`, `instruction`, `ours_outranks`, `tool_calls` and `tool_errors`.
 
-The private set is the photo benchmark: every photo sent in production is a case (several photos in one message stay one case), with the real wording, the household foods that existed at the time, and the log entries the message referred to. Turns the agent got wrong are tagged `regression`, ones it got right `baseline`, so a change that fixes failures but breaks what worked shows up. Meal photos are tagged `photo` and `meal` and are graded on their main components and the meal or day total, not on how many entries they were split into; the reference total is a reviewer's estimate from the photo, with a tolerance of about ±30% (tighter where the production answer was wrong but inside 30%). Label photos are tagged `photo` and `label` and are checked against the label's values. It also holds text cases for real failed turns, tagged `text` and `regression`. Pattern tags match the public regressions, plus `photo_count`, `misidentified`, `protein_undersized`, `small_portion`, `shared`, `instruction`, `ours_outranks`, `tool_calls` and `tool_errors`.
-
-If a photo file is missing, the runner skips that case and prints `SKIP` with the missing path; it is not run or counted.
+A run stops before any API call if a photo named by a selected case is missing from `photos/`.
 
 ### Case fields
 
@@ -38,19 +34,19 @@ Most checks are on `Case.expect`, a list of `Item`s (a regex on the entry name, 
 
 ## Baseline on the current set (2026-11-10)
 
-All 93 cases (45 public, 48 private), low effort, prompt and tools as released in 2.1.0. Haiku and Sonnet ran twice, Opus once. The private cases can't be reproduced outside the household; the public columns can.
+All 91 cases, low effort, prompt and tools as released in 2.1.0. Haiku and Sonnet ran twice, Opus once. These runs were made before the cases from real use moved into the repo (with two photo cases removed and dates shifted); the numbers are recomputed from the same runs without the two removed cases.
 
-| model | pass | earlier text cases (30) | regression cases (47) | baseline photo cases (16) | all photo cases (36) | photo kcal error (median) | $ per case |
+| model | pass | earlier text cases (30) | regression cases (46) | baseline photo cases (15) | all photo cases (34) | photo kcal error (median) | $ per case |
 |---|---|---|---|---|---|---|---|
-| Haiku 5.5 | 65% ± 7% | 97% | 43% | 72% | 50% | 21% | $0.0009 |
-| Sonnet 5.5 | 80% ± 6% | 100% | 66% | 84% | 67% | 17% | $0.0135 |
-| Opus 5.5 | 87% ± 7% | 100% | 79% | 88% | 75% | 12% | $0.0267 |
+| Haiku 5.5 | 66% ± 7% | 97% | 43% | 73% | 51% | 21% | $0.0009 |
+| Sonnet 5.5 | 81% ± 6% | 100% | 67% | 83% | 68% | 18% | $0.0135 |
+| Opus 5.5 | 88% ± 7% | 100% | 80% | 87% | 76% | 11% | $0.0267 |
 
-Replies finish in about the same time on all three (first message p50 3.4 s to 4.5 s, photo message 7 s to 9 s). Eight cases fail on every model: small home portions logged at a standard serving, a drink size read from a photo, a photo logged while the app is on an older date, a shared table, and a per-item split.
+Replies finish in about the same time on all three (first message p50 3.4 s to 4.5 s, photo message 7 s to 9 s). Seven cases fail on every model: small home portions logged at a standard serving (a cheesecake slice, pancakes and bacon), a piece count read from a photo, a photo logged while the app is on an older date, a shared table, a per-item split and a chain bakery's bun.
 
 ## Results (2026-10-21)
 
-These results and the photo-portion results below are historical: they were measured on the previous case set, which had 21 meal and 6 label photo cases that are no longer in the suite. The photo benchmark is now the private set above.
+These results and the photo-portion results below are historical: they were measured on the previous case set, which had 21 meal and 6 label photo cases that are no longer in the suite. The photo benchmark is now the cases from real use above.
 
 
 | model, effort | runs | pass | text | photos | add then edit | $ per message |
@@ -102,8 +98,8 @@ Cost and time per message didn't change. The change mostly helped plates the dat
 uv run python -m evals.run --dry-run                                            # check and seed every case, no API calls
 uv run python -m evals.run --model claude-haiku-5-5 --effort low --reps 2       # all cases
 uv run python -m evals.run --model claude-opus-5-5 --effort low --tags text     # text cases only
-uv run python -m evals.run --tags regression --name haiku-regressions           # public and private regressions
-uv run python -m evals.run --tags private --name haiku-private                  # the private set only
+uv run python -m evals.run --tags regression --name haiku-regressions           # every regression case
+uv run python -m evals.run --tags photo --name haiku-photos                      # the photo benchmark
 uv run python -m evals.run --tags baseline                                      # what worked in production
 uv run python -m evals.run --cases reg_tau_pok_not_poke,reg_small_slice --name scratch  # a few cases
 uv run python -m evals.run --no-cache --name haiku-low-nocache                  # caching off
