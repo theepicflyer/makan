@@ -18,7 +18,7 @@ uv run python -m evals.report                   # writes evals/results/summary.m
 uv run python -c "from bao.migrate import revision; revision('message')"  # new Alembic migration
 ```
 
-Evals cost real money (Haiku is ~$0.001/case, Opus ~$0.02/case). Run a subset with `--cases` or `--tags` while iterating. Photo cases are private: `evals/private` (gitignored) is a symlink to a directory outside the repo with its own `cases.py` and `photos/`; `--dry-run` checks and seeds cases without API calls (see `evals/README.md`).
+Evals cost real money (Haiku is ~$0.001/case, Opus ~$0.03/case). Run a subset with `--cases` or `--tags` while iterating. Cases from real use, including every photo case, are in `evals/prod_cases.py` with photos in `evals/photos/`; `--dry-run` checks and seeds cases without API calls (see `evals/README.md`).
 
 ## Architecture
 
@@ -72,4 +72,4 @@ A release is how work reaches production: the production server polls for new re
 
 `data/reference/` is a committed snapshot (`scripts/fetch_sgfoodid.py`, `scripts/fetch_usda.py`). SG FoodID nutrients are per 100 g of the edible part and drinks treat 1 ml as 1 g. Its licence requires the attribution notice shown on the Settings page (text in `manifest.json`). `aliases.json` maps hawker shorthand to reference foods; a name that no longer exists logs a warning at load.
 
-Keep README.md, this file and evals/README.md current when behaviour changes. The repo is public: no real names, emails, hostnames, meals or photos in commits; use `example.com` and made-up data.
+Keep README.md, this file and evals/README.md current when behaviour changes. The repo is public: no real names, emails or hostnames in commits; use `example.com` and made-up data. The one exception is the eval cases from real use (`evals/prod_cases.py`, `evals/photos/`): each was vetted by the household before it went in, so add new ones only after the same review.

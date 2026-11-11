@@ -34,11 +34,11 @@ from bao.config import get_settings
 from bao.db import make_engine, session_scope, use_database
 from bao.models import Entry, Food, Thread, Turn, User
 from bao.photos import save_photo
-from evals.cases import CASES, PRIVATE, Case, FoodCheck, Item
+from evals.cases import CASES, Case, FoodCheck, Item
 
 ROOT = Path(__file__).parent
 RESULTS = ROOT / "results"
-PHOTOS = PRIVATE / "photos"
+PHOTOS = ROOT / "photos"
 CASE_TIMEOUT_S = 240
 
 
@@ -588,9 +588,8 @@ async def main() -> None:
     if args.dry_run:
         sys.exit(1 if dry_run(cases, template) else 0)
 
-    for case in [c for c in cases if missing_photos(c)]:
-        print(f"  SKIP {case.id}: missing photo {', '.join(missing_photos(case))}", file=sys.stderr)
-    cases = [c for c in cases if not missing_photos(c)]
+    if missing := [n for c in cases for n in missing_photos(c)]:
+        sys.exit(f"missing photos in {PHOTOS}: {', '.join(missing)}")
     (out / "traces").mkdir(parents=True, exist_ok=True)
     (out / "dbs").mkdir(exist_ok=True)
     (out / "config.json").write_text(json.dumps(asdict(config), indent=1))
