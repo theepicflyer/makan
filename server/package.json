@@ -11,9 +11,12 @@
     "build": "tsc -p tsconfig.build.json",
     "check": "tsc --noEmit",
     "test": "vitest run",
-    "db:generate": "drizzle-kit generate"
+    "db:generate": "drizzle-kit generate",
+    "evals": "tsx evals/run.ts",
+    "evals:report": "tsx evals/report.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.8.0",
     "better-sqlite3": "^13.2.0",
     "drizzle-orm": "^0.45.4",
     "hono": "^4.13.18",

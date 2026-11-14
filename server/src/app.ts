@@ -1,7 +1,14 @@
 /** Bao, assembled: its tables, rules, tools and routes on Warren. */
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { type AppOptions, type Config, createApp, loadConfig, type WarrenApp } from "warren/server";
+import {
+  type AgentDefinition,
+  type AppOptions,
+  type Config,
+  createApp,
+  loadConfig,
+  type WarrenApp,
+} from "warren/server";
 import { agentContext } from "./agent/context.js";
 import { SYSTEM_PROMPT } from "./agent/systemPrompt.js";
 import { baoTools, describeChange, MCP_INSTRUCTIONS } from "./agent/tools.js";
@@ -22,6 +29,16 @@ export interface BaoOptions {
   pushSender?: AppOptions["pushSender"];
 }
 
+/** The in-app agent, as the app and the evals both run it. */
+export function baoAgent(timezone: string): AgentDefinition {
+  return {
+    systemPrompt: SYSTEM_PROMPT,
+    tools: baoTools(timezone),
+    context: agentContext(timezone),
+    describeChange,
+  };
+}
+
 export function createBao(options: BaoOptions = {}): WarrenApp {
   const config = options.config ?? loadConfig();
   const referenceDir =
@@ -32,11 +49,7 @@ export function createBao(options: BaoOptions = {}): WarrenApp {
     config,
     migrations: MIGRATIONS,
     tools: baoTools(tz),
-    agent: {
-      systemPrompt: SYSTEM_PROMPT,
-      context: agentContext(tz),
-      describeChange,
-    },
+    agent: baoAgent(tz),
     mcpInstructions: MCP_INSTRUCTIONS,
     me: meOut,
     push: {
