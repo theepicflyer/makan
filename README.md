@@ -62,10 +62,10 @@ Steps:
 
 1. **Create a sign-in client in Pocket ID.** Call it `bao` and give it both callback URLs:
    - `https://bao.example.com/auth/web/callback` (signing in from the browser)
-   - `https://bao.example.com/auth/callback` (the claude.ai connector)
+   - `https://bao.example.com/oauth/callback` (the claude.ai connector)
 
    Limit it to a user group with just the two of you, and copy the client ID and secret.
-2. **Fill in the settings.** Run `cp .env.example .env` and fill it in. You can leave `SESSION_SECRET` empty; Bao makes one on first start.
+2. **Fill in the settings.** Run `cp .env.example .env` and fill it in.
 3. **Start it** with `docker compose up -d`. This uses the latest release. To stay on one version, set `BAO_TAG=1.2.0` in `.env`.
 4. **Point your proxy at it.** For Caddy:
 
@@ -79,11 +79,30 @@ Steps:
 
 ### Backups and updates
 
-Everything Bao keeps is in the `makan-data` Docker volume: the database, meal photos, the connector's sign-in store and the key behind reminders. (The volume is still named after the app's old name, makan.) Back it up.
+Everything Bao keeps is in the `makan-data` Docker volume, mounted at `/data`. (The volume is still named after the app's old name, makan.)
+
+| In the volume | What it is |
+| --- | --- |
+| `app.sqlite` (and `-wal`, `-shm`) | The live database. Don't copy these while Bao runs; a copy can be corrupt. |
+| `backup/app.sqlite` | A consistent snapshot of the database, rewritten every day at 3am. |
+| `files/` | Meal photos. Written once, never changed. |
+| `secret`, `vapid.json`, `mcp/` | Keys for sign-in and reminders, and which Claude connectors are connected. |
+
+Point your backup tool at the volume and leave out `app.sqlite*` at its top level. To restore, stop Bao, put the files back, and run:
+
+```bash
+docker compose run --rm bao npx warren restore /data/backup/app.sqlite
+```
 
 To update, run `docker compose pull && docker compose up -d`. If a release needs anything done by hand, its release notes say so under **Deploy actions**.
 
-**Coming from makan (1.x)?** In `.env`, rename `MAKAN_TAG` to `BAO_TAG`. Get the new `docker-compose.yml`, then run `docker compose pull && docker compose up -d --remove-orphans`, which also stops the old container. Your data stays where it is. Everyone has to sign in once more.
+**Coming from an earlier release (the Python version)?** The database moved to a new format. With the new image, run the import once, then start Bao:
+
+```bash
+docker compose run --rm bao node dist/importLegacy.js /data
+```
+
+It reads the old `makan.db` and photos and leaves them in place; delete them once you're happy. In `.env`, replace `OIDC_CONFIG_URL` with `OIDC_ISSUER` (the same address without `/.well-known/openid-configuration`), and in Pocket ID change the connector's callback URL from `/auth/callback` to `/oauth/callback`. Everyone signs in once more, and the claude.ai connector has to be removed and added again.
 
 ### Connect Claude (optional)
 
@@ -107,21 +126,21 @@ Contains information from Singapore Food Insights Database (SG FoodID) accessed 
 ## For developers
 
 ```bash
-uv sync
-DEV_LOGIN=true uv run uvicorn bao.main:app --reload --port 8000   # the app, with a name picker instead of Pocket ID
-cd web && npm install && npm run dev                              # live-reloading web app, talks to :8000
-uv run pytest                                                     # backend tests
-cd web && npm run check && npm run build                          # check and build the web app
+cd server && npm ci
+npm run dev                                 # the app on :8000, with a name picker instead of Pocket ID
+npm test                                    # server tests
+cd ../web && npm install && npm run dev     # live-reloading web app, talks to :8000
+npm run check && npm run build              # check and build the web app
 ```
 
-Never set `DEV_LOGIN=true` on a server. Put `ANTHROPIC_API_KEY` in `.env` to use the assistant locally. To build the image from your own checkout, run `docker compose up -d --build`.
+Never set `DEV_LOGIN=true` on a server. Put `ANTHROPIC_API_KEY` in your environment to use the assistant locally. To build the image from your own checkout, run `docker compose up -d --build`.
 
 Where things are:
 
-- `src/bao/`: the FastAPI backend, including the assistant (`agent/`) and the claude.ai connector (`mcp_server.py`)
+- `server/`: the backend in TypeScript, on [Warren](https://github.com/theepicflyer/warren), the framework our household's apps share. It holds the food and log rules, the assistant's prompt and tools (`src/agent/`), and its test cases (`evals/`)
 - `web/`: the SvelteKit app; `web/src/lib/burrow/` is the design system
 - `data/reference/`: the food lists, and `scripts/` builds them
-- `evals/`: the assistant's test cases
+- `evals/`: how the assistant is tested, with the photos
 - `docs/screenshots/`: the screenshots above, from a demo account with made-up meals
 
 ### Reviewing the assistant's mistakes
@@ -129,7 +148,11 @@ Where things are:
 Bao keeps each reply's rating, any error, and the app version that made it. It also keeps a record whenever someone fixes by hand an entry the assistant logged. To collect the turns worth a look (thumbs down, failed, or fixed by hand) into one file:
 
 ```bash
-uv run --no-project python -I scripts/export_flagged.py --db /path/to/makan.db --since 2026-11-01 --format markdown --out flagged.md
+docker compose exec bao node dist/exportFlagged.js --db /data/backup/app.sqlite --since 2026-11-01 --format markdown --out /data/flagged.md
 ```
 
-It only reads the database, so it's safe to run on a copy of the live one.
+It only reads the database, and reads the daily snapshot rather than the live one.
+
+## Licence
+
+The code is MIT licensed; see [LICENSE](LICENSE). The food data in `data/reference/` keeps its own terms (see Attribution above).

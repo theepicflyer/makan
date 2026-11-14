@@ -1,12 +1,11 @@
 .git
 .env
-.venv
-**/__pycache__
-web/node_modules
+**/node_modules
+**/dist
 web/build
 web/.svelte-kit
+server/test
 data/cache
 data/runtime
 evals
-tests
 docs

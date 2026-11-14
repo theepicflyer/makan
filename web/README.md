@@ -1,6 +1,6 @@
 # Bao web app
 
-SvelteKit (Svelte 5) single-page PWA, built to `build/` and served by the FastAPI backend (`bao.main`).
+SvelteKit (Svelte 5) single-page PWA, built to `build/` and served by the server in `server/`.
 
 ```bash
 npm install
@@ -9,9 +9,8 @@ npm run check    # svelte-check, plus tsc for the service worker
 npm run build    # writes build/, which the backend serves
 ```
 
-- `src/lib/api.ts` sends `X-Bao: 1` on every request; the backend rejects writes without it.
+- `src/lib/api.ts` sends `X-Warren: 1` on every request; the server rejects writes without it.
 - `src/lib/components/Assistant.svelte` is Bao's message button and chat sheet. It posts to `/api/agent/turns` and reads the server-sent events from the response body. Each opening starts a new thread; when the sheet opens it also loads the day's earlier turns (`GET /api/agent/turns?date=`) and shows them above, with a line between sessions, purely for display. Undo and the thumbs up/down (`PUT /api/agent/turns/{id}/rating`) work on those too. The composer lives only in the sheet; it takes focus on open except on touch screens, where the keyboard would cover the history.
-- New top-level routes also need adding to `SPA_ROUTES` in `src/bao/main.py`.
 - The UI is built on Burrow, the household design system ([its page](https://claude.ai/artifact/ShL86DzdjvTZDwRHLsd8L4)). `src/lib/burrow/` holds copies of its pieces: `tokens.css` (compiled from its `tokens.json`), `burrow.css` (its `bh-*` component classes) and `art.js` (the SVG drawings of the animals, traces, trails and habitats, from its `bundle.js` minus the React components). Re-sync those from the design system rather than editing them; the Svelte components beside them (`Habitat`, `Ring`, `Meter`, `Peek`…) port its React components and are ours to change. `TrailPath` is Bao's own: one trail wandering down a screen behind its cards, showing in the gaps between them.
 - App-specific classes (`mk-*`) and the Tailwind colour names (`bg-surface`, `text-ink-muted`, `text-accent`…) live in `src/routes/layout.css`. Use Burrow tokens, never raw colours; protein, carbs and fat are `--protein`, `--carbs` and `--fat`, and energy is Bao's own `--energy` (tomato).
 - Energy, protein, carbs and fat each have a symbol, `src/lib/components/NutrientIcon.svelte`: a flame, a drumstick, an ear of wheat and a drop, drawn as Burrow stickers in those colours. Use it wherever one of the four is named, never a letter (P, C, F) or a plain colour dot: before the word where there's room (meters, fields via `Field nutrient=`, table headers, tooltips), and on its own before the number where there isn't (`MacroAmounts` for a row's protein, carbs and fat; the flame before a row's calories). Pass `labelled` when no word beside it names the nutrient, so screen readers hear it. Sizes: 16 beside 14px text, 14 beside 12px labels and in `MacroAmounts`.

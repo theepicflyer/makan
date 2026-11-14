@@ -22,7 +22,9 @@ export default defineConfig({
 		proxy: {
 			'/api': { target: backend, changeOrigin: false },
 			'/auth': { target: backend, changeOrigin: false },
-			'/mcp': { target: backend, changeOrigin: false }
+			'/mcp': { target: backend, changeOrigin: false },
+			'/oauth': { target: backend, changeOrigin: false },
+			'/.well-known': { target: backend, changeOrigin: false }
 		}
 	}
 });

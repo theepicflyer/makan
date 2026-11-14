@@ -20,10 +20,10 @@ async function errorMessage(res: Response): Promise<string> {
 	return `${res.status} ${res.statusText}`;
 }
 
-/** Fetch against the Bao API. Every call carries X-Bao, which the backend requires on writes. */
+/** Fetch against the Bao API. Every call carries X-Warren, which the backend requires on writes. */
 export async function raw(path: string, init: RequestInit = {}): Promise<Response> {
 	const headers = new Headers(init.headers);
-	headers.set('X-Bao', '1');
+	headers.set('X-Warren', '1');
 	const res = await fetch(path, { ...init, headers, credentials: 'same-origin' });
 	if (res.status === 401 && !location.pathname.startsWith('/login')) {
 		await goto('/login');

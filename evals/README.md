@@ -100,17 +100,17 @@ Sonnet and Opus get most of the photo ones right. Opus got the shared table once
 
 ## Run it yourself
 
-Every run except `--dry-run` calls the Anthropic API and costs money: about $0.09 for the whole set on Haiku, about $2.70 on Opus. Put `ANTHROPIC_API_KEY` in `.env` first.
+Every run except `--dry-run` calls the Anthropic API and costs money: about $0.09 for the whole set on Haiku, about $2.70 on Opus. Set `ANTHROPIC_API_KEY` in your environment first, and run these from `server/`.
 
 ```bash
-uv run python -m evals.run --dry-run                                        # check every case, free
-uv run python -m evals.run --model claude-haiku-5-5 --effort low --reps 2   # everything, twice
-uv run python -m evals.run --tags photo --name haiku-photos                 # just the photos
-uv run python -m evals.run --cases prod_p23_little_cheesecake --name try    # one case
-uv run python -m evals.report                                               # summary table
+npm run evals -- --dry-run                                        # check every case, free
+npm run evals -- --model claude-haiku-5-5 --effort low --reps 2   # everything, twice
+npm run evals -- --tags photo --name haiku-photos                 # just the photos
+npm run evals -- --cases prod_p23_little_cheesecake --name try    # one case
+npm run evals:report                                              # summary table
 ```
 
-Results go to `evals/results/<name>/`: a graded row per case in `results.jsonl`, each full conversation in `traces/`, and each case's final database in `dbs/`. If a run stops halfway, run the same command again and it picks up where it left off. `evals.report` writes a summary of every run to `evals/results/summary.md`.
+Results go to `evals/results/<name>/`: a graded row per case in `results.jsonl`, each full conversation in `traces/`, and each case's final database in `dbs/`. If a run stops halfway, run the same command again and it picks up where it left off. `npm run evals:report` writes a summary of every run to `evals/results/summary.md`.
 
 More options:
 
@@ -123,12 +123,12 @@ More options:
 
 ## How the cases work
 
-The cases are in two files:
+The cases are in two files in `server/evals/`:
 
-- `cases.py`: 45 made-up cases, mostly typed messages.
-- `prod_cases.py`: 46 cases from real use, including every photo case. The photos are in `photos/`. Each case keeps the real message, the household's own foods at the time and the log entries the message referred to. Dates are moved five weeks earlier, so weekdays still match what the message says.
+- `cases.ts`: 45 made-up cases, mostly typed messages.
+- `prodCases.ts`: 46 cases from real use, including every photo case. The photos are in `evals/photos/`. Each case keeps the real message, the household's own foods at the time and the log entries the message referred to. Dates are moved five weeks earlier, so weekdays still match what the message says.
 
-`spec.py` defines what a case can say. Each case starts from a fresh copy of the food database and can add:
+`spec.ts` defines what a case can say. Each case starts from a fresh copy of the food database and can add:
 
 - `ours`: household foods, and `entries`: log entries that already exist before the message.
 - `now` and `log_date`: when the message is sent and which day the app is showing. These are separate because people often log yesterday.
