@@ -81,7 +81,7 @@
 	async function loadEarlier(d: string) {
 		const mine = ++historySeq;
 		try {
-			const res = await get<{ turns: Turn[] }>(`/api/agent/turns?date=${d}`);
+			const res = await get<{ turns: Turn[] }>(`/api/agent/turns?scope=${d}`);
 			if (mine === historySeq && d === date) {
 				earlier = res.turns;
 				pin();
@@ -447,9 +447,9 @@
 
 {#snippet turnView(turn: Turn)}
 	<div class="space-y-2">
-		{#if turn.user_text || turn.photo_ids.length}
+		{#if turn.user_text || turn.file_ids.length}
 			<div class="ml-auto flex max-w-[85%] flex-col items-end gap-1">
-				{@render sentPhotos(turn.photo_ids.map((id) => `/api/photos/${id}`))}
+				{@render sentPhotos(turn.file_ids.map((id) => `/api/files/${id}`))}
 				{#if turn.user_text}
 					<div class="mk-bubble mk-bubble--me">{turn.user_text}</div>
 				{/if}

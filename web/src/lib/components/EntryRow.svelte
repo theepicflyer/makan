@@ -13,7 +13,7 @@
 <button class="bh-row mk-row-btn" {onclick}>
 	<span class="bh-row__tile">
 		{#if entry.photo_id}
-			<img src="/api/photos/{entry.photo_id}" alt="" loading="lazy" class="mk-tile-photo" />
+			<img src="/api/files/{entry.photo_id}" alt="" loading="lazy" class="mk-tile-photo" />
 		{:else}
 			<Trace name={MEAL_TRACE[entry.meal]} size={30} />
 		{/if}

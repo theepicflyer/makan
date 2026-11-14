@@ -140,7 +140,7 @@
 	{#if entry}
 		<div class="space-y-5 pt-1">
 			{#if entry.photo_id}
-				<img src="/api/photos/{entry.photo_id}" alt="Meal" class="max-h-56 w-full rounded-[var(--radius-md)] border-2 border-outline object-cover" />
+				<img src="/api/files/{entry.photo_id}" alt="Meal" class="max-h-56 w-full rounded-[var(--radius-md)] border-2 border-outline object-cover" />
 			{/if}
 
 			{#if entry.food_id != null}
