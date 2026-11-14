@@ -152,3 +152,7 @@ docker compose exec bao node dist/exportFlagged.js --db /data/backup/app.sqlite 
 ```
 
 It only reads the database, and reads the daily snapshot rather than the live one.
+
+## Licence
+
+The code is MIT licensed; see [LICENSE](LICENSE). The food data in `data/reference/` keeps its own terms (see Attribution above).
